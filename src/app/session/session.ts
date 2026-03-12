@@ -20,6 +20,11 @@ type LegacyBrowserSession = {
   chatId: string;
 };
 
+const isBrowserSession = (
+  session: BrowserSession | LegacyBrowserSession,
+): session is BrowserSession =>
+  "activeThreadId" in session && Array.isArray(session.threads);
+
 export const createBrowserSession = (threadId: string): BrowserSession => ({
   activeThreadId: threadId,
   threads: [createThreadSummary(threadId)],
@@ -29,7 +34,7 @@ export const createBrowserSession = (threadId: string): BrowserSession => ({
 export const normalizeBrowserSession = (
   session: BrowserSession | LegacyBrowserSession,
 ): BrowserSession => {
-  if ("activeThreadId" in session && Array.isArray(session.threads)) {
+  if (isBrowserSession(session)) {
     return {
       ...session,
       globalMemory: normalizeGlobalMemory(session.globalMemory),

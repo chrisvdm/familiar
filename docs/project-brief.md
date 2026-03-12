@@ -62,6 +62,7 @@ The current goal is to make the core chat experience solid while adding only lig
 - Consider streaming assistant responses.
 - Revisit prompt-context strategy once lightweight memory quality is understood in longer conversations.
 - Introduce stronger identity/user modeling only when there is a clear product need.
+- For commercial use, upgrade memory provenance so stored facts can track multiple source threads and be removed automatically when their backing threads are deleted.
 
 ## Source of Truth
 

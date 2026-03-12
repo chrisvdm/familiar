@@ -1,9 +1,11 @@
 import { env } from "cloudflare:workers";
 
 import {
+  addFactToGlobalMemory,
   buildGlobalMemoryMarkdown,
   buildThreadMemoryMarkdown,
   type ChatMessage,
+  flattenGlobalMemoryFacts,
   type GlobalMemory,
   type GlobalThreadSummary,
   type MemoryFact,
@@ -40,6 +42,13 @@ type MemoryExtraction = {
   profile_facts?: RawMemoryFact[];
 };
 
+type DerivedMemoryFact = {
+  key: string;
+  value: string;
+  confidence: number;
+  rationale: string;
+};
+
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const EXTRACTION_MESSAGE_LIMIT = 12;
 const MEMORY_FACT_LIMIT = 6;
@@ -74,6 +83,8 @@ const GLOBAL_MEMORY_KEYS = new Set([
   "favorite_music",
   "favorite_movie",
   "favorite_color",
+  "fear",
+  "fears",
   "likes",
   "dislikes",
 ]);
@@ -163,6 +174,28 @@ const STOP_WORDS = new Set([
   "your",
 ]);
 
+const QUERY_ALIASES: Record<string, string[]> = {
+  color: ["colour", "favorite_color"],
+  colour: ["color", "favorite_color"],
+  favorite: ["favourite", "preference", "preferences"],
+  favourite: ["favorite", "preference", "preferences"],
+  fear: ["fears", "afraid", "phobia"],
+  fears: ["fear", "afraid", "phobia"],
+  afraid: ["fear", "fears", "phobia"],
+  kids: ["children", "family"],
+  children: ["kids", "family"],
+  husband: ["spouse", "partner", "family"],
+  married: ["marriage", "spouse", "husband", "wife", "partner"],
+  marriage: ["married", "spouse", "husband", "wife", "partner"],
+  wife: ["spouse", "partner", "family"],
+  spouse: ["husband", "wife", "partner", "family"],
+  partner: ["spouse", "husband", "wife", "family"],
+  parent: ["children", "kids", "family"],
+  job: ["work", "profession", "business"],
+  work: ["job", "profession", "business"],
+  profession: ["job", "work", "business"],
+};
+
 const MEMORY_EXTRACTION_SYSTEM_PROMPT =
   "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Ignore transient tasks, moods, and one-off requests.";
 
@@ -244,6 +277,13 @@ const tokenize = (input: string) =>
     ),
   );
 
+const expandQueryTokens = (tokens: string[]) =>
+  Array.from(
+    new Set(
+      tokens.flatMap((token) => [token, ...(QUERY_ALIASES[token] ?? [])]),
+    ),
+  );
+
 const scoreTextAgainstQuery = (text: string, queryTokens: string[]) => {
   if (queryTokens.length === 0) {
     return 0;
@@ -258,6 +298,11 @@ const scoreTextAgainstQuery = (text: string, queryTokens: string[]) => {
 
 const isPersonalMemoryQuery = (query: string) =>
   /\b(my|me|i am|i'm|name|family|kids|children|wife|husband|partner|job|work|profession|bio|remember)\b/i.test(
+    query,
+  );
+
+const isBroadPersonalMemoryQuery = (query: string) =>
+  /\b(what do you know about me|who am i|tell me about myself|summari[sz]e (me|what you know)|what do you remember about me|what do you know of me)\b/i.test(
     query,
   );
 
@@ -303,39 +348,10 @@ const toMemoryFact = ({
   };
 };
 
-const mergeGlobalFacts = (
-  currentFacts: MemoryFact[],
-  incomingFacts: MemoryFact[],
-): MemoryFact[] => {
-  const merged = new Map<string, MemoryFact>();
-
-  for (const fact of currentFacts) {
-    merged.set(fact.key, fact);
-  }
-
-  for (const fact of incomingFacts) {
-    const existing = merged.get(fact.key);
-
-    if (!existing) {
-      merged.set(fact.key, fact);
-      continue;
-    }
-
-    if (
-      fact.value === existing.value ||
-      fact.confidence >= existing.confidence
-    ) {
-      merged.set(fact.key, fact);
-    }
-  }
-
-  return Array.from(merged.values()).sort((left, right) =>
-    right.updatedAt.localeCompare(left.updatedAt),
-  );
-};
-
 const mergeFactLists = (...factLists: MemoryFact[][]) =>
-  mergeGlobalFacts([], factLists.flat());
+  factLists
+    .flat()
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 const mergeThreadSummaries = (
   currentSummaries: GlobalThreadSummary[],
@@ -378,6 +394,8 @@ const sanitizeGlobalFact = (fact: MemoryFact) => {
       "favorite_music",
       "favorite_movie",
       "favorite_color",
+      "fear",
+      "fears",
       "likes",
       "dislikes",
     ].includes(fact.key) &&
@@ -527,6 +545,40 @@ const extractProfileFactsHeuristically = ({
         }),
       );
     }
+
+    const favoriteColorMatch = content.match(
+      /\b(?:my )?favo(?:u)?rite colo(?:u)?r is ([a-z][a-z -]{1,30})\b/i,
+    );
+
+    if (favoriteColorMatch) {
+      heuristicFacts.push(
+        createHeuristicFact({
+          key: "favorite_color",
+          value: favoriteColorMatch[1].trim().toLowerCase(),
+          confidence: 0.98,
+          timestamp,
+          threadId,
+          messageId: message.id,
+        }),
+      );
+    }
+
+    const fearMatch = content.match(
+      /\b(?:i am|i'm) afraid of ([a-z][a-z -]{1,40})\b/i,
+    ) ?? content.match(/\bmy fear is ([a-z][a-z -]{1,40})\b/i);
+
+    if (fearMatch) {
+      heuristicFacts.push(
+        createHeuristicFact({
+          key: "fear",
+          value: fearMatch[1].trim().toLowerCase(),
+          confidence: 0.96,
+          timestamp,
+          threadId,
+          messageId: message.id,
+        }),
+      );
+    }
   }
 
   return mergeFactLists(heuristicFacts).slice(0, MEMORY_FACT_LIMIT);
@@ -553,6 +605,91 @@ const getTopFacts = (facts: MemoryFact[]) =>
       return right.updatedAt.localeCompare(left.updatedAt);
     })
     .slice(0, MEMORY_FACT_LIMIT);
+
+const deriveFactsFromMemory = (facts: MemoryFact[]): DerivedMemoryFact[] => {
+  const derivedFacts: DerivedMemoryFact[] = [];
+  const factsByKey = new Map<string, MemoryFact[]>();
+
+  for (const fact of facts) {
+    const currentFacts = factsByKey.get(fact.key) ?? [];
+    currentFacts.push(fact);
+    factsByKey.set(fact.key, currentFacts);
+  }
+
+  const husbandFact = factsByKey.get("husband_name")?.[0];
+  const wifeFact = factsByKey.get("wife_name")?.[0];
+  const spouseFact = factsByKey.get("spouse_name")?.[0];
+  const partnerFact = factsByKey.get("partner_name")?.[0];
+  const childrenCountFact = factsByKey.get("children_count")?.[0];
+
+  if (husbandFact) {
+    derivedFacts.push({
+      key: "marital_status",
+      value: "married",
+      confidence: 0.98,
+      rationale: `Stored fact husband_name = ${husbandFact.value}`,
+    });
+  } else if (wifeFact) {
+    derivedFacts.push({
+      key: "marital_status",
+      value: "married",
+      confidence: 0.98,
+      rationale: `Stored fact wife_name = ${wifeFact.value}`,
+    });
+  } else if (spouseFact) {
+    derivedFacts.push({
+      key: "marital_status",
+      value: "married",
+      confidence: 0.95,
+      rationale: `Stored fact spouse_name = ${spouseFact.value}`,
+    });
+  } else if (partnerFact) {
+    derivedFacts.push({
+      key: "relationship_status",
+      value: "partnered",
+      confidence: 0.75,
+      rationale: `Stored fact partner_name = ${partnerFact.value}`,
+    });
+  }
+
+  if (childrenCountFact) {
+    const count = Number.parseInt(childrenCountFact.value, 10);
+
+    if (!Number.isNaN(count) && count > 0) {
+      derivedFacts.push({
+        key: "parent_status",
+        value: "parent",
+        confidence: 0.97,
+        rationale: `Stored fact children_count = ${childrenCountFact.value}`,
+      });
+    }
+  }
+
+  return derivedFacts;
+};
+
+const getRelevantDerivedFacts = (
+  facts: DerivedMemoryFact[],
+  queryTokens: string[],
+) =>
+  facts
+    .map((fact) => ({
+      fact,
+      score: scoreTextAgainstQuery(
+        `${fact.key} ${fact.value} ${fact.rationale}`,
+        queryTokens,
+      ),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      return right.fact.confidence - left.fact.confidence;
+    })
+    .slice(0, MEMORY_FACT_LIMIT)
+    .map(({ fact }) => fact);
 
 const getRelevantThreadSummaries = ({
   summaries,
@@ -668,7 +805,7 @@ export const refreshMemories = async ({
   }
 
 Existing user facts:
-${globalMemory.facts.map((fact) => `- ${fact.key}: ${fact.value}`).join("\n") || "(none)"}
+${flattenGlobalMemoryFacts(globalMemory).map((fact) => `- ${fact.key}: ${fact.value}`).join("\n") || "(none)"}
 
 Conversation slice:
 ${getMessagesForExtraction(messages)}
@@ -741,17 +878,18 @@ Return strict JSON with this shape:
     timestamp,
   });
   const promotedThreadFacts = promoteThreadFactsToGlobalFacts(threadFacts);
-  const mergedGlobalFacts = mergeGlobalFacts(
-    globalMemory.facts,
-    mergeFactLists(
-      extractedProfileFacts,
-      heuristicProfileFacts,
-      promotedThreadFacts,
-    ),
-  );
+  let nextGlobalMemoryFacts = globalMemory;
+
+  for (const fact of mergeFactLists(
+    extractedProfileFacts,
+    heuristicProfileFacts,
+    promotedThreadFacts,
+  )) {
+    nextGlobalMemoryFacts = addFactToGlobalMemory(nextGlobalMemoryFacts, fact);
+  }
 
   const nextGlobalMemory: GlobalMemory = {
-    facts: mergedGlobalFacts,
+    ...nextGlobalMemoryFacts,
     threadSummaries: mergeThreadSummaries(globalMemory.threadSummaries, {
       threadId,
       title:
@@ -767,7 +905,7 @@ Return strict JSON with this shape:
     updatedAt: timestamp,
   };
   nextGlobalMemory.markdown = buildGlobalMemoryMarkdown({
-    facts: nextGlobalMemory.facts,
+    memory: nextGlobalMemory,
     threadSummaries: nextGlobalMemory.threadSummaries,
   });
 
@@ -788,26 +926,29 @@ export const buildMemoryContext = ({
   threadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
 }) => {
-  const queryTokens = tokenize(userMessage);
+  const queryTokens = expandQueryTokens(tokenize(userMessage));
+  const isBroadSelfQuery = isBroadPersonalMemoryQuery(userMessage);
+  const globalFacts = flattenGlobalMemoryFacts(globalMemory);
+  const derivedFacts = deriveFactsFromMemory(globalFacts);
   const relevantThreadFacts = getRelevantFacts(threadMemory.facts, queryTokens);
-  const relevantGlobalFacts = isPersonalMemoryQuery(userMessage)
+  const relevantGlobalFacts = isBroadSelfQuery
     ? (() => {
-        const matchedFacts = getRelevantFacts(globalMemory.facts, queryTokens);
+        const matchedFacts = getRelevantFacts(globalFacts, queryTokens);
 
         if (matchedFacts.length > 0) {
           return matchedFacts;
         }
 
-        return getTopFacts(globalMemory.facts);
+        return getTopFacts(globalFacts);
       })()
-    : getRelevantFacts(globalMemory.facts, queryTokens).filter(
+    : getRelevantFacts(globalFacts, queryTokens).filter(
         (fact) => scoreTextAgainstQuery(`${fact.key} ${fact.value}`, queryTokens) > 0,
       );
   const relevantThreadSummaries = getRelevantThreadSummaries({
     summaries: globalMemory.threadSummaries,
     queryTokens,
   });
-  const selectedThreadSummaries = isPersonalMemoryQuery(userMessage)
+  const selectedThreadSummaries = isBroadSelfQuery
     ? (() => {
         if (relevantThreadSummaries.length > 0) {
           return relevantThreadSummaries;
@@ -816,7 +957,10 @@ export const buildMemoryContext = ({
         return getTopThreadSummaries(globalMemory.threadSummaries);
       })()
     : relevantThreadSummaries;
+  const relevantDerivedFacts = getRelevantDerivedFacts(derivedFacts, queryTokens);
   const relevantSnippets = getRelevantSnippets({ messages, queryTokens });
+  const isTargetedPersonalQuery =
+    isPersonalMemoryQuery(userMessage) && !isBroadSelfQuery;
 
   const threadLines = [
     threadMemory.summary ? `Summary: ${threadMemory.summary}` : "",
@@ -830,6 +974,16 @@ export const buildMemoryContext = ({
   const globalLines = relevantGlobalFacts.map(
     (fact) => `Profile: ${fact.key} = ${fact.value}`,
   );
+  const derivedLines = relevantDerivedFacts.map((fact) => {
+    const confidenceLabel =
+      fact.confidence >= 0.9
+        ? "high confidence"
+        : fact.confidence >= 0.75
+          ? "medium confidence"
+          : "low confidence";
+
+    return `Derived: ${fact.key} = ${fact.value} (${confidenceLabel}; basis: ${fact.rationale})`;
+  });
   const summaryLines = selectedThreadSummaries.map(
     (summary) =>
       `Thread node: ${summary.title} -> ${summary.summary}${
@@ -847,8 +1001,26 @@ export const buildMemoryContext = ({
       lines: globalLines,
     }),
     createMemoryContextSection({
+      title: "Derived memory",
+      lines: derivedLines,
+    }),
+    createMemoryContextSection({
       title: "Memory tree",
       lines: summaryLines,
+    }),
+    createMemoryContextSection({
+      title: "Memory guardrail",
+      lines:
+        isTargetedPersonalQuery &&
+        relevantGlobalFacts.length === 0 &&
+        relevantDerivedFacts.length === 0 &&
+        selectedThreadSummaries.length === 0 &&
+        relevantThreadFacts.length === 0 &&
+        relevantSnippets.length === 0
+          ? [
+              "No explicit stored memory matched this requested personal detail. If the user asks for it directly, say you do not know rather than inferring.",
+            ]
+          : [],
     }),
   ].filter(Boolean);
 

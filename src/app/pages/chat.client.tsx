@@ -98,7 +98,7 @@ export const ChatClient = ({
         const result = await sendChatMessage(content);
         setActiveThreadId(result.activeThreadId);
         setThreads(result.threads);
-        setModel(result.model);
+        setModel(result.model ?? "openai/gpt-4o-mini");
         setMessages(result.session.messages);
       } catch (caughtError) {
         const message =

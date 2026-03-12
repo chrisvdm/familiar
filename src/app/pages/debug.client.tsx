@@ -64,13 +64,54 @@ export const DebugClient = ({
 
         <section className={styles.panel}>
           <p className={styles.panelEyebrow}>Global Memory</p>
-          <h2 className={styles.panelTitle}>Personal Facts</h2>
-          {globalMemory.facts.length > 0 ? (
+          <h2 className={styles.panelTitle}>Identity</h2>
+          {Object.keys(globalMemory.identity).length > 0 ? (
             <pre className={styles.code}>
-              {JSON.stringify(globalMemory.facts, null, 2)}
+              {JSON.stringify(globalMemory.identity, null, 2)}
             </pre>
           ) : (
-            <p className={styles.empty}>No personal facts stored.</p>
+            <p className={styles.empty}>No identity facts stored.</p>
+          )}
+        </section>
+
+        <section className={styles.panel}>
+          <p className={styles.panelEyebrow}>Global Memory</p>
+          <h2 className={styles.panelTitle}>Family</h2>
+          {Object.keys(globalMemory.family).length > 0 ? (
+            <pre className={styles.code}>
+              {JSON.stringify(globalMemory.family, null, 2)}
+            </pre>
+          ) : (
+            <p className={styles.empty}>No family facts stored.</p>
+          )}
+        </section>
+
+        <section className={styles.panel}>
+          <p className={styles.panelEyebrow}>Global Memory</p>
+          <h2 className={styles.panelTitle}>Preferences</h2>
+          {Object.keys(globalMemory.preferences.favorite).length > 0 ||
+          globalMemory.preferences.likes.length > 0 ||
+          globalMemory.preferences.dislikes.length > 0 ||
+          globalMemory.preferences.interests.length > 0 ||
+          globalMemory.preferences.fears.length > 0 ||
+          Object.keys(globalMemory.preferences.general).length > 0 ? (
+            <pre className={styles.code}>
+              {JSON.stringify(globalMemory.preferences, null, 2)}
+            </pre>
+          ) : (
+            <p className={styles.empty}>No preference facts stored.</p>
+          )}
+        </section>
+
+        <section className={styles.panel}>
+          <p className={styles.panelEyebrow}>Global Memory</p>
+          <h2 className={styles.panelTitle}>Work</h2>
+          {Object.keys(globalMemory.work).length > 0 ? (
+            <pre className={styles.code}>
+              {JSON.stringify(globalMemory.work, null, 2)}
+            </pre>
+          ) : (
+            <p className={styles.empty}>No work facts stored.</p>
           )}
         </section>
 

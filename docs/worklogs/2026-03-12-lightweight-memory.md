@@ -43,6 +43,7 @@
 - Add better promotion rules or confirmation flows if false-memory risk becomes noticeable.
 - Consider a cheaper dedicated memory model or background refresh strategy if memory extraction latency becomes too visible.
 - Add embeddings only if keyword and fact retrieval prove insufficient in real usage.
+- For production/commercial use, replace single-source fact provenance with multi-thread provenance so deleting a thread can remove only its backing evidence and drop a fact only when no supporting threads remain.
 
 ## Subsequent Fixes
 
@@ -59,3 +60,9 @@
 - Moved memory inspection into a dedicated `/debug` route so persisted personal facts, memory-tree nodes, and current-thread memory can be checked without cluttering the main chat UI.
 - Fixed the custom document shell to render Redwood-managed stylesheet and preload tags; without that, route CSS modules compiled but were not linked into the HTML document.
 - Updated personal-memory retrieval so self-referential questions can fall back to recent thread-summary nodes from the memory tree, not just flat personal facts.
+- Added stricter assistant instructions to avoid guessing personal details from partial memory context, plus deterministic heuristics for explicit statements like favorite color and fear declarations.
+- Tightened retrieval again so only broad "who am I?" style questions can fall back to top memory; targeted personal-detail questions like favorite color now require explicit matching facts, snippets, or thread-summary nodes and otherwise carry a prompt guardrail telling the assistant to say it does not know.
+- Refactored global user memory from a flat `facts[]` array into structured `identity`, `family`, `preferences`, and `work` sections, with grouped favorite-preference buckets like `preferences.favorite.color`.
+- Added migration-safe normalization so existing persisted `facts[]` memory is reclassified into the new grouped structure on load, without resetting browser-session memory.
+- Updated retrieval to flatten the structured memory internally for search while keeping the stored shape nested, and updated `/debug` to expose the grouped sections directly.
+- Added a small runtime inference layer for obvious relationship and parent-status questions so the assistant can answer things like marital status from explicit stored relationship facts, without persisting second-order inferred facts back into user memory.

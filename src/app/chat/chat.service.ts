@@ -40,6 +40,8 @@ type OpenRouterResponse = {
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const SYSTEM_PROMPT =
   "You are Texty, a concise product-minded AI assistant. Give direct, useful answers and avoid filler.";
+const MEMORY_USAGE_PROMPT =
+  "When using memory, treat stored facts as source-backed context. You may use derived memory facts when they are explicitly provided with confidence and basis. Treat high-confidence derived facts as reliable, medium-confidence derived facts with cautious wording, and if memory does not explicitly contain or strongly support a personal detail, say you do not know rather than guessing.";
 
 const buildPromptContext = (messages: ChatMessage[]): OpenRouterMessage[] =>
   messages
@@ -150,6 +152,10 @@ const generateAssistantReply = async ({
           {
             role: "system",
             content: SYSTEM_PROMPT,
+          },
+          {
+            role: "system",
+            content: MEMORY_USAGE_PROMPT,
           },
           ...(threadMemoryContext
             ? [
