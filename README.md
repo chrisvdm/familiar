@@ -2,6 +2,12 @@
 
 Chat app built with RedwoodSDK and the OpenRouter API.
 
+## Project Docs
+
+- `docs/project-brief.md` is the stable project overview.
+- `docs/developer-ai-guidelines.md` captures standing repo conventions and AI/developer workflow rules.
+- `docs/worklogs/` stores task-specific implementation logs.
+
 ## Setup
 
 1. Install dependencies:
