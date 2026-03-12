@@ -22,6 +22,22 @@
     "enabled": true
   },
 
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CHAT_SESSIONS",
+        "class_name": "ChatSessionDurableObject"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ChatSessionDurableObject"]
+    }
+  ],
+
   // Environment variables
   "vars": {
     // Add your environment variables here

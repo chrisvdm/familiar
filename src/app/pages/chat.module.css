@@ -179,6 +179,12 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   font-size: 0.75rem;
@@ -198,6 +204,16 @@ body {
   border-radius: 999px;
   background: var(--accent-2);
   box-shadow: 0 0 0 8px rgba(255, 209, 102, 0.14);
+}
+
+.resetButton {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-strong);
+  font: inherit;
+  cursor: pointer;
 }
 
 .chatLog {

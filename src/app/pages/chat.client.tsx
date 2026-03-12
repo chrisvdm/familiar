@@ -1,42 +1,43 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
-import { generateReply, type ChatMessageInput } from "./chat.actions";
+import { resetChatSession, sendChatMessage } from "../chat/chat.service";
+import type { ChatMessage } from "../chat/shared";
 import styles from "./chat.module.css";
 
 type ChatClientProps = {
   starterPrompts: string[];
+  initialMessages: ChatMessage[];
 };
 
-type ChatMessage = ChatMessageInput & {
-  id: string;
-};
-
-const initialMessages: ChatMessage[] = [
-  {
-    id: "assistant-welcome",
-    role: "assistant",
-    content:
-      "Ask for product strategy, copy rewrites, code help, or research summaries. I’ll answer through OpenRouter.",
-  },
-];
-
-const createMessage = (
-  role: ChatMessage["role"],
-  content: string,
-): ChatMessage => ({
-  id: crypto.randomUUID(),
-  role,
-  content,
-});
-
-export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
+export const ChatClient = ({
+  starterPrompts,
+  initialMessages,
+}: ChatClientProps) => {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [model, setModel] = useState<string>("openai/gpt-4o-mini");
+  const logRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
+
+  useEffect(() => {
+    const container = logRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages, isPending]);
 
   const sendMessage = (rawMessage: string) => {
     const content = rawMessage.trim();
@@ -45,28 +46,15 @@ export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
       return;
     }
 
-    const nextUserMessage = createMessage("user", content);
-    const nextHistory = [...messages, nextUserMessage];
-
     setDraft("");
     setError(null);
     setIsPending(true);
-    setMessages(nextHistory);
 
     startTransition(async () => {
       try {
-        const result = await generateReply(
-          nextHistory.map(({ role, content: messageContent }) => ({
-            role,
-            content: messageContent,
-          })),
-        );
-
+        const result = await sendChatMessage(content);
         setModel(result.model);
-        setMessages((current) => [
-          ...current,
-          createMessage("assistant", result.content),
-        ]);
+        setMessages(result.session.messages);
       } catch (caughtError) {
         const message =
           caughtError instanceof Error
@@ -74,7 +62,6 @@ export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
             : "Something went wrong while generating a reply.";
 
         setError(message);
-        setMessages((current) => current.filter((message) => message.id !== nextUserMessage.id));
         setDraft(content);
       } finally {
         setIsPending(false);
@@ -87,13 +74,44 @@ export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
     sendMessage(draft);
   };
 
+  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage(draft);
+    }
+  };
+
+  const clearConversation = () => {
+    if (isPending) {
+      return;
+    }
+
+    setError(null);
+    setIsPending(true);
+
+    startTransition(async () => {
+      try {
+        const nextSession = await resetChatSession();
+        setMessages(nextSession.messages);
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to reset the conversation.",
+        );
+      } finally {
+        setIsPending(false);
+      }
+    });
+  };
+
   return (
     <section className={styles.shell}>
       <div className={styles.sidebar}>
         <div className={styles.sidebarPanel}>
           <p className={styles.sidebarLabel}>Status</p>
           <p className={styles.sidebarValue}>
-            {isPending ? "Generating response..." : "Ready"}
+            {isPending ? "Saving and generating..." : "Persisted in session"}
           </p>
         </div>
         <div className={styles.sidebarPanel}>
@@ -124,10 +142,20 @@ export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
             <p className={styles.eyebrow}>Custom AI Workspace</p>
             <h2 className={styles.chatTitle}>Conversation</h2>
           </div>
-          <div className={styles.liveDot} aria-hidden="true" />
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.resetButton}
+              onClick={clearConversation}
+              disabled={isPending}
+            >
+              Clear thread
+            </button>
+            <div className={styles.liveDot} aria-hidden="true" />
+          </div>
         </div>
 
-        <div className={styles.chatLog}>
+        <div className={styles.chatLog} ref={logRef}>
           {messages.map((message) => (
             <article
               key={message.id}
@@ -158,6 +186,7 @@ export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
             className={styles.textarea}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={onKeyDown}
             placeholder="Ask for a launch plan, rewrite, code review, or customer insight summary."
             rows={5}
             disabled={isPending}
@@ -165,8 +194,8 @@ export const ChatClient = ({ starterPrompts }: ChatClientProps) => {
 
           <div className={styles.composerFooter}>
             <p className={styles.helperText}>
-              Server requests go through RedwoodSDK server functions and call
-              OpenRouter from the worker.
+              Full chat history survives refresh. Prompt context currently uses
+              the last 3 exchanges.
             </p>
             <button className={styles.submitButton} type="submit" disabled={isPending}>
               {isPending ? "Working..." : "Send"}

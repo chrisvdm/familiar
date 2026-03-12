@@ -1,5 +1,7 @@
-import { ChatClient } from "./chat.client";
+import { loadChatSession } from "../chat/chat.storage";
+import type { ChatMessage } from "../chat/shared";
 import styles from "./chat.module.css";
+import { ChatClient } from "./chat.client";
 
 const starterPrompts = [
   "Plan a 3-day launch sequence for a new SaaS feature.",
@@ -7,7 +9,14 @@ const starterPrompts = [
   "Summarize customer feedback and suggest product priorities.",
 ];
 
-export const ChatShell = () => {
+type ChatShellProps = {
+  chatSessionId: string;
+};
+
+export const ChatShell = async ({ chatSessionId }: ChatShellProps) => {
+  const session = await loadChatSession(chatSessionId);
+  const messages: ChatMessage[] = session.messages;
+
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
@@ -27,7 +36,7 @@ export const ChatShell = () => {
         </div>
       </section>
 
-      <ChatClient starterPrompts={starterPrompts} />
+      <ChatClient starterPrompts={starterPrompts} initialMessages={messages} />
     </main>
   );
 };

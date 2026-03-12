@@ -25,7 +25,7 @@ OPENROUTER_SITE_NAME=Texty AI
 npm run dev
 ```
 
-For deployment, set `OPENROUTER_API_KEY` as a Wrangler secret and keep the other values in Wrangler vars if you want to override the defaults.
+For deployment, set `OPENROUTER_API_KEY` as a Wrangler secret and keep the other values in Wrangler vars if you want to override the defaults. Chat history is now stored per browser session in a Durable Object and survives page refreshes.
 
 ## Scripts
 
