@@ -1,0 +1,339 @@
+:root {
+  --page-bg:
+    radial-gradient(circle at top, rgba(255, 103, 61, 0.24), transparent 28%),
+    radial-gradient(circle at 85% 15%, rgba(255, 209, 102, 0.18), transparent 20%),
+    linear-gradient(180deg, #fff6e8 0%, #ffe0c7 100%);
+  --panel-bg: rgba(132, 36, 0, 0.78);
+  --panel-strong: rgba(92, 23, 0, 0.92);
+  --panel-soft: rgba(255, 248, 240, 0.72);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-soft: rgba(92, 23, 0, 0.14);
+  --text-strong: #fff4ec;
+  --text-dark: #401400;
+  --text-muted: rgba(64, 20, 0, 0.68);
+  --accent: #ff6b35;
+  --accent-2: #ffd166;
+  --shadow: 0 24px 80px rgba(92, 23, 0, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  background: var(--page-bg);
+  color: var(--text-dark);
+}
+
+.page {
+  min-height: 100vh;
+  padding: 40px 20px 56px;
+}
+
+.hero {
+  max-width: 1100px;
+  margin: 0 auto 24px;
+}
+
+.badge,
+.promptChip,
+.sidebarLabel,
+.messageRole,
+.eyebrow,
+.helperText {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(92, 23, 0, 0.08);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin: 18px 0 12px;
+  max-width: 720px;
+  font-size: clamp(2.75rem, 6vw, 5.6rem);
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+}
+
+.subtitle {
+  max-width: 720px;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.promptStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.promptChip {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(92, 23, 0, 0.08);
+  font-size: 0.78rem;
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.sidebar {
+  display: grid;
+  gap: 14px;
+}
+
+.sidebarPanel,
+.chatFrame {
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow);
+}
+
+.sidebarPanel {
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 252, 247, 0.72);
+  border: 1px solid var(--border-soft);
+}
+
+.sidebarLabel {
+  margin: 0 0 10px;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sidebarValue {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.quickStarts {
+  display: grid;
+  gap: 10px;
+}
+
+.quickStart {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.12), rgba(255, 209, 102, 0.28));
+  color: var(--text-dark);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    background 180ms ease;
+}
+
+.quickStart:hover:enabled,
+.submitButton:hover:enabled {
+  transform: translateY(-1px);
+}
+
+.quickStart:disabled,
+.submitButton:disabled,
+.textarea:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.chatFrame {
+  overflow: hidden;
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, var(--panel-bg) 0%, var(--panel-strong) 100%);
+  border: 1px solid var(--border-strong);
+  color: var(--text-strong);
+}
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 244, 236, 0.68);
+}
+
+.chatTitle {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.liveDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  box-shadow: 0 0 0 8px rgba(255, 209, 102, 0.14);
+}
+
+.chatLog {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  min-height: 420px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.assistantMessage,
+.userMessage {
+  max-width: min(88%, 680px);
+  padding: 16px 18px;
+  border-radius: 22px;
+}
+
+.assistantMessage {
+  justify-self: start;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.userMessage {
+  justify-self: end;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.9), rgba(255, 209, 102, 0.32));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.messageRole {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 244, 236, 0.72);
+}
+
+.messageBody {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.composer {
+  padding: 20px 24px 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.composerLabel {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  background: rgba(255, 248, 240, 0.92);
+  color: var(--text-dark);
+  font: inherit;
+  min-height: 132px;
+}
+
+.composerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.helperText {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: rgba(255, 244, 236, 0.7);
+}
+
+.submitButton {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: #5b1b00;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 180ms ease;
+}
+
+.error {
+  margin: 14px 0 0;
+  color: #ffd3c4;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    order: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-inline: 14px;
+    padding-top: 20px;
+  }
+
+  .title {
+    font-size: 2.8rem;
+  }
+
+  .chatHeader,
+  .chatLog,
+  .composer,
+  .sidebarPanel {
+    padding-inline: 16px;
+  }
+
+  .assistantMessage,
+  .userMessage {
+    max-width: 100%;
+  }
+
+  .composerFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
