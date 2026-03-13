@@ -22,6 +22,7 @@ export const ChatShell = async ({ session }: ChatShellProps) => {
         activeThreadId={session.activeThreadId}
         initialMessages={messages}
         initialThreads={threads}
+        initialModel={session.selectedModel}
       />
     </main>
   );

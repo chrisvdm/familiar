@@ -7,24 +7,214 @@ import {
   deleteChatThread,
   renameChatThread,
   selectChatThread,
+  setChatModel,
   sendChatMessage,
 } from "../chat/chat.service";
+import {
+  executeConversationCommand,
+  type ConversationThreadState,
+} from "../chat/conversation.engine";
+import {
+  parseConversationCommand,
+} from "../chat/conversation.commands";
 import type {
   ChatMessage,
   ChatThreadSummary,
 } from "../chat/shared";
+import type { ReactNode } from "react";
 import styles from "./chat.module.css";
 
 type ChatClientProps = {
   activeThreadId: string;
   initialMessages: ChatMessage[];
   initialThreads: ChatThreadSummary[];
+  initialModel: string;
 };
+
+const AVAILABLE_MODELS = [
+  "openai/gpt-4o-mini",
+  "openai/gpt-4.1-mini",
+  "openai/gpt-4.1",
+  "anthropic/claude-3.7-sonnet",
+  "google/gemini-2.5-flash",
+];
+
+const sortThreadsByRecency = (threads: ChatThreadSummary[]) =>
+  [...threads].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+
+const createClientNotice = (content: string): ChatMessage => ({
+  id: `client-notice-${crypto.randomUUID()}`,
+  role: "assistant",
+  content,
+  createdAt: new Date().toISOString(),
+});
+
+const renderInlineMarkdown = (content: string): ReactNode[] => {
+  const nodes: ReactNode[] = [];
+  const pattern = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\]]+\]\([^)]+\))/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(content.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+
+    if (token.startsWith("`")) {
+      nodes.push(
+        <code key={`code-${match.index}`} className={styles.inlineCode}>
+          {token.slice(1, -1)}
+        </code>,
+      );
+    } else if (token.startsWith("**")) {
+      nodes.push(
+        <strong key={`strong-${match.index}`}>{token.slice(2, -2)}</strong>,
+      );
+    } else if (token.startsWith("*")) {
+      nodes.push(<em key={`em-${match.index}`}>{token.slice(1, -1)}</em>);
+    } else if (token.startsWith("[")) {
+      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+
+      if (linkMatch) {
+        nodes.push(
+          <a
+            key={`link-${match.index}`}
+            className={styles.messageLink}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {linkMatch[1]}
+          </a>,
+        );
+      } else {
+        nodes.push(token);
+      }
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < content.length) {
+    nodes.push(content.slice(lastIndex));
+  }
+
+  return nodes;
+};
+
+const renderMarkdownBlocks = (content: string): ReactNode[] => {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const blocks: ReactNode[] = [];
+  let index = 0;
+  let blockKey = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("```")) {
+      const codeLines: string[] = [];
+      index += 1;
+
+      while (index < lines.length && !lines[index].trim().startsWith("```")) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+
+      if (index < lines.length) {
+        index += 1;
+      }
+
+      blocks.push(
+        <pre key={`pre-${blockKey++}`} className={styles.codeBlock}>
+          <code>{codeLines.join("\n")}</code>
+        </pre>,
+      );
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(trimmed)) {
+      const items: string[] = [];
+
+      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
+        index += 1;
+      }
+
+      blocks.push(
+        <ul key={`ul-${blockKey++}`} className={styles.messageList}>
+          {items.map((item, itemIndex) => (
+            <li key={`li-${blockKey}-${itemIndex}`}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ul>,
+      );
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items: string[] = [];
+
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
+        index += 1;
+      }
+
+      blocks.push(
+        <ol key={`ol-${blockKey++}`} className={styles.messageList}>
+          {items.map((item, itemIndex) => (
+            <li key={`oli-${blockKey}-${itemIndex}`}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ol>,
+      );
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+
+    while (index < lines.length) {
+      const current = lines[index].trim();
+
+      if (!current || current.startsWith("```") || /^[-*]\s+/.test(current)) {
+        break;
+      }
+
+      paragraphLines.push(current);
+      index += 1;
+    }
+
+    blocks.push(
+      <p key={`p-${blockKey++}`} className={styles.messageParagraph}>
+        {renderInlineMarkdown(paragraphLines.join(" "))}
+      </p>,
+    );
+  }
+
+  return blocks;
+};
+
+const WorkingMessage = () => (
+  <div className={styles.workingMessage} aria-live="polite" aria-label="Working">
+    <span className={styles.workingLabel}>working</span>
+    <span className={styles.workingDots} aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  </div>
+);
 
 export const ChatClient = ({
   activeThreadId: initialActiveThreadId,
   initialMessages,
   initialThreads,
+  initialModel,
 }: ChatClientProps) => {
   const [activeThreadId, setActiveThreadId] = useState(initialActiveThreadId);
   const [messages, setMessages] = useState(initialMessages);
@@ -32,15 +222,38 @@ export const ChatClient = ({
   const [draft, setDraft] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [model, setModel] = useState<string>("openai/gpt-4o-mini");
+  const [model, setModel] = useState<string>(initialModel);
+  const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
+  const [threadMenu, setThreadMenu] = useState<{
+    threadId: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
   const pendingAssistantIdRef = useRef<string | null>(null);
+  const sortedThreads = sortThreadsByRecency(threads);
 
   useEffect(() => {
     setActiveThreadId(initialActiveThreadId);
     setMessages(initialMessages);
     setThreads(initialThreads);
-  }, [initialActiveThreadId, initialMessages, initialThreads]);
+    setModel(initialModel);
+  }, [initialActiveThreadId, initialMessages, initialThreads, initialModel]);
+
+  useEffect(() => {
+    const closeMenus = () => {
+      setIsNewMenuOpen(false);
+      setThreadMenu(null);
+    };
+
+    window.addEventListener("click", closeMenus);
+    window.addEventListener("contextmenu", closeMenus);
+
+    return () => {
+      window.removeEventListener("click", closeMenus);
+      window.removeEventListener("contextmenu", closeMenus);
+    };
+  }, []);
 
   useEffect(() => {
     const container = logRef.current;
@@ -64,9 +277,13 @@ export const ChatClient = ({
     });
   }, [messages]);
 
-  const sendMessage = (rawMessage: string) => {
-    const content = rawMessage.trim();
-
+  const sendMessageToThread = ({
+    content,
+    threadId,
+  }: {
+    content: string;
+    threadId: string;
+  }) => {
     if (!content || isPending) {
       return;
     }
@@ -99,7 +316,8 @@ export const ChatClient = ({
       try {
         const result = await sendChatMessage({
           content,
-          threadId: activeThreadId,
+          threadId,
+          model,
         });
         setActiveThreadId(result.activeThreadId);
         setThreads(result.threads);
@@ -121,20 +339,18 @@ export const ChatClient = ({
     });
   };
 
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    sendMessage(draft);
-  };
+  const sendMessage = (rawMessage: string) => {
+    const content = rawMessage.trim();
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      sendMessage(draft);
+    if (!content || isPending) {
+      return;
     }
+
+    sendMessageToThread({ content, threadId: activeThreadId });
   };
 
   const openThread = (threadId: string) => {
-    if (isPending || threadId === activeThreadId) {
+    if (threadId === activeThreadId || isPending) {
       return;
     }
 
@@ -144,10 +360,11 @@ export const ChatClient = ({
     startTransition(async () => {
       try {
         const nextThread = await selectChatThread(threadId);
-        setActiveThreadId(nextThread.activeThreadId);
-        setThreads(nextThread.threads);
-        setMessages(nextThread.session.messages);
-        setDraft("");
+        applyThreadState({
+          activeThreadId: nextThread.activeThreadId,
+          threads: nextThread.threads,
+          messages: nextThread.session.messages,
+        });
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -161,7 +378,7 @@ export const ChatClient = ({
     });
   };
 
-  const addThread = (isTemporary = false) => {
+  const addThread = () => {
     if (isPending) {
       return;
     }
@@ -171,11 +388,12 @@ export const ChatClient = ({
 
     startTransition(async () => {
       try {
-        const nextThread = await createChatThread({ isTemporary });
-        setActiveThreadId(nextThread.activeThreadId);
-        setThreads(nextThread.threads);
-        setMessages(nextThread.session.messages);
-        setDraft("");
+        const nextThread = await createChatThread({ isTemporary: false });
+        applyThreadState({
+          activeThreadId: nextThread.activeThreadId,
+          threads: nextThread.threads,
+          messages: nextThread.session.messages,
+        });
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -189,12 +407,184 @@ export const ChatClient = ({
     });
   };
 
-  const editThreadName = (threadId: string) => {
+  const addPrivateThread = () => {
     if (isPending) {
       return;
     }
 
-    const thread = threads.find((entry) => entry.id === threadId);
+    setError(null);
+    setIsPending(true);
+
+    startTransition(async () => {
+      try {
+        const nextThread = await createChatThread({ isTemporary: true });
+        applyThreadState({
+          activeThreadId: nextThread.activeThreadId,
+          threads: nextThread.threads,
+          messages: nextThread.session.messages,
+          model: nextThread.model,
+        });
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to create a private thread.",
+        );
+      } finally {
+        pendingAssistantIdRef.current = null;
+        setIsPending(false);
+      }
+    });
+  };
+
+  const showNotice = (content: string) => {
+    setMessages((previousMessages) => [...previousMessages, createClientNotice(content)]);
+  };
+
+  const applyThreadState = (
+    state: ConversationThreadState,
+    notice?: string,
+  ) => {
+    setActiveThreadId(state.activeThreadId);
+    setThreads(state.threads);
+    if (state.model) {
+      setModel(state.model);
+    }
+    setMessages(
+      notice
+        ? [...state.messages, createClientNotice(notice)]
+        : state.messages,
+    );
+  };
+
+  const runCommand = (rawCommand: string) => {
+    const command = parseConversationCommand(rawCommand);
+
+    if (!command || isPending) {
+      return false;
+    }
+
+    setDraft("");
+    setError(null);
+    setIsPending(true);
+
+    startTransition(async () => {
+      try {
+        const result = await executeConversationCommand({
+          command,
+          context: {
+            activeThreadId,
+            threads,
+          },
+          actions: {
+            createThread: async ({ isTemporary }) => {
+              const nextThread = await createChatThread({ isTemporary });
+
+              return {
+                activeThreadId: nextThread.activeThreadId,
+                threads: nextThread.threads,
+                messages: nextThread.session.messages,
+              };
+            },
+            selectThread: async (threadId) => {
+              const nextThread = await selectChatThread(threadId);
+
+              return {
+                activeThreadId: nextThread.activeThreadId,
+                threads: nextThread.threads,
+                messages: nextThread.session.messages,
+              };
+            },
+            renameThread: async ({ threadId, title }) => {
+              const nextState = await renameChatThread({ threadId, title });
+
+              return {
+                activeThreadId: nextState.activeThreadId,
+                threads: nextState.threads,
+                messages: nextState.session.messages,
+              };
+            },
+            deleteThread: async (threadId) => {
+              const nextState = await deleteChatThread(threadId);
+
+              return {
+                activeThreadId: nextState.activeThreadId,
+                threads: nextState.threads,
+                messages: nextState.session.messages,
+              };
+            },
+            sendMessage: async ({ content, threadId }) => {
+              const result = await sendChatMessage({ content, threadId });
+
+              return {
+                activeThreadId: result.activeThreadId,
+                threads: result.threads,
+                messages: result.session.messages,
+                model: result.model ?? "openai/gpt-4o-mini",
+              };
+            },
+          },
+        });
+
+        if (result.kind === "notice") {
+          showNotice(result.notice);
+          return;
+        }
+
+        applyThreadState(result.state, result.notice);
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to run that command.",
+        );
+      } finally {
+        pendingAssistantIdRef.current = null;
+        setIsPending(false);
+      }
+    });
+
+    return true;
+  };
+
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (runCommand(draft)) {
+      return;
+    }
+
+    sendMessage(draft);
+  };
+
+  const onThreadContextMenu = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    threadId: string,
+  ) => {
+    event.preventDefault();
+    setIsNewMenuOpen(false);
+    setThreadMenu({
+      threadId,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+
+  const onRenameThread = () => {
+    if (!threadMenu || isPending) {
+      return;
+    }
+
+    renameThread(threadMenu.threadId);
+    setThreadMenu(null);
+  };
+
+  const renameThread = (threadId: string) => {
+    if (isPending) {
+      return;
+    }
+
+    const thread = threads.find((candidate) => candidate.id === threadId);
 
     if (!thread) {
       return;
@@ -202,7 +592,7 @@ export const ChatClient = ({
 
     const nextTitle = window.prompt("Rename thread", thread.title)?.trim();
 
-    if (!nextTitle || nextTitle === thread.title) {
+    if (!nextTitle) {
       return;
     }
 
@@ -212,12 +602,15 @@ export const ChatClient = ({
     startTransition(async () => {
       try {
         const nextState = await renameChatThread({
-          threadId,
+          threadId: thread.id,
           title: nextTitle,
         });
-        setActiveThreadId(nextState.activeThreadId);
-        setThreads(nextState.threads);
-        setMessages(nextState.session.messages);
+        applyThreadState({
+          activeThreadId: nextState.activeThreadId,
+          threads: nextState.threads,
+          messages: nextState.session.messages,
+          model: nextState.model,
+        });
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -225,23 +618,26 @@ export const ChatClient = ({
             : "Unable to rename that thread.",
         );
       } finally {
-        pendingAssistantIdRef.current = null;
         setIsPending(false);
       }
     });
   };
 
-  const removeThread = (threadId: string) => {
+  const onDeleteThread = () => {
+    if (!threadMenu || isPending) {
+      return;
+    }
+
+    deleteThread(threadMenu.threadId);
+    setThreadMenu(null);
+  };
+
+  const deleteThread = (threadId: string) => {
     if (isPending) {
       return;
     }
 
-    const thread = threads.find((entry) => entry.id === threadId);
-
-    if (
-      !thread ||
-      !window.confirm(`Delete "${thread.title}"? This will also remove memory sourced from this thread.`)
-    ) {
+    if (!window.confirm("Delete this thread?")) {
       return;
     }
 
@@ -251,10 +647,12 @@ export const ChatClient = ({
     startTransition(async () => {
       try {
         const nextState = await deleteChatThread(threadId);
-        setActiveThreadId(nextState.activeThreadId);
-        setThreads(nextState.threads);
-        setMessages(nextState.session.messages);
-        setDraft("");
+        applyThreadState({
+          activeThreadId: nextState.activeThreadId,
+          threads: nextState.threads,
+          messages: nextState.session.messages,
+          model: nextState.model,
+        });
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -262,106 +660,164 @@ export const ChatClient = ({
             : "Unable to delete that thread.",
         );
       } finally {
-        pendingAssistantIdRef.current = null;
         setIsPending(false);
       }
     });
   };
 
+  const onModelChange = (nextModel: string) => {
+    setModel(nextModel);
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const nextState = await setChatModel(nextModel);
+        applyThreadState({
+          activeThreadId: nextState.activeThreadId,
+          threads: nextState.threads,
+          messages: nextState.session.messages,
+          model: nextState.model,
+        });
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to switch models.",
+        );
+      }
+    });
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+
+      if (runCommand(draft)) {
+        return;
+      }
+
+      sendMessage(draft);
+    }
+  };
+
   return (
     <section className={styles.shell}>
-      <div className={styles.sidebar}>
-        <div className={styles.sidebarPanel}>
-          <div className={styles.sidebarHeader}>
-            <div>
-              <p className={styles.sidebarLabel}>Threads</p>
-              <p className={styles.sidebarHint}>
-                Session-backed conversations you can return to. Private chats stay isolated from global memory.
-              </p>
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <span className={styles.brand}>texty.</span>
+          <button
+            type="button"
+            className={styles.newThreadButton}
+            onClick={(event) => {
+              event.stopPropagation();
+              setThreadMenu(null);
+              setIsNewMenuOpen((current) => !current);
+            }}
+            disabled={isPending}
+          >
+            + New
+          </button>
+          {isNewMenuOpen ? (
+            <div
+              className={styles.newMenu}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className={styles.menuItem}
+                onClick={() => {
+                  setIsNewMenuOpen(false);
+                  addThread();
+                }}
+              >
+                New thread
+              </button>
+              <button
+                type="button"
+                className={styles.menuItem}
+                onClick={() => {
+                  setIsNewMenuOpen(false);
+                  addPrivateThread();
+                }}
+              >
+                New private thread
+              </button>
             </div>
-            <button
-              type="button"
-              className={styles.newThreadButton}
-              onClick={() => addThread(false)}
-              disabled={isPending}
+          ) : null}
+        </div>
+        <div className={styles.threadList}>
+          {sortedThreads.map((thread) => (
+            <div
+              key={thread.id}
+              className={
+                thread.id === activeThreadId
+                  ? styles.threadRowActive
+                  : styles.threadRow
+              }
             >
-              New thread
-            </button>
-            <button
-              type="button"
-              className={styles.tempThreadButton}
-              onClick={() => addThread(true)}
-              disabled={isPending}
-            >
-              Private
-            </button>
-          </div>
-          <div className={styles.threadList}>
-            {threads.map((thread) => (
-              <div
-                key={thread.id}
+              <button
+                type="button"
                 className={
                   thread.id === activeThreadId
-                    ? styles.threadRowActive
-                    : styles.threadRow
+                    ? styles.threadButtonActive
+                    : styles.threadButton
                 }
+                onClick={() => openThread(thread.id)}
+                disabled={isPending}
+                onContextMenu={(event) => onThreadContextMenu(event, thread.id)}
+                title={thread.title}
               >
-                <button
-                  type="button"
-                  className={
-                    thread.id === activeThreadId
-                      ? styles.threadButtonActive
-                      : styles.threadButton
-                  }
-                  onClick={() => openThread(thread.id)}
-                  disabled={isPending}
-                >
-                  <span className={styles.threadTitleRow}>
-                    <span className={styles.threadTitle}>{thread.title}</span>
-                    {thread.isTemporary ? (
-                      <span className={styles.threadBadge}>Private</span>
-                    ) : null}
+                <span className={styles.threadButtonTextWrap}>
+                  <span className={styles.threadButtonText}>{thread.title}</span>
+                  <span className={styles.threadActions}>
+                    <button
+                      type="button"
+                      className={styles.threadActionButton}
+                      aria-label={`Rename ${thread.title}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        renameThread(thread.id);
+                      }}
+                      disabled={isPending}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.threadActionButton}
+                      aria-label={`Delete ${thread.title}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteThread(thread.id);
+                      }}
+                      disabled={isPending}
+                    >
+                      🗑
+                    </button>
                   </span>
-                </button>
-                <div className={styles.threadActions}>
-                  <button
-                    type="button"
-                    className={styles.renameThreadButton}
-                    onClick={() => editThreadName(thread.id)}
-                    disabled={isPending}
-                    aria-label={`Rename ${thread.title}`}
-                    title="Rename thread"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.deleteThreadButton}
-                    onClick={() => removeThread(thread.id)}
-                    disabled={isPending}
-                    aria-label={`Delete ${thread.title}`}
-                    title="Delete thread"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                </span>
+              </button>
+            </div>
+          ))}
         </div>
-        <div className={styles.sidebarPanel}>
-          <p className={styles.sidebarLabel}>Status</p>
-          <p className={styles.sidebarValue}>
-            {isPending ? "Updating active thread..." : "Persisted in session"}
-          </p>
-        </div>
-        <div className={styles.sidebarPanel}>
-          <p className={styles.sidebarLabel}>Model</p>
-          <p className={styles.sidebarValue}>{model}</p>
-        </div>
-      </div>
+      </aside>
 
       <div className={styles.chatFrame}>
+        <header className={styles.chatHeader}>
+          <select
+            aria-label="Select model"
+            className={styles.modelPicker}
+            value={model}
+            onChange={(event) => onModelChange(event.target.value)}
+            disabled={isPending}
+          >
+            {AVAILABLE_MODELS.map((availableModel) => (
+              <option key={availableModel} value={availableModel}>
+                {availableModel}
+              </option>
+            ))}
+          </select>
+        </header>
         <div className={styles.chatLogFrame}>
           <div className={styles.chatLog} ref={logRef}>
             {messages.map((message) => (
@@ -369,45 +825,71 @@ export const ChatClient = ({
                 key={message.id}
                 data-message-id={message.id}
                 className={
-                  message.role === "user" ? styles.userMessage : styles.assistantMessage
+                  message.role === "user"
+                    ? styles.userMessage
+                    : message.id === pendingAssistantIdRef.current
+                      ? styles.pendingAssistantMessage
+                      : styles.assistantMessage
                 }
               >
-                <p className={styles.messageRole}>{message.role}</p>
-                <p className={styles.messageBody}>{message.content}</p>
+                <div className={styles.messageBody}>
+                  {message.role === "assistant"
+                    ? message.id === pendingAssistantIdRef.current
+                      ? <WorkingMessage />
+                      : renderMarkdownBlocks(message.content)
+                    : <p className={styles.messageParagraph}>{message.content}</p>}
+                </div>
               </article>
             ))}
           </div>
         </div>
 
         <form className={styles.composer} onSubmit={onSubmit}>
-          <label className={styles.composerLabel} htmlFor="message">
-            Message
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            className={styles.textarea}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Ask for a launch plan, rewrite, code review, or customer insight summary."
-            rows={5}
-            disabled={isPending}
-          />
-
-          <div className={styles.composerFooter}>
-            <p className={styles.helperText}>
-              Full thread history survives refresh. Texty also keeps lightweight
-              thread and user memory.
-            </p>
+          <div className={styles.composerTop}>
+            <textarea
+              id="message"
+              name="message"
+              className={styles.textarea}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder='// type ":help" for commands'
+              rows={1}
+              disabled={isPending}
+            />
+          </div>
+          <div className={styles.composerBottom}>
+            <div className={styles.composerTools}>
+              <button type="button" className={styles.toolButton} disabled={isPending}>
+                +
+              </button>
+              <button type="button" className={styles.toolButton} disabled={isPending}>
+                🎤
+              </button>
+            </div>
             <button className={styles.submitButton} type="submit" disabled={isPending}>
-              {isPending ? "Working..." : "Send"}
+              ↵
             </button>
           </div>
 
           {error ? <p className={styles.error}>{error}</p> : null}
         </form>
       </div>
+
+      {threadMenu ? (
+        <div
+          className={styles.contextMenu}
+          style={{ left: threadMenu.x, top: threadMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button type="button" className={styles.menuItem} onClick={onRenameThread}>
+            Rename
+          </button>
+          <button type="button" className={styles.menuItem} onClick={onDeleteThread}>
+            Delete
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 };

@@ -106,7 +106,7 @@ const formatThreadState = (
   threads: session.threads,
   globalMemory: session.globalMemory,
   session: threadSession,
-  ...(model ? { model } : {}),
+  model: model || session.selectedModel || DEFAULT_MODEL,
 });
 
 const createAndPersistThread = async ({
@@ -139,9 +139,11 @@ const createAndPersistThread = async ({
 const generateAssistantReply = async ({
   messages,
   threadMemoryContext,
+  model,
 }: {
   messages: ChatMessage[];
   threadMemoryContext?: string | null;
+  model: string;
 }) => {
   const apiKey = env.OPENROUTER_API_KEY;
 
@@ -162,7 +164,7 @@ const generateAssistantReply = async ({
         "X-Title": env.OPENROUTER_SITE_NAME || "Texty",
       },
       body: JSON.stringify({
-        model: env.OPENROUTER_MODEL || DEFAULT_MODEL,
+        model,
         messages: [
           {
             role: "system",
@@ -201,7 +203,7 @@ const generateAssistantReply = async ({
   }
 
   return {
-    model: env.OPENROUTER_MODEL || DEFAULT_MODEL,
+    model,
     content,
   };
 };
@@ -210,9 +212,11 @@ export const sendChatMessage = serverQuery(
   async ({
     content: rawMessage,
     threadId,
+    model,
   }: {
     content: string;
     threadId: string;
+    model?: string;
   }) => {
     const content = rawMessage.trim();
     const sessionId = threadId.trim();
@@ -226,6 +230,7 @@ export const sendChatMessage = serverQuery(
     }
 
     const browserSession = requireBrowserSession();
+    const selectedModel = model?.trim() || browserSession.selectedModel || env.OPENROUTER_MODEL || DEFAULT_MODEL;
     const threadExists = browserSession.threads.some(
       (thread) => thread.id === sessionId,
     );
@@ -263,6 +268,7 @@ export const sendChatMessage = serverQuery(
       const reply = await generateAssistantReply({
         messages: withUserMessage.messages,
         threadMemoryContext,
+        model: selectedModel,
       });
       const nextState = {
         messages: [...withUserMessage.messages, createAssistantMessage(reply.content)],
@@ -299,6 +305,7 @@ export const sendChatMessage = serverQuery(
         ...browserSession,
         activeThreadId: sessionId,
         globalMemory: nextGlobalMemory,
+        selectedModel,
         threads: updateThreadSummaries(
           browserSession.threads,
           buildThreadSummary(currentSummary, finalState.messages),
@@ -312,6 +319,23 @@ export const sendChatMessage = serverQuery(
       await saveChatSession(sessionId, currentState);
       throw error;
     }
+  },
+  { method: "POST" },
+);
+
+export const setChatModel = serverQuery(
+  async (model: string) => {
+    const browserSession = requireBrowserSession();
+    const selectedModel = model.trim() || browserSession.selectedModel || DEFAULT_MODEL;
+    const session = await loadChatSession(browserSession.activeThreadId);
+    const nextSession: BrowserSession = {
+      ...browserSession,
+      selectedModel,
+    };
+
+    await persistBrowserSession(nextSession);
+
+    return formatThreadState(nextSession, session, selectedModel);
   },
   { method: "POST" },
 );

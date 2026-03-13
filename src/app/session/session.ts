@@ -15,6 +15,7 @@ export type BrowserSession = {
   activeThreadId: string;
   threads: ChatThreadSummary[];
   globalMemory: GlobalMemory;
+  selectedModel: string;
 };
 
 type LegacyBrowserSession = {
@@ -30,6 +31,7 @@ export const createBrowserSession = (threadId: string): BrowserSession => ({
   activeThreadId: threadId,
   threads: [createThreadSummary(threadId)],
   globalMemory: createEmptyGlobalMemory(),
+  selectedModel: "openai/gpt-4o-mini",
 });
 
 export const normalizeBrowserSession = (
@@ -40,6 +42,10 @@ export const normalizeBrowserSession = (
       ...session,
       threads: normalizeThreadSummaries(session.threads),
       globalMemory: normalizeGlobalMemory(session.globalMemory),
+      selectedModel:
+        typeof session.selectedModel === "string" && session.selectedModel.trim()
+          ? session.selectedModel.trim()
+          : "openai/gpt-4o-mini",
     };
   }
 

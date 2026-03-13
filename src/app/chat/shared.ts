@@ -70,7 +70,7 @@ export type ChatThreadSummary = {
 
 export const MAX_CONTEXT_MESSAGES = 6;
 export const DEFAULT_THREAD_TITLE = "Untitled thread";
-export const INITIAL_MESSAGE_COUNT = 1;
+export const INITIAL_MESSAGE_COUNT = 0;
 
 const MULTI_VALUE_KEYS = new Set([
   "children_names",
@@ -613,11 +613,7 @@ export const createUserMessage = (content: string): ChatMessage => ({
 });
 
 export const createInitialChatState = (): ChatSessionState => ({
-  messages: [
-    createAssistantMessage(
-      "Ask for product strategy, copy rewrites, code help, or research summaries. I’ll answer through OpenRouter.",
-    ),
-  ],
+  messages: [],
   memory: createEmptyThreadMemory(),
 });
 
