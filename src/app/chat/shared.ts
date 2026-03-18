@@ -667,7 +667,10 @@ export const normalizeThreadSummaries = (
     : summaries.map(normalizeThreadSummary);
 
 export const getThreadTitleFromMessages = (messages: ChatMessage[]) => {
-  const firstUserMessage = messages.find((message) => message.role === "user");
+  const firstUserMessage = messages.find(
+    (message) =>
+      message.role === "user" && !message.content.trim().startsWith(":"),
+  );
 
   if (!firstUserMessage) {
     return DEFAULT_THREAD_TITLE;

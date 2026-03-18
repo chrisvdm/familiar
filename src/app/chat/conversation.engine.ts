@@ -5,6 +5,10 @@ import {
   resolveThreadId,
   type ParsedConversationCommand,
 } from "./conversation.commands";
+import {
+  parseConversationInput,
+  type ParsedConversationInput,
+} from "./conversation.input";
 import type { ChatMessage, ChatThreadSummary } from "./shared";
 
 export type ConversationThreadState = {
@@ -32,6 +36,7 @@ export type ConversationCommandActions = {
   sendMessage: (input: {
     content: string;
     threadId: string;
+    model?: string;
   }) => Promise<ConversationThreadState>;
 };
 
@@ -46,14 +51,50 @@ export type ConversationCommandExecution =
       notice?: string;
     };
 
+export const executeConversationInput = async ({
+  actions,
+  context,
+  input,
+  model,
+}: {
+  actions: ConversationCommandActions;
+  context: ConversationCommandContext;
+  input: ParsedConversationInput;
+  model?: string;
+}): Promise<ConversationCommandExecution> => {
+  if (input.kind === "command") {
+    return executeConversationCommand({
+      actions,
+      command: input.command,
+      context,
+      model,
+    });
+  }
+
+  const state = await actions.sendMessage({
+    content: input.content,
+    threadId: context.activeThreadId,
+    model,
+  });
+
+  return {
+    kind: "state",
+    state,
+  };
+};
+
+export { parseConversationInput };
+
 export const executeConversationCommand = async ({
   actions,
   command,
   context,
+  model,
 }: {
   actions: ConversationCommandActions;
   command: ParsedConversationCommand;
   context: ConversationCommandContext;
+  model?: string;
 }): Promise<ConversationCommandExecution> => {
   const activeThread = context.threads.find(
     (thread) => thread.id === context.activeThreadId,
@@ -111,6 +152,7 @@ export const executeConversationCommand = async ({
     const result = await actions.sendMessage({
       content: command.initialMessage,
       threadId: state.activeThreadId,
+      model,
     });
 
     return {

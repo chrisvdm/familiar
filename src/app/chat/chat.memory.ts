@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { createDateTimeSystemPrompt, DEFAULT_MODEL } from "./conversation.runtime";
 
 import {
   addFactToGlobalMemory,
@@ -48,8 +49,6 @@ type DerivedMemoryFact = {
   confidence: number;
   rationale: string;
 };
-
-const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const EXTRACTION_MESSAGE_LIMIT = 12;
 const MEMORY_FACT_LIMIT = 6;
 const MEMORY_SNIPPET_LIMIT = 3;
@@ -748,7 +747,13 @@ const createMemoryContextSection = ({
   return `${title}\n${lines.join("\n")}`;
 };
 
-const callOpenRouter = async (messages: OpenRouterMessage[]) => {
+const callOpenRouter = async ({
+  messages,
+  timeZone,
+}: {
+  messages: OpenRouterMessage[];
+  timeZone?: string | null;
+}) => {
   const apiKey = env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
@@ -768,7 +773,13 @@ const callOpenRouter = async (messages: OpenRouterMessage[]) => {
     body: JSON.stringify({
       model:
         env.OPENROUTER_MEMORY_MODEL || env.OPENROUTER_MODEL || DEFAULT_MODEL,
-      messages,
+      messages: [
+        {
+          role: "system",
+          content: createDateTimeSystemPrompt({ timeZone }),
+        },
+        ...messages,
+      ],
     }),
   });
 
@@ -794,11 +805,13 @@ export const refreshMemories = async ({
   messages,
   previousThreadMemory,
   globalMemory,
+  timeZone,
 }: {
   threadId: string;
   messages: ChatMessage[];
   previousThreadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
+  timeZone?: string | null;
 }) => {
   const extractionPrompt = `Previous thread summary: ${
     previousThreadMemory.summary || "(none)"
@@ -832,16 +845,19 @@ Return strict JSON with this shape:
   ]
 }`;
 
-  const rawContent = await callOpenRouter([
-    {
-      role: "system",
-      content: MEMORY_EXTRACTION_SYSTEM_PROMPT,
-    },
-    {
-      role: "user",
-      content: extractionPrompt,
-    },
-  ]);
+  const rawContent = await callOpenRouter({
+    timeZone,
+    messages: [
+      {
+        role: "system",
+        content: MEMORY_EXTRACTION_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: extractionPrompt,
+      },
+    ],
+  });
 
   const extraction = parseExtraction(rawContent) ?? {};
 

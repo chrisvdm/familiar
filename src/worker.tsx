@@ -8,6 +8,7 @@ import { Document } from "@/app/document";
 import { setCommonHeaders } from "@/app/headers";
 import { Debug } from "@/app/pages/debug";
 import { Home } from "@/app/pages/home";
+import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
 import { BrowserSessionDurableObject } from "@/app/session/browser-session-do";
 import {
   browserSessionStore,
@@ -51,7 +52,11 @@ export default defineApp([
 
     ctx.session = session;
   },
-  render(Document, [route("/", Home), route("/debug", Debug)]),
+  render(Document, [
+    route("/", Home),
+    route("/debug", Debug),
+    route("/sandbox/messenger", SandboxMessenger),
+  ]),
 ]);
 
 export { BrowserSessionDurableObject, ChatSessionDurableObject };

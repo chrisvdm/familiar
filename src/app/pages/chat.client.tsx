@@ -5,18 +5,16 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import {
   createChatThread,
   deleteChatThread,
+  handleConversationInput,
   renameChatThread,
   selectChatThread,
   setChatModel,
   sendChatMessage,
 } from "../chat/chat.service";
 import {
-  executeConversationCommand,
+  parseConversationInput,
   type ConversationThreadState,
 } from "../chat/conversation.engine";
-import {
-  parseConversationCommand,
-} from "../chat/conversation.commands";
 import type {
   ChatMessage,
   ChatThreadSummary,
@@ -339,16 +337,6 @@ export const ChatClient = ({
     });
   };
 
-  const sendMessage = (rawMessage: string) => {
-    const content = rawMessage.trim();
-
-    if (!content || isPending) {
-      return;
-    }
-
-    sendMessageToThread({ content, threadId: activeThreadId });
-  };
-
   const openThread = (threadId: string) => {
     if (threadId === activeThreadId || isPending) {
       return;
@@ -457,73 +445,37 @@ export const ChatClient = ({
     );
   };
 
-  const runCommand = (rawCommand: string) => {
-    const command = parseConversationCommand(rawCommand);
+  const runInput = (rawInput: string) => {
+    const input = parseConversationInput(rawInput);
 
-    if (!command || isPending) {
+    if (!input || isPending) {
       return false;
     }
+
+    if (input.kind === "message") {
+      sendMessageToThread({ content: input.content, threadId: activeThreadId });
+      return true;
+    }
+
+    const previousMessages = messages;
+    const optimisticCommandMessage: ChatMessage = {
+      id: `optimistic-command-${crypto.randomUUID()}`,
+      role: "user",
+      content: rawInput.trim(),
+      createdAt: new Date().toISOString(),
+    };
 
     setDraft("");
     setError(null);
     setIsPending(true);
+    setMessages([...previousMessages, optimisticCommandMessage]);
 
     startTransition(async () => {
       try {
-        const result = await executeConversationCommand({
-          command,
-          context: {
-            activeThreadId,
-            threads,
-          },
-          actions: {
-            createThread: async ({ isTemporary }) => {
-              const nextThread = await createChatThread({ isTemporary });
-
-              return {
-                activeThreadId: nextThread.activeThreadId,
-                threads: nextThread.threads,
-                messages: nextThread.session.messages,
-              };
-            },
-            selectThread: async (threadId) => {
-              const nextThread = await selectChatThread(threadId);
-
-              return {
-                activeThreadId: nextThread.activeThreadId,
-                threads: nextThread.threads,
-                messages: nextThread.session.messages,
-              };
-            },
-            renameThread: async ({ threadId, title }) => {
-              const nextState = await renameChatThread({ threadId, title });
-
-              return {
-                activeThreadId: nextState.activeThreadId,
-                threads: nextState.threads,
-                messages: nextState.session.messages,
-              };
-            },
-            deleteThread: async (threadId) => {
-              const nextState = await deleteChatThread(threadId);
-
-              return {
-                activeThreadId: nextState.activeThreadId,
-                threads: nextState.threads,
-                messages: nextState.session.messages,
-              };
-            },
-            sendMessage: async ({ content, threadId }) => {
-              const result = await sendChatMessage({ content, threadId });
-
-              return {
-                activeThreadId: result.activeThreadId,
-                threads: result.threads,
-                messages: result.session.messages,
-                model: result.model ?? "openai/gpt-4o-mini",
-              };
-            },
-          },
+        const result = await handleConversationInput({
+          rawInput,
+          threadId: activeThreadId,
+          model,
         });
 
         if (result.kind === "notice") {
@@ -533,6 +485,7 @@ export const ChatClient = ({
 
         applyThreadState(result.state, result.notice);
       } catch (caughtError) {
+        setMessages(previousMessages);
         setError(
           caughtError instanceof Error
             ? caughtError.message
@@ -550,11 +503,7 @@ export const ChatClient = ({
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (runCommand(draft)) {
-      return;
-    }
-
-    sendMessage(draft);
+    runInput(draft);
   };
 
   const onThreadContextMenu = (
@@ -691,12 +640,7 @@ export const ChatClient = ({
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-
-      if (runCommand(draft)) {
-        return;
-      }
-
-      sendMessage(draft);
+      runInput(draft);
     }
   };
 

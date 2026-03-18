@@ -135,12 +135,13 @@ export const formatCurrentThread = (
 
 export const HELP_NOTICE = [
   "Commands",
-  ":help",
-  ":current",
-  ":threads",
-  ":thread [initial message]",
-  ":private [initial message]",
-  ":switch [thread id]",
-  ":rename [thread id] [new title]",
-  ":delete [thread id]",
+  "",
+  "- `:help`",
+  "- `:current`",
+  "- `:threads`",
+  "- `:thread [initial message]`",
+  "- `:private [initial message]`",
+  "- `:switch [thread id]`",
+  "- `:rename [thread id] [new title]`",
+  "- `:delete [thread id]`",
 ].join("\n");
