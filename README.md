@@ -102,6 +102,12 @@ If a provider also needs Texty to call back into it for tool execution, include 
 TEXTY_PROVIDER_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"https://provider.example"}}'
 ```
 
+For local testing, Texty includes a mock execution endpoint:
+
+```shell
+TEXTY_PROVIDER_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:5173/sandbox/mock-provider"}}'
+```
+
 ### Channel Use
 
 Channels are the surfaces people talk through, such as web chat, messaging, email, or a voice-note transcript pipeline.
@@ -241,6 +247,16 @@ curl http://localhost:5173/api/v1/providers/provider_a/users/user_123/memory \
 
 If you want a browser UI for exercising the same routes, use `/sandbox/provider`.
 
+Tool execution states currently recognized by Texty are:
+
+- `completed`
+- `needs_clarification`
+- `accepted`
+- `in_progress`
+- `failed`
+
+Conversation input is also rate-limited per provider/user pair. The current MVP limit is `30` conversation requests per `60` seconds. Rate-limited requests return `429` with a `Retry-After` header.
+
 ### Sandbox Routes
 
 For local testing:
@@ -248,6 +264,7 @@ For local testing:
 - `/` is the main web channel client
 - `/sandbox/messenger` is the phone-style message simulator
 - `/sandbox/provider` is the provider API harness
+- `/sandbox/mock-provider/tools/execute` is the mock tool execution endpoint
 - `/debug` shows stored memory state
 
 ## Scripts

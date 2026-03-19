@@ -221,6 +221,21 @@ Possible action types:
 - `tool_call`
 - `command`
 
+Possible execution states:
+
+- `completed`
+- `needs_clarification`
+- `accepted`
+- `in_progress`
+- `failed`
+
+Rate limiting:
+
+- conversation input is rate limited per provider/user pair
+- current MVP default: `30` requests per `60` seconds
+- rate-limited responses return `429`
+- rate-limited responses should include `Retry-After`
+
 Status codes:
 
 - `200` success
@@ -229,6 +244,20 @@ Status codes:
 - `403` provider mismatch
 - `404` thread not found or not owned by provider/user
 - `429` rate limited
+
+Example rate-limited response:
+
+```json
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many conversation requests. Try again shortly.",
+    "details": {
+      "retry_after_seconds": 12
+    }
+  }
+}
+```
 
 ### 3. Create thread
 
