@@ -40,6 +40,9 @@ export type ProviderUserContext = {
   threads: ChatThreadSummary[];
   allowedTools: AllowedTool[];
   channels: Record<string, ChannelIdentity>;
+  requestLog: {
+    conversationInputTimestamps: string[];
+  };
   createdAt: string;
   updatedAt: string;
 };

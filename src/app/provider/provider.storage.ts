@@ -47,6 +47,9 @@ export const createProviderUserContext = ({
     threads: [],
     allowedTools: [],
     channels: {},
+    requestLog: {
+      conversationInputTimestamps: [],
+    },
     createdAt: now,
     updatedAt: now,
   };
@@ -89,6 +92,10 @@ export const loadOrCreateProviderUserContext = async ({
 export const saveProviderUserContext = async (context: ProviderUserContext) => {
   const normalized: ProviderUserContext = {
     ...context,
+    requestLog: {
+      conversationInputTimestamps:
+        context.requestLog?.conversationInputTimestamps ?? [],
+    },
     updatedAt: new Date().toISOString(),
   };
 

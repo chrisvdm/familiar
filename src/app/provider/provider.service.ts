@@ -69,6 +69,7 @@ type ConversationDecision =
 
 type ProviderToolExecutionResponse = {
   ok: boolean;
+  state?: ProviderExecutionState;
   result?: {
     summary?: string;
     data?: Record<string, unknown>;
@@ -79,6 +80,16 @@ type ProviderToolExecutionResponse = {
     details?: unknown;
   };
 };
+
+class ProviderRateLimitError extends Error {
+  retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super("Rate limit exceeded.");
+    this.name = "ProviderRateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
 
 const SYSTEM_PROMPT =
   "You are Texty, a concise conversational orchestration assistant. Return direct, useful replies without filler.";
@@ -117,6 +128,8 @@ const getRequestTimeZone = (timeZone?: string | null) =>
   resolveConversationTimeZone(timeZone);
 
 export const WEB_PROVIDER_ID = "texty_web";
+const CONVERSATION_RATE_LIMIT_WINDOW_MS = 60_000;
+const CONVERSATION_RATE_LIMIT_MAX_REQUESTS = 30;
 
 const sortThreadsByRecency = (threads: ChatThreadSummary[]) =>
   [...threads].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -299,6 +312,40 @@ const parseJsonObject = <T,>(content: string): T | null => {
   } catch {
     return null;
   }
+};
+
+const enforceConversationRateLimit = ({
+  context,
+}: {
+  context: ProviderUserContext;
+}) => {
+  const now = Date.now();
+  const cutoff = now - CONVERSATION_RATE_LIMIT_WINDOW_MS;
+  const timestamps = (
+    context.requestLog?.conversationInputTimestamps ?? []
+  ).filter((value) => {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) && parsed >= cutoff;
+  });
+
+  if (timestamps.length >= CONVERSATION_RATE_LIMIT_MAX_REQUESTS) {
+    const oldestTimestamp = Date.parse(timestamps[0] ?? "");
+    const retryAfterMs = Number.isFinite(oldestTimestamp)
+      ? Math.max(
+          CONVERSATION_RATE_LIMIT_WINDOW_MS - (now - oldestTimestamp),
+          1_000,
+        )
+      : CONVERSATION_RATE_LIMIT_WINDOW_MS;
+
+    throw new ProviderRateLimitError(Math.ceil(retryAfterMs / 1_000));
+  }
+
+  return {
+    ...context,
+    requestLog: {
+      conversationInputTimestamps: [...timestamps, new Date(now).toISOString()],
+    },
+  };
 };
 
 const callOpenRouter = async ({
@@ -527,9 +574,20 @@ const executeProviderTool = async ({
     };
   }
 
+  const state = payload.state ?? "completed";
+  const message =
+    payload.result?.summary ||
+    (state === "accepted"
+      ? "The provider accepted the request."
+      : state === "in_progress"
+        ? "The requested work is now in progress."
+        : state === "needs_clarification"
+          ? "The provider needs more information to continue."
+          : "The tool ran successfully.");
+
   return {
-    state: "completed" as ProviderExecutionState,
-    message: payload.result?.summary || "The tool ran successfully.",
+    state,
+    message,
     data: payload.result?.data ?? null,
   };
 };
@@ -972,6 +1030,10 @@ export const getProviderHydratedState = async ({
   };
 };
 
+export const isProviderRateLimitError = (
+  error: unknown,
+): error is ProviderRateLimitError => error instanceof ProviderRateLimitError;
+
 export const handleProviderConversationInput = async ({
   input,
   providerConfig,
@@ -981,7 +1043,7 @@ export const handleProviderConversationInput = async ({
 }) => {
   const model = input.model?.trim() || DEFAULT_MODEL;
   const timeZone = getRequestTimeZone(input.timezone);
-  const context = await loadOrCreateProviderUserContext({
+  let context = await loadOrCreateProviderUserContext({
     providerId: input.provider_id,
     userId: input.user_id,
   });
@@ -990,6 +1052,9 @@ export const handleProviderConversationInput = async ({
   if (!content) {
     throw new Error("Input text is required.");
   }
+
+  context = enforceConversationRateLimit({ context });
+  context = await saveProviderUserContext(context);
 
   logProviderAudit({
     event: "provider.conversation.received",

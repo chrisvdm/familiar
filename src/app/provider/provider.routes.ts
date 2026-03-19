@@ -7,6 +7,7 @@ import {
   getProviderMemory,
   getProviderThreadMemory,
   handleProviderConversationInput,
+  isProviderRateLimitError,
   listProviderThreads,
   renameProviderThread,
   syncProviderTools,
@@ -125,6 +126,26 @@ export const providerRoutes = [
       });
       return Response.json(result);
     } catch (error) {
+      if (isProviderRateLimitError(error)) {
+        return Response.json(
+          {
+            error: {
+              code: "rate_limited",
+              message: "Too many conversation requests. Try again shortly.",
+              details: {
+                retry_after_seconds: error.retryAfterSeconds,
+              },
+            },
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(error.retryAfterSeconds),
+            },
+          },
+        );
+      }
+
       return jsonError({
         status: 400,
         code: "invalid_request",
