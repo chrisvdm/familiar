@@ -1,21 +1,14 @@
 "use server";
 
-import { env } from "cloudflare:workers";
 import { requestInfo, serverQuery } from "rwsdk/worker";
 
-import { buildMemoryContext, refreshMemories } from "./chat.memory";
 import {
   executeConversationInput,
   parseConversationInput,
   type ConversationCommandExecution,
   type ConversationThreadState,
 } from "./conversation.engine";
-import {
-  DEFAULT_MODEL,
-  buildPromptContext,
-  createDateTimeSystemPrompt,
-  resolveConversationTimeZone,
-} from "./conversation.runtime";
+import { DEFAULT_MODEL, resolveConversationTimeZone } from "./conversation.runtime";
 import { loadChatSession, saveChatSession } from "./chat.storage";
 import {
   createAssistantMessage,
@@ -23,13 +16,10 @@ import {
   createThreadSummary,
   createUserMessage,
   getThreadTitleFromMessages,
-  type ChatMessage,
-  type ChatSessionState,
-  type ChatThreadSummary,
 } from "./shared";
 import {
-  persistBrowserSession as persistSessionState,
   getBrowserSessionIdFromRequest,
+  persistBrowserSession as persistSessionState,
   type BrowserSession,
 } from "../session/session";
 import {
@@ -37,22 +27,20 @@ import {
   deleteProviderThread,
   handleProviderConversationInput,
   renameProviderThread,
+  WEB_PROVIDER_ID,
 } from "../provider/provider.service";
 import {
   loadOrCreateProviderUserContext,
   saveProviderUserContext,
 } from "../provider/provider.storage";
-import type { ProviderChannelInput } from "../provider/provider.types";
+import type { ProviderChannelInput, ProviderUserContext } from "../provider/provider.types";
 
-type OpenRouterResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
+type WebThreadState = {
+  activeThreadId: string;
+  threads: ProviderUserContext["threads"];
+  globalMemory: ProviderUserContext["globalMemory"];
+  session: Awaited<ReturnType<typeof loadChatSession>>;
+  model: string;
 };
 
 const requireBrowserSession = () => {
@@ -74,8 +62,6 @@ const persistBrowserSession = async (session: BrowserSession) => {
   requestInfo.ctx.session = session;
 };
 
-const WEB_PROVIDER_ID = "texty_web";
-
 const getWebChannelType = () => {
   const referer = requestInfo.request.headers.get("Referer") || "";
 
@@ -84,20 +70,28 @@ const getWebChannelType = () => {
 
 const getWebIdentity = () => {
   const browserSession = requireBrowserSession();
-  const userId =
-    getBrowserSessionIdFromRequest(requestInfo.request) ||
-    browserSession.activeThreadId;
-  const channel: ProviderChannelInput = {
-    type: getWebChannelType(),
-    id: userId,
-  };
 
   return {
     providerId: WEB_PROVIDER_ID,
-    userId,
-    channel,
+    userId:
+      getBrowserSessionIdFromRequest(requestInfo.request) ||
+      browserSession.activeThreadId,
+    channel: {
+      type: getWebChannelType(),
+      id:
+        getBrowserSessionIdFromRequest(requestInfo.request) ||
+        browserSession.activeThreadId,
+    } satisfies ProviderChannelInput,
   };
 };
+
+const getChannelKey = (channel: ProviderChannelInput) =>
+  `${channel.type.trim().toLowerCase()}:${channel.id.trim()}`;
+
+const getRequestTimeZone = () =>
+  resolveConversationTimeZone(
+    (requestInfo.request as Request & { cf?: { timezone?: string } }).cf?.timezone,
+  );
 
 const ensureWebProviderContext = async () => {
   const browserSession = requireBrowserSession();
@@ -112,7 +106,7 @@ const ensureWebProviderContext = async () => {
       threads: browserSession.threads,
       channels: {
         ...context.channels,
-        [`${channel.type}:${channel.id}`]: {
+        [getChannelKey(channel)]: {
           type: channel.type,
           id: channel.id,
           lastActiveThreadId: browserSession.activeThreadId,
@@ -124,51 +118,40 @@ const ensureWebProviderContext = async () => {
 
   return {
     browserSession,
-    context,
     providerId,
     userId,
     channel,
+    context,
   };
 };
 
-const syncBrowserSessionFromProviderContext = async ({
+const syncWebState = async ({
   activeThreadId,
 }: {
   activeThreadId: string;
-}) => {
+}): Promise<WebThreadState> => {
   const { providerId, userId } = getWebIdentity();
   const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
   const threadSession = await loadChatSession(activeThreadId);
-  const nextSession: BrowserSession = {
+  const nextBrowserSession: BrowserSession = {
     activeThreadId,
     threads: providerContext.threads,
     globalMemory: providerContext.globalMemory,
     selectedModel: providerContext.selectedModel,
   };
 
-  await persistBrowserSession(nextSession);
+  await persistBrowserSession(nextBrowserSession);
 
-  return formatThreadState(nextSession, threadSession, nextSession.selectedModel);
+  return {
+    activeThreadId,
+    threads: providerContext.threads,
+    globalMemory: providerContext.globalMemory,
+    session: threadSession,
+    model: providerContext.selectedModel || DEFAULT_MODEL,
+  };
 };
 
-const formatThreadState = (
-  session: BrowserSession,
-  threadSession: ChatSessionState,
-  model?: string,
-) => ({
-  activeThreadId: session.activeThreadId,
-  threads: session.threads,
-  globalMemory: session.globalMemory,
-  session: threadSession,
-  model: model || session.selectedModel || DEFAULT_MODEL,
-});
-
-const getRequestTimeZone = () =>
-  resolveConversationTimeZone(
-    (requestInfo.request as Request & { cf?: { timezone?: string } }).cf?.timezone,
-  );
-
-const createAndPersistThread = async ({
+const createThreadState = async ({
   isTemporary = false,
 }: {
   isTemporary?: boolean;
@@ -177,17 +160,15 @@ const createAndPersistThread = async ({
   const created = await createProviderThread({
     providerId,
     userId,
-    isPrivate: isTemporary,
     channel,
+    isPrivate: isTemporary,
   });
 
-  return syncBrowserSessionFromProviderContext({
-    activeThreadId: created.thread_id,
-  });
+  return syncWebState({ activeThreadId: created.thread_id });
 };
 
-const sendMessageToThread = async ({
-  content: rawMessage,
+const sendThreadMessage = async ({
+  content,
   threadId,
   model,
 }: {
@@ -195,37 +176,32 @@ const sendMessageToThread = async ({
   threadId: string;
   model?: string;
 }) => {
-  const content = rawMessage.trim();
-  const sessionId = threadId.trim();
+  const message = content.trim();
+  const targetThreadId = threadId.trim();
 
-  if (!sessionId) {
+  if (!targetThreadId) {
     throw new Error("Choose a thread before sending a message.");
   }
 
-  if (!content) {
+  if (!message) {
     throw new Error("Please enter a message before sending.");
   }
 
   const { providerId, userId, channel } = await ensureWebProviderContext();
-  const selectedModel =
-    model?.trim() ||
-    requireBrowserSession().selectedModel ||
-    env.OPENROUTER_MODEL ||
-    DEFAULT_MODEL;
-
   const result = await handleProviderConversationInput({
+    requestId: crypto.randomUUID(),
     providerConfig: {
       token: "",
     },
     input: {
       provider_id: providerId,
       user_id: userId,
-      thread_id: sessionId,
+      thread_id: targetThreadId,
       input: {
         kind: "text",
-        text: content,
+        text: message,
       },
-      model: selectedModel,
+      model,
       timezone: getRequestTimeZone(),
       channel,
       context: {
@@ -234,23 +210,20 @@ const sendMessageToThread = async ({
     },
   });
 
-  return syncBrowserSessionFromProviderContext({
-    activeThreadId: result.thread_id,
-  });
+  return syncWebState({ activeThreadId: result.thread_id });
 };
 
 const selectThreadState = async (threadId: string) => {
-  const nextThreadId = threadId.trim();
+  const targetThreadId = threadId.trim();
 
-  if (!nextThreadId) {
+  if (!targetThreadId) {
     throw new Error("Choose a thread before trying to open it.");
   }
 
-  const { browserSession, providerId, userId, channel, context } =
-    await ensureWebProviderContext();
-  const exists = context.threads.some((thread) => thread.id === nextThreadId);
+  const { context, channel } = await ensureWebProviderContext();
+  const threadExists = context.threads.some((thread) => thread.id === targetThreadId);
 
-  if (!exists) {
+  if (!threadExists) {
     throw new Error("That thread is no longer available.");
   }
 
@@ -258,18 +231,16 @@ const selectThreadState = async (threadId: string) => {
     ...context,
     channels: {
       ...context.channels,
-      [`${channel.type}:${channel.id}`]: {
+      [getChannelKey(channel)]: {
         type: channel.type,
         id: channel.id,
-        lastActiveThreadId: nextThreadId,
+        lastActiveThreadId: targetThreadId,
         updatedAt: new Date().toISOString(),
       },
     },
   });
 
-  return syncBrowserSessionFromProviderContext({
-    activeThreadId: nextThreadId,
-  });
+  return syncWebState({ activeThreadId: targetThreadId });
 };
 
 const deleteThreadState = async (threadId: string) => {
@@ -281,9 +252,8 @@ const deleteThreadState = async (threadId: string) => {
 
   const { browserSession, providerId, userId, channel, context } =
     await ensureWebProviderContext();
-  const threadExists = context.threads.some((thread) => thread.id === targetThreadId);
 
-  if (!threadExists) {
+  if (!context.threads.some((thread) => thread.id === targetThreadId)) {
     throw new Error("That thread is no longer available.");
   }
 
@@ -314,7 +284,7 @@ const deleteThreadState = async (threadId: string) => {
     ...nextContext,
     channels: {
       ...nextContext.channels,
-      [`${channel.type}:${channel.id}`]: {
+      [getChannelKey(channel)]: {
         type: channel.type,
         id: channel.id,
         lastActiveThreadId: nextActiveThreadId,
@@ -323,9 +293,7 @@ const deleteThreadState = async (threadId: string) => {
     },
   });
 
-  return syncBrowserSessionFromProviderContext({
-    activeThreadId: nextActiveThreadId,
-  });
+  return syncWebState({ activeThreadId: nextActiveThreadId });
 };
 
 const renameThreadState = async ({
@@ -335,10 +303,10 @@ const renameThreadState = async ({
   threadId: string;
   title: string;
 }) => {
-  const nextThreadId = threadId.trim();
+  const targetThreadId = threadId.trim();
   const nextTitle = title.trim().slice(0, 80);
 
-  if (!nextThreadId) {
+  if (!targetThreadId) {
     throw new Error("Choose a thread before trying to rename it.");
   }
 
@@ -351,16 +319,16 @@ const renameThreadState = async ({
   await renameProviderThread({
     providerId,
     userId,
-    threadId: nextThreadId,
+    threadId: targetThreadId,
     title: nextTitle,
   });
 
-  return syncBrowserSessionFromProviderContext({
+  return syncWebState({
     activeThreadId: requireBrowserSession().activeThreadId,
   });
 };
 
-const appendCommandHistoryToThread = async ({
+const appendCommandHistory = async ({
   threadId,
   commandText,
   assistantReply,
@@ -383,46 +351,41 @@ const appendCommandHistoryToThread = async ({
     createUserMessage(commandText),
     ...(assistantReply ? [createAssistantMessage(assistantReply)] : []),
   ];
-  const nextState = {
+
+  await saveChatSession(threadId, {
     ...currentState,
     messages: nextMessages,
-  };
-
-  await saveChatSession(threadId, nextState);
-  const updatedAt = nextMessages.at(-1)?.createdAt || new Date().toISOString();
-  const nextThreads = providerContext.threads
-    .map((thread) =>
-      thread.id === threadId
-        ? {
-            ...thread,
-            title: thread.isTitleEdited
-              ? thread.title
-              : getThreadTitleFromMessages(nextMessages),
-            updatedAt,
-            messageCount: nextMessages.length,
-          }
-        : thread,
-    )
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  });
 
   await saveProviderUserContext({
     ...providerContext,
-    threads: nextThreads,
+    threads: providerContext.threads
+      .map((thread) =>
+        thread.id === threadId
+          ? {
+              ...thread,
+              title: thread.isTitleEdited
+                ? thread.title
+                : getThreadTitleFromMessages(nextMessages),
+              updatedAt: nextMessages.at(-1)?.createdAt || new Date().toISOString(),
+              messageCount: nextMessages.length,
+            }
+          : thread,
+      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
   });
 
-  const nextSession = await syncBrowserSessionFromProviderContext({
-    activeThreadId: threadId,
-  });
+  const state = await syncWebState({ activeThreadId: threadId });
 
   return {
-    session: nextSession,
-    thread: nextState,
+    state,
+    messages: nextMessages,
   };
 };
 
 export const sendChatMessage = serverQuery(
   async (input: { content: string; threadId: string; model?: string }) =>
-    sendMessageToThread(input),
+    sendThreadMessage(input),
   { method: "POST" },
 );
 
@@ -443,19 +406,18 @@ export const handleConversationInput = serverQuery(
     }
 
     const browserSession = requireBrowserSession();
-    const { context: providerContext } = await ensureWebProviderContext();
+    const { context } = await ensureWebProviderContext();
     const sourceThreadId = threadId.trim() || browserSession.activeThreadId;
     const result = await executeConversationInput({
       input: parsedInput,
       model,
       context: {
         activeThreadId: sourceThreadId,
-        threads: providerContext.threads,
+        threads: context.threads,
       },
       actions: {
         createThread: async ({ isTemporary }) => {
-          const state = await createAndPersistThread({ isTemporary });
-
+          const state = await createThreadState({ isTemporary });
           return {
             activeThreadId: state.activeThreadId,
             threads: state.threads,
@@ -465,7 +427,6 @@ export const handleConversationInput = serverQuery(
         },
         selectThread: async (nextThreadId) => {
           const state = await selectThreadState(nextThreadId);
-
           return {
             activeThreadId: state.activeThreadId,
             threads: state.threads,
@@ -475,7 +436,6 @@ export const handleConversationInput = serverQuery(
         },
         renameThread: async (input) => {
           const state = await renameThreadState(input);
-
           return {
             activeThreadId: state.activeThreadId,
             threads: state.threads,
@@ -485,7 +445,6 @@ export const handleConversationInput = serverQuery(
         },
         deleteThread: async (nextThreadId) => {
           const state = await deleteThreadState(nextThreadId);
-
           return {
             activeThreadId: state.activeThreadId,
             threads: state.threads,
@@ -494,8 +453,7 @@ export const handleConversationInput = serverQuery(
           };
         },
         sendMessage: async (input) => {
-          const state = await sendMessageToThread(input);
-
+          const state = await sendThreadMessage(input);
           return {
             activeThreadId: state.activeThreadId,
             threads: state.threads,
@@ -506,48 +464,50 @@ export const handleConversationInput = serverQuery(
       },
     });
 
-    if (parsedInput.kind === "command") {
-      const latestSession = requireBrowserSession();
-      const historyThreadId =
-        result.kind === "state" &&
-        sourceThreadId !== result.state.activeThreadId &&
-        !latestSession.threads.some((thread) => thread.id === sourceThreadId)
-          ? result.state.activeThreadId
-          : sourceThreadId;
-      const historyUpdate = await appendCommandHistoryToThread({
-        threadId: historyThreadId,
-        commandText: rawInput.trim(),
-        assistantReply: result.notice,
-      });
+    if (parsedInput.kind !== "command") {
+      return result;
+    }
 
-      if (historyUpdate && result.kind === "notice") {
-        return {
-          kind: "state" as const,
-          state: {
-            activeThreadId: historyThreadId,
-            threads: historyUpdate.session.threads,
-            messages: historyUpdate.thread.messages,
-            model: historyUpdate.session.model,
-          },
-        };
-      }
+    const latestSession = requireBrowserSession();
+    const historyThreadId =
+      result.kind === "state" &&
+      sourceThreadId !== result.state.activeThreadId &&
+      !latestSession.threads.some((thread) => thread.id === sourceThreadId)
+        ? result.state.activeThreadId
+        : sourceThreadId;
+    const historyUpdate = await appendCommandHistory({
+      threadId: historyThreadId,
+      commandText: rawInput.trim(),
+      assistantReply: result.kind === "notice" ? result.notice : result.notice,
+    });
 
-      if (
-        historyUpdate &&
-        result.kind === "state" &&
-        historyThreadId === result.state.activeThreadId &&
-        result.notice
-      ) {
-        return {
-          kind: "state" as const,
-          state: {
-            activeThreadId: result.state.activeThreadId,
-            threads: historyUpdate.session.threads,
-            messages: historyUpdate.thread.messages,
-            model: result.state.model ?? historyUpdate.session.model,
-          },
-        };
-      }
+    if (historyUpdate && result.kind === "notice") {
+      return {
+        kind: "state",
+        state: {
+          activeThreadId: historyUpdate.state.activeThreadId,
+          threads: historyUpdate.state.threads,
+          messages: historyUpdate.messages,
+          model: historyUpdate.state.model,
+        },
+      };
+    }
+
+    if (
+      historyUpdate &&
+      result.kind === "state" &&
+      historyThreadId === result.state.activeThreadId &&
+      result.notice
+    ) {
+      return {
+        kind: "state",
+        state: {
+          activeThreadId: result.state.activeThreadId,
+          threads: historyUpdate.state.threads,
+          messages: historyUpdate.messages,
+          model: result.state.model ?? historyUpdate.state.model,
+        },
+      };
     }
 
     return result;
@@ -567,9 +527,7 @@ export const setChatModel = serverQuery(
       selectedModel,
     });
 
-    return syncBrowserSessionFromProviderContext({
-      activeThreadId: browserSession.activeThreadId,
-    });
+    return syncWebState({ activeThreadId: browserSession.activeThreadId });
   },
   { method: "POST" },
 );
@@ -578,24 +536,23 @@ export const resetChatSession = serverQuery(
   async () => {
     const browserSession = requireBrowserSession();
     const { providerId, userId } = getWebIdentity();
-    const sessionId = browserSession.activeThreadId;
+    const activeThreadId = browserSession.activeThreadId;
     const nextState = createInitialChatState();
     const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
-    const currentSummary = providerContext.threads.find((thread) => thread.id === sessionId);
 
-    if (!currentSummary) {
+    if (!providerContext.threads.some((thread) => thread.id === activeThreadId)) {
       throw new Error("The active thread could not be found.");
     }
 
-    await saveChatSession(sessionId, nextState);
+    await saveChatSession(activeThreadId, nextState);
     await saveProviderUserContext({
       ...providerContext,
       threads: providerContext.threads
         .map((thread) =>
-          thread.id === sessionId
+          thread.id === activeThreadId
             ? {
                 ...thread,
-                title: createThreadSummary(sessionId).title,
+                title: createThreadSummary(activeThreadId).title,
                 updatedAt: new Date().toISOString(),
                 messageCount: nextState.messages.length,
                 isTitleEdited: false,
@@ -605,16 +562,14 @@ export const resetChatSession = serverQuery(
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
     });
 
-    return syncBrowserSessionFromProviderContext({
-      activeThreadId: sessionId,
-    });
+    return syncWebState({ activeThreadId });
   },
   { method: "POST" },
 );
 
 export const createChatThread = serverQuery(
   async ({ isTemporary }: { isTemporary?: boolean } = {}) =>
-    createAndPersistThread({ isTemporary }),
+    createThreadState({ isTemporary }),
   { method: "POST" },
 );
 

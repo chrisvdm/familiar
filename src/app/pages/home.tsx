@@ -1,24 +1,28 @@
-import { ChatShell } from "./chat-shell";
-import type { BrowserSession } from "../session/session";
-import { getBrowserSessionIdFromRequest } from "../session/session";
-
-const requireSession = (session: BrowserSession | undefined) => {
-  if (!session) {
-    throw new Error("Browser session is required for this page.");
-  }
-
-  return session;
-};
+import styles from "./chat.module.css";
+import { ChatClient } from "./chat.client";
+import { loadBrowserChannelState } from "./channel-state";
 
 export const Home = ({
   ctx,
   request,
 }: {
-  ctx: { session?: BrowserSession };
+  ctx: { session?: import("../session/session").BrowserSession };
   request: Request;
-}) => {
-  const session = requireSession(ctx.session);
-  const browserUserId = getBrowserSessionIdFromRequest(request) || session.activeThreadId;
-
-  return <ChatShell session={session} browserUserId={browserUserId} />;
-};
+}) =>
+  loadBrowserChannelState({
+    ctx,
+    request,
+    channelType: "web",
+  }).then((providerState) => (
+    <main className={styles.page}>
+      <header className={styles.topbar}>
+        <span className={styles.wordmark}>texty</span>
+      </header>
+      <ChatClient
+        activeThreadId={providerState.activeThreadId}
+        initialMessages={providerState.session.messages}
+        initialThreads={providerState.threads}
+        initialModel={providerState.selectedModel}
+      />
+    </main>
+  ));
