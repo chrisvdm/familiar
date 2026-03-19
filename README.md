@@ -19,7 +19,7 @@ Its end goal is not to be “just a chat app.” Its end goal is to be the syste
 - conversational clarification
 - tool orchestration
 
-In the target architecture, Texty talks to external providers such as Scarymonster or Kindling. Those providers expose capabilities and perform side effects. Texty decides when to answer directly, when to ask follow-up questions, and when to invoke a provider-owned tool.
+In the target architecture, Texty talks to external providers. Those providers expose capabilities and perform side effects. Texty decides when to answer directly, when to ask follow-up questions, and when to invoke a provider-owned tool.
 
 In short:
 
