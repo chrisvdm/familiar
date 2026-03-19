@@ -2,11 +2,50 @@
 
 # texty
 
-Chat app built with RedwoodSDK and the OpenRouter API.
+Provider-agnostic conversational interface built with RedwoodSDK and the OpenRouter API.
+
+## What Texty Is
+
+Texty is intended to become a reusable conversation layer that sits in front of many different execution systems.
+
+Its end goal is not to be “just a chat app.” Its end goal is to be the system that owns:
+
+- conversation history
+- threads
+- user-facing interaction
+- memory and context
+- multimodal input normalization
+- command handling
+- conversational clarification
+- tool orchestration
+
+In the target architecture, Texty talks to external providers such as Scarymonster or Kindling. Those providers expose capabilities and perform side effects. Texty decides when to answer directly, when to ask follow-up questions, and when to invoke a provider-owned tool.
+
+In short:
+
+- Texty is the conversation layer
+- providers are the execution layer
+
+## What Texty Is Today
+
+Today, Texty is still an in-progress implementation of that idea.
+
+Right now it includes:
+
+- a web chat interface
+- a sandbox messenger interface
+- multi-thread conversation history
+- lightweight memory
+- command-based thread controls
+- a shared conversation core that is being extracted away from the UI
+
+It does not yet expose the full provider-facing HTTP API described in the architecture docs.
 
 ### Project Docs
 
 - `docs/project-brief.md` is the stable project overview.
+- `docs/architecture-foundations.md` defines the current identity, storage, and memory-policy model.
+- `docs/provider-api-direction.md` captures the planned API boundary between Texty and external tool-execution providers such as Scarymonster or Kindling.
 - `docs/developer-ai-guidelines.md` captures standing repo conventions and AI/developer workflow rules.
 - `docs/worklogs/` stores task-specific implementation logs.
 
