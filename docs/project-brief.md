@@ -75,6 +75,7 @@ At the moment:
 - global memory is still browser-session scoped in important places
 - the provider-facing HTTP API is still documented direction rather than shipped runtime contract
 - the web UI is still one of the main entry surfaces
+- the security model is still browser-session based rather than provider-authenticated multi-tenant service auth
 
 So the repo should currently be understood as:
 
@@ -154,5 +155,16 @@ Identity, storage, and memory-policy details for that provider model are defined
 ## Source of Truth
 
 This brief is the stable high-level description of the project.
+
+Supporting architecture references:
+
+- `docs/architecture-foundations.md`
+- `docs/security-architecture.md`
+- `docs/conversation-lifecycle.md`
+- `docs/data-model.md`
+- `docs/provider-api-direction.md`
+- `docs/provider-api-spec.md`
+
+Security and auth requirements are defined in `docs/security-architecture.md`.
 
 Task-level implementation history and decision logs belong in `docs/worklogs/`.

@@ -45,6 +45,10 @@ It does not yet expose the full provider-facing HTTP API described in the archit
 
 - `docs/project-brief.md` is the stable project overview.
 - `docs/architecture-foundations.md` defines the current identity, storage, and memory-policy model.
+- `docs/conversation-lifecycle.md` explains how a turn moves through Texty from input to stored result.
+- `docs/data-model.md` defines the core entities Texty is built around.
+- `docs/provider-api-spec.md` defines the target provider-facing API contract.
+- `docs/security-architecture.md` defines the current security position, target auth model, and required controls for a real service boundary.
 - `docs/provider-api-direction.md` captures the planned API boundary between Texty and external tool-execution providers such as Scarymonster or Kindling.
 - `docs/developer-ai-guidelines.md` captures standing repo conventions and AI/developer workflow rules.
 - `docs/worklogs/` stores task-specific implementation logs.

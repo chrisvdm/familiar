@@ -100,17 +100,17 @@ This means:
 
 ## Memory Policy
 
-Providers should not be forced into one memory-usage model.
+Providers should not be forced into one memory-retrieval model.
 
 Texty should capture memory from normal conversations by default, unless the thread is explicitly private.
 
-After that, providers should be able to choose how much of that captured memory they want to use.
+After that, providers should be able to choose how much of that captured memory they want to retrieve and use.
 
 Examples:
 
-- Kindling may want `none`
-- Kindling may want `thread`
-- Scarymonster may want `provider_user`
+- one provider may want `none`
+- one provider may want `thread`
+- another may want `provider_user`
 - some providers may want `external` context from their own RAG system
 
 The full policy model is described in `docs/architecture-foundations.md`.

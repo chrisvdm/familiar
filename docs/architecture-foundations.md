@@ -18,6 +18,11 @@ That makes three topics especially important to define clearly:
 
 This document is the current reference for those decisions.
 
+Security, authentication, and tenancy requirements are defined separately in `docs/security-architecture.md`.
+
+Conversation flow details are defined in `docs/conversation-lifecycle.md`.
+Core entity definitions are defined in `docs/data-model.md`.
+
 ## One-Sentence Goal
 
 Texty should become a reusable conversational control layer that sits in front of many different execution providers.
@@ -221,28 +226,28 @@ That is the direction this document defines.
 
 ## Memory Policy
 
-Memory behavior must be configurable, but capture and usage should be treated as different things.
+Memory behavior must be configurable, but capture and retrieval should be treated as different things.
 
 Texty should use this default rule:
 
 - all non-private conversations are captured into memory
 - private threads are the exception
 
-After capture, providers decide how that stored memory may be used.
+After capture, providers decide how that stored memory may be retrieved and used.
 
-This is important because different providers want different usage behavior:
+This is important because different providers want different retrieval behavior:
 
-- Kindling may want no durable memory at all
-- Scarymonster may want strong long-term continuity
-- some users may want their own external RAG instead of Texty-managed memory
+- one provider may want no shared-memory retrieval
+- another may want strong long-term continuity
+- some users may want their own external RAG instead of Texty-managed retrieval
 
-So Texty should not force one memory-usage model on every provider.
+So Texty should not force one memory-retrieval model on every provider.
 
 Texty should:
 
 - capture memory by default
 - allow private threads to opt out of shared memory capture
-- allow different providers to use captured memory differently
+- allow different providers to retrieve captured memory differently
 
 ## Memory Capture Rule
 
@@ -267,14 +272,15 @@ This keeps capture simple and predictable:
 - normal conversations are remembered
 - private conversations are not added to shared memory
 
-## Memory Usage Rule
+## Memory Retrieval Rule
 
-Even if memory is captured, not every provider has to use it.
+Even if memory is captured, not every provider has to retrieve or use it.
 
 This is the key separation:
 
 - capture answers: "Should this be stored?"
-- usage answers: "Should this be used for this provider/product?"
+- retrieval answers: "What stored memory may be loaded for this provider/product?"
+- usage answers: "How should the loaded memory influence this turn?"
 
 So:
 
@@ -285,11 +291,11 @@ So:
 
 This means Texty can preserve useful user context without forcing every provider to depend on it.
 
-## Recommended Memory Modes
+## Recommended Retrieval Modes
 
 ### `none`
 
-No durable memory usage.
+No durable shared-memory retrieval.
 
 Use only:
 
@@ -299,9 +305,8 @@ Use only:
 
 Use this when:
 
-- the provider wants stateless behavior
-- the user opts out of memory
-- memory would be harmful to the task
+- the provider wants stateless or near-stateless behavior
+- loaded shared memory would be harmful to the task
 
 Example:
 
@@ -309,12 +314,12 @@ Example:
 
 Important:
 
-- this mode affects usage
+- this mode affects retrieval
 - it does not change the default capture rule unless the conversation is private
 
 ### `thread`
 
-Memory exists only inside the current thread.
+Only thread-local memory is retrieved.
 
 Use this when:
 
@@ -333,7 +338,7 @@ But it does not allow:
 
 ### `provider_user`
 
-Memory is shared across all threads for one `(provider_id, user_id)` pair.
+Shared memory is retrieved across all threads for one `(provider_id, user_id)` pair.
 
 Use this when:
 
@@ -346,7 +351,7 @@ Example:
 
 ### `custom_scope`
 
-Memory is shared using an explicit `memory_scope_id`.
+Shared memory is retrieved using an explicit `memory_scope_id`.
 
 Use this when:
 
@@ -362,7 +367,7 @@ It should be explicit and never assumed.
 
 ### `external`
 
-Texty does not rely on its own durable memory source for retrieval.
+Texty does not rely on its own durable shared-memory source for retrieval.
 
 Instead, the provider supplies retrieved context for the turn.
 
@@ -378,7 +383,7 @@ Example:
 
 - a provider sends retrieved project facts for the current turn from its own vector store
 
-## How Memory Policy Should Be Applied
+## How Retrieval Policy Should Be Applied
 
 Each provider/user pair should have a memory configuration record.
 
@@ -432,22 +437,22 @@ Or:
 }
 ```
 
-## Practical Meaning of Each Mode
+## Practical Meaning of Each Retrieval Mode
 
 ### If mode is `none`
 
 Texty should:
 
-- not read durable memory for response generation
+- not read durable shared memory for response generation
 - still follow the default capture rule unless the thread is private
-- only use immediate conversational context
+- only use immediate conversational context and whatever thread continuity is allowed locally
 
 ### If mode is `thread`
 
 Texty should:
 
 - read/write thread memory
-- not use shared global user memory
+- not retrieve shared global user memory
 
 ### If mode is `provider_user`
 
@@ -486,12 +491,12 @@ Only use `external` when the provider truly wants to own retrieval itself.
 
 This model avoids three common mistakes:
 
-### 1. Assuming all providers want memory
+### 1. Assuming all providers want the same memory retrieval behavior
 
 They do not.
 
-Some providers need memory.
-Some providers are harmed by memory.
+Some providers benefit from shared retrieval.
+Some providers are harmed by it.
 
 ### 2. Assuming all user identities should share memory
 
@@ -510,7 +515,7 @@ The simplest way to explain the rule set is:
 
 - Texty remembers normal conversations by default
 - private threads are not added to shared memory
-- providers decide how much of that remembered context they want to use
+- providers decide how much of that remembered context they want to retrieve and use
 - some providers may ignore Texty memory and use their own RAG instead
 
 ## Recommended Near-Term Implementation Path
