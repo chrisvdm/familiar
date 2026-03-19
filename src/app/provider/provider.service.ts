@@ -27,7 +27,6 @@ import {
 } from "../chat/shared";
 import type {
   AllowedTool,
-  MemoryPolicy,
   ProviderChannelInput,
   ProviderConfig,
   ProviderConversationInput,
@@ -36,6 +35,12 @@ import type {
   ProviderUserContext,
 } from "./provider.types";
 import { logProviderAudit } from "./provider.audit";
+import {
+  applyConversationRateLimit,
+  CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
+  CONVERSATION_RATE_LIMIT_WINDOW_MS,
+  selectProviderGlobalMemory,
+} from "./provider.logic";
 import {
   loadOrCreateProviderUserContext,
   saveProviderUserContext,
@@ -128,8 +133,6 @@ const getRequestTimeZone = (timeZone?: string | null) =>
   resolveConversationTimeZone(timeZone);
 
 export const WEB_PROVIDER_ID = "texty_web";
-const CONVERSATION_RATE_LIMIT_WINDOW_MS = 60_000;
-const CONVERSATION_RATE_LIMIT_MAX_REQUESTS = 30;
 
 const sortThreadsByRecency = (threads: ChatThreadSummary[]) =>
   [...threads].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -319,31 +322,20 @@ const enforceConversationRateLimit = ({
 }: {
   context: ProviderUserContext;
 }) => {
-  const now = Date.now();
-  const cutoff = now - CONVERSATION_RATE_LIMIT_WINDOW_MS;
-  const timestamps = (
-    context.requestLog?.conversationInputTimestamps ?? []
-  ).filter((value) => {
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) && parsed >= cutoff;
+  const result = applyConversationRateLimit({
+    timestamps: context.requestLog?.conversationInputTimestamps ?? [],
+    maxRequests: CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
+    windowMs: CONVERSATION_RATE_LIMIT_WINDOW_MS,
   });
 
-  if (timestamps.length >= CONVERSATION_RATE_LIMIT_MAX_REQUESTS) {
-    const oldestTimestamp = Date.parse(timestamps[0] ?? "");
-    const retryAfterMs = Number.isFinite(oldestTimestamp)
-      ? Math.max(
-          CONVERSATION_RATE_LIMIT_WINDOW_MS - (now - oldestTimestamp),
-          1_000,
-        )
-      : CONVERSATION_RATE_LIMIT_WINDOW_MS;
-
-    throw new ProviderRateLimitError(Math.ceil(retryAfterMs / 1_000));
+  if (!result.allowed) {
+    throw new ProviderRateLimitError(result.retryAfterSeconds);
   }
 
   return {
     ...context,
     requestLog: {
-      conversationInputTimestamps: [...timestamps, new Date(now).toISOString()],
+      conversationInputTimestamps: result.timestamps,
     },
   };
 };
@@ -402,26 +394,6 @@ const callOpenRouter = async ({
   }
 
   return content;
-};
-
-const selectMemoryScopeForRetrieval = ({
-  memoryPolicy,
-  globalMemory,
-  isPrivate,
-}: {
-  memoryPolicy: MemoryPolicy;
-  globalMemory: ProviderUserContext["globalMemory"];
-  isPrivate: boolean;
-}) => {
-  if (isPrivate) {
-    return createEmptyGlobalMemory();
-  }
-
-  if (memoryPolicy.mode === "provider_user" || memoryPolicy.mode === "custom_scope") {
-    return globalMemory;
-  }
-
-  return createEmptyGlobalMemory();
 };
 
 const formatAllowedTools = (tools: AllowedTool[]) => {
@@ -1092,7 +1064,7 @@ export const handleProviderConversationInput = async ({
   }
 
   const currentState = await loadChatSession(threadId);
-  const memoryScope = selectMemoryScopeForRetrieval({
+  const memoryScope = selectProviderGlobalMemory({
     memoryPolicy: currentContext.memoryPolicy,
     globalMemory: currentContext.globalMemory,
     isPrivate: thread.isTemporary,

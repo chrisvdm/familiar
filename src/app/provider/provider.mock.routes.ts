@@ -1,50 +1,10 @@
 import { route } from "rwsdk/router";
 
-import type { ProviderExecutionState } from "./provider.types";
+import { determineMockExecutionState } from "./provider.logic";
 
 type MockExecuteRequest = {
   tool_name?: string;
   arguments?: Record<string, unknown>;
-};
-
-const buildMockState = ({
-  toolName,
-  args,
-}: {
-  toolName: string;
-  args: Record<string, unknown>;
-}) => {
-  const requestedState =
-    typeof args.mock_state === "string" ? args.mock_state : null;
-
-  if (
-    requestedState === "accepted" ||
-    requestedState === "in_progress" ||
-    requestedState === "needs_clarification" ||
-    requestedState === "failed" ||
-    requestedState === "completed"
-  ) {
-    return requestedState satisfies ProviderExecutionState;
-  }
-
-  if (toolName === "spreadsheet.update_row") {
-    const sheet = args.sheet;
-    const rowId = args.row_id;
-    const values = args.values;
-
-    if (
-      typeof sheet !== "string" ||
-      !sheet.trim() ||
-      typeof rowId !== "string" ||
-      !rowId.trim() ||
-      !values ||
-      typeof values !== "object"
-    ) {
-      return "needs_clarification" satisfies ProviderExecutionState;
-    }
-  }
-
-  return "completed" satisfies ProviderExecutionState;
 };
 
 export const providerMockRoutes = [
@@ -82,7 +42,7 @@ export const providerMockRoutes = [
         );
       }
 
-      const state = buildMockState({ toolName, args });
+      const state = determineMockExecutionState({ toolName, args });
 
       if (state === "failed") {
         return Response.json({

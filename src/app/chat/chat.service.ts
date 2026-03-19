@@ -7,6 +7,7 @@ import { buildMemoryContext, refreshMemories } from "./chat.memory";
 import {
   executeConversationInput,
   parseConversationInput,
+  type ConversationCommandExecution,
   type ConversationThreadState,
 } from "./conversation.engine";
 import {
@@ -15,20 +16,13 @@ import {
   createDateTimeSystemPrompt,
   resolveConversationTimeZone,
 } from "./conversation.runtime";
+import { loadChatSession, saveChatSession } from "./chat.storage";
 import {
-  deleteChatSession,
-  loadChatSession,
-  saveChatSession,
-} from "./chat.storage";
-import {
-  buildGlobalMemoryMarkdown,
   createAssistantMessage,
-  createEmptyGlobalMemory,
   createInitialChatState,
   createThreadSummary,
   createUserMessage,
   getThreadTitleFromMessages,
-  pruneGlobalMemoryByThreadId,
   type ChatMessage,
   type ChatSessionState,
   type ChatThreadSummary,
@@ -61,11 +55,6 @@ type OpenRouterResponse = {
   };
 };
 
-const SYSTEM_PROMPT =
-  "You are Texty, a concise product-minded AI assistant. Give direct, useful answers and avoid filler.";
-const MEMORY_USAGE_PROMPT =
-  "When using memory, treat stored facts as source-backed context. You may use derived memory facts when they are explicitly provided with confidence and basis. Treat high-confidence derived facts as reliable, medium-confidence derived facts with cautious wording, and if memory does not explicitly contain or strongly support a personal detail, say you do not know rather than guessing.";
-
 const requireBrowserSession = () => {
   const session = requestInfo.ctx.session as BrowserSession | undefined;
 
@@ -84,8 +73,6 @@ const persistBrowserSession = async (session: BrowserSession) => {
   });
   requestInfo.ctx.session = session;
 };
-
-const requireChatSessionId = () => requireBrowserSession().activeThreadId;
 
 const WEB_PROVIDER_ID = "texty_web";
 
@@ -163,26 +150,6 @@ const syncBrowserSessionFromProviderContext = async ({
 
   return formatThreadState(nextSession, threadSession, nextSession.selectedModel);
 };
-
-const updateThreadSummaries = (
-  threads: ChatThreadSummary[],
-  nextSummary: ChatThreadSummary,
-) =>
-  threads
-    .map((thread) => (thread.id === nextSummary.id ? nextSummary : thread))
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-
-const buildThreadSummary = (
-  currentSummary: ChatThreadSummary,
-  messages: ChatMessage[],
-) => ({
-  ...currentSummary,
-  title: currentSummary.isTitleEdited
-    ? currentSummary.title
-    : getThreadTitleFromMessages(messages),
-  updatedAt: messages.at(-1)?.createdAt || currentSummary.updatedAt,
-  messageCount: messages.length,
-});
 
 const formatThreadState = (
   session: BrowserSession,
@@ -402,8 +369,9 @@ const appendCommandHistoryToThread = async ({
   commandText: string;
   assistantReply?: string;
 }) => {
-  const browserSession = requireBrowserSession();
-  const targetThread = browserSession.threads.find((thread) => thread.id === threadId);
+  const { providerId, userId } = getWebIdentity();
+  const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
+  const targetThread = providerContext.threads.find((thread) => thread.id === threadId);
 
   if (!targetThread) {
     return null;
@@ -421,98 +389,34 @@ const appendCommandHistoryToThread = async ({
   };
 
   await saveChatSession(threadId, nextState);
+  const updatedAt = nextMessages.at(-1)?.createdAt || new Date().toISOString();
+  const nextThreads = providerContext.threads
+    .map((thread) =>
+      thread.id === threadId
+        ? {
+            ...thread,
+            title: thread.isTitleEdited
+              ? thread.title
+              : getThreadTitleFromMessages(nextMessages),
+            updatedAt,
+            messageCount: nextMessages.length,
+          }
+        : thread,
+    )
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
-  const nextSession: BrowserSession = {
-    ...browserSession,
-    threads: updateThreadSummaries(
-      browserSession.threads,
-      buildThreadSummary(targetThread, nextMessages),
-    ),
-  };
+  await saveProviderUserContext({
+    ...providerContext,
+    threads: nextThreads,
+  });
 
-  await persistBrowserSession(nextSession);
+  const nextSession = await syncBrowserSessionFromProviderContext({
+    activeThreadId: threadId,
+  });
 
   return {
     session: nextSession,
     thread: nextState,
-  };
-};
-
-const generateAssistantReply = async ({
-  messages,
-  threadMemoryContext,
-  model,
-  timeZone,
-}: {
-  messages: ChatMessage[];
-  threadMemoryContext?: string | null;
-  model: string;
-  timeZone?: string | null;
-}) => {
-  const apiKey = env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    throw new Error(
-      "OPENROUTER_API_KEY is not configured. Add it to .dev.vars for local development and as a Wrangler secret for deployment.",
-    );
-  }
-
-  const response = await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": env.OPENROUTER_SITE_URL || "http://localhost:5173",
-        "X-Title": env.OPENROUTER_SITE_NAME || "Texty",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
-          },
-          {
-            role: "system",
-            content: MEMORY_USAGE_PROMPT,
-          },
-          {
-            role: "system",
-            content: createDateTimeSystemPrompt({ timeZone }),
-          },
-          ...(threadMemoryContext
-            ? [
-                {
-                  role: "system" as const,
-                  content: threadMemoryContext,
-                },
-              ]
-            : []),
-          ...buildPromptContext(messages),
-        ],
-      }),
-    },
-  );
-
-  const payload = (await response.json()) as OpenRouterResponse;
-
-  if (!response.ok) {
-    throw new Error(
-      payload.error?.message || "OpenRouter returned an unexpected error.",
-    );
-  }
-
-  const content = payload.choices?.[0]?.message?.content?.trim();
-
-  if (!content) {
-    throw new Error("OpenRouter did not return a response message.");
-  }
-
-  return {
-    model,
-    content,
   };
 };
 
@@ -531,7 +435,7 @@ export const handleConversationInput = serverQuery(
     rawInput: string;
     threadId: string;
     model?: string;
-  }) => {
+  }): Promise<ConversationCommandExecution> => {
     const parsedInput = parseConversationInput(rawInput);
 
     if (!parsedInput) {
@@ -539,13 +443,14 @@ export const handleConversationInput = serverQuery(
     }
 
     const browserSession = requireBrowserSession();
+    const { context: providerContext } = await ensureWebProviderContext();
     const sourceThreadId = threadId.trim() || browserSession.activeThreadId;
     const result = await executeConversationInput({
       input: parsedInput,
       model,
       context: {
         activeThreadId: sourceThreadId,
-        threads: browserSession.threads,
+        threads: providerContext.threads,
       },
       actions: {
         createThread: async ({ isTemporary }) => {
@@ -622,7 +527,7 @@ export const handleConversationInput = serverQuery(
             activeThreadId: historyThreadId,
             threads: historyUpdate.session.threads,
             messages: historyUpdate.thread.messages,
-            model: historyUpdate.session.selectedModel,
+            model: historyUpdate.session.model,
           },
         };
       }
@@ -639,7 +544,7 @@ export const handleConversationInput = serverQuery(
             activeThreadId: result.state.activeThreadId,
             threads: historyUpdate.session.threads,
             messages: historyUpdate.thread.messages,
-            model: result.state.model ?? historyUpdate.session.selectedModel,
+            model: result.state.model ?? historyUpdate.session.model,
           },
         };
       }
@@ -652,53 +557,57 @@ export const handleConversationInput = serverQuery(
 
 export const setChatModel = serverQuery(
   async (model: string) => {
+    const { providerId, userId } = getWebIdentity();
     const browserSession = requireBrowserSession();
-    const selectedModel = model.trim() || browserSession.selectedModel || DEFAULT_MODEL;
-    const session = await loadChatSession(browserSession.activeThreadId);
-    const nextSession: BrowserSession = {
-      ...browserSession,
+    const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
+    const selectedModel = model.trim() || providerContext.selectedModel || DEFAULT_MODEL;
+
+    await saveProviderUserContext({
+      ...providerContext,
       selectedModel,
-    };
+    });
 
-    await persistBrowserSession(nextSession);
-
-    return formatThreadState(nextSession, session, selectedModel);
+    return syncBrowserSessionFromProviderContext({
+      activeThreadId: browserSession.activeThreadId,
+    });
   },
   { method: "POST" },
 );
 
 export const resetChatSession = serverQuery(
   async () => {
-    const sessionId = requireChatSessionId();
     const browserSession = requireBrowserSession();
+    const { providerId, userId } = getWebIdentity();
+    const sessionId = browserSession.activeThreadId;
     const nextState = createInitialChatState();
-
-    await saveChatSession(sessionId, nextState);
-
-    const currentSummary = browserSession.threads.find(
-      (thread) => thread.id === sessionId,
-    );
+    const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
+    const currentSummary = providerContext.threads.find((thread) => thread.id === sessionId);
 
     if (!currentSummary) {
       throw new Error("The active thread could not be found.");
     }
 
-    const nextSession: BrowserSession = {
-      ...browserSession,
-      threads: updateThreadSummaries(
-        browserSession.threads,
-        {
-          ...currentSummary,
-          title: createThreadSummary(sessionId).title,
-          updatedAt: new Date().toISOString(),
-          messageCount: nextState.messages.length,
-        },
-      ),
-    };
+    await saveChatSession(sessionId, nextState);
+    await saveProviderUserContext({
+      ...providerContext,
+      threads: providerContext.threads
+        .map((thread) =>
+          thread.id === sessionId
+            ? {
+                ...thread,
+                title: createThreadSummary(sessionId).title,
+                updatedAt: new Date().toISOString(),
+                messageCount: nextState.messages.length,
+                isTitleEdited: false,
+              }
+            : thread,
+        )
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    });
 
-    await persistBrowserSession(nextSession);
-
-    return formatThreadState(nextSession, nextState);
+    return syncBrowserSessionFromProviderContext({
+      activeThreadId: sessionId,
+    });
   },
   { method: "POST" },
 );
