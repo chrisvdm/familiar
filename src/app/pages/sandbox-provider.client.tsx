@@ -43,6 +43,7 @@ export const SandboxProviderClient = () => {
   const [userId, setUserId] = useState("user_123");
   const [channelType, setChannelType] = useState("web");
   const [channelId, setChannelId] = useState("local-harness");
+  const [idempotencyKey, setIdempotencyKey] = useState("");
   const [threadId, setThreadId] = useState("");
   const [message, setMessage] = useState("Update the client spreadsheet");
   const [toolPayload, setToolPayload] = useState(DEFAULT_TOOLS);
@@ -66,6 +67,7 @@ export const SandboxProviderClient = () => {
         method,
         headers: {
           Authorization: `Bearer ${token}`,
+          ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
           ...(body ? { "Content-Type": "application/json" } : {}),
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -133,6 +135,14 @@ export const SandboxProviderClient = () => {
               value={threadId}
               onChange={(e) => setThreadId(e.target.value)}
               placeholder="Optional"
+            />
+          </label>
+          <label className={styles.field}>
+            <span>Idempotency Key</span>
+            <input
+              value={idempotencyKey}
+              onChange={(e) => setIdempotencyKey(e.target.value)}
+              placeholder="Optional for write requests"
             />
           </label>
         </section>

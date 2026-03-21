@@ -43,6 +43,15 @@ export type ProviderUserContext = {
   requestLog: {
     conversationInputTimestamps: string[];
   };
+  idempotency: Record<
+    string,
+    {
+      requestHash: string;
+      status: number;
+      body: Record<string, unknown>;
+      createdAt: string;
+    }
+  >;
   createdAt: string;
   updatedAt: string;
 };

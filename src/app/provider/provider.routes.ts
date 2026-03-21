@@ -1,89 +1,37 @@
 import { route } from "rwsdk/router";
 
 import { authenticateProviderRequest } from "./provider-auth";
+import { handleConversationInputEndpoint } from "./provider.conversation.endpoint";
+import {
+  getIdempotencyHeader,
+  getRequestId,
+  jsonError,
+  jsonResponse,
+  readJson,
+  replayIdempotentResponse,
+} from "./provider.http";
+import {
+  buildIdempotencyKey,
+  hashIdempotencyRequest,
+  readIdempotencyReplay,
+  storeIdempotencyReplay,
+} from "./provider.idempotency";
 import {
   createProviderThread,
   deleteProviderThread,
   getProviderMemory,
   getProviderThreadMemory,
-  handleProviderConversationInput,
-  isProviderRateLimitError,
   listProviderThreads,
   renameProviderThread,
   syncProviderTools,
 } from "./provider.service";
+import {
+  loadOrCreateProviderUserContext,
+  saveProviderUserContext,
+} from "./provider.storage";
 import type {
-  ProviderConversationInput,
   ProviderToolSyncInput,
 } from "./provider.types";
-
-const getRequestId = (request: Request) =>
-  request.headers.get("X-Request-Id")?.trim() || crypto.randomUUID();
-
-const jsonResponse = ({
-  requestId,
-  body,
-  status = 200,
-  retryAfterSeconds,
-}: {
-  requestId: string;
-  body: Record<string, unknown>;
-  status?: number;
-  retryAfterSeconds?: number;
-}) =>
-  Response.json(
-    {
-      ...body,
-      request_id: requestId,
-    },
-    {
-      status,
-      headers: {
-        "X-Request-Id": requestId,
-        ...(typeof retryAfterSeconds === "number"
-          ? {
-              "Retry-After": String(retryAfterSeconds),
-            }
-          : {}),
-      },
-    },
-  );
-
-const jsonError = ({
-  requestId,
-  status,
-  code,
-  message,
-  details = null,
-  retryAfterSeconds,
-}: {
-  requestId: string;
-  status: number;
-  code: string;
-  message: string;
-  details?: unknown;
-  retryAfterSeconds?: number;
-}) =>
-  jsonResponse({
-    requestId,
-    status,
-    retryAfterSeconds,
-    body: {
-      error: {
-        code,
-        message,
-        details,
-      },
-    },
-  });
-
-const readJson = async <T,>(request: Request) => {
-  try {
-    return (await request.json()) as T;
-  } catch {
-    throw new Error("Request body must be valid JSON.");
-  }
-};
 
 export const providerRoutes = [
   route(
@@ -117,6 +65,7 @@ export const providerRoutes = [
 
       try {
         const input = await readJson<ProviderToolSyncInput>(request);
+        const idempotencyKey = getIdempotencyHeader(request);
 
         if (
           input.provider_id !== params.providerId ||
@@ -127,6 +76,59 @@ export const providerRoutes = [
             status: 403,
             code: "forbidden",
             message: "Provider or user mismatch.",
+          });
+        }
+
+        if (idempotencyKey) {
+          const context = await loadOrCreateProviderUserContext({
+            providerId: input.provider_id,
+            userId: input.user_id,
+          });
+          const storageKey = buildIdempotencyKey({
+            method: request.method,
+            path: `/api/v1/providers/${params.providerId}/users/${params.userId}/tools/sync`,
+            idempotencyKey,
+          });
+          const requestHash = await hashIdempotencyRequest({
+            method: request.method,
+            path: storageKey,
+            body: input,
+          });
+          const replay = readIdempotencyReplay({
+            context,
+            storageKey,
+            requestHash,
+          });
+
+          if (replay.kind === "replay") {
+            return replayIdempotentResponse({ requestId, replay });
+          }
+
+          if (replay.kind === "conflict") {
+            return jsonError({
+              requestId,
+              status: 409,
+              code: "idempotency_conflict",
+              message: "Idempotency key was reused with a different request body.",
+            });
+          }
+
+          const result = await syncProviderTools(input, requestId);
+          const nextContext = storeIdempotencyReplay({
+            context: await loadOrCreateProviderUserContext({
+              providerId: input.provider_id,
+              userId: input.user_id,
+            }),
+            storageKey,
+            requestHash,
+            status: 200,
+            body: result as unknown as Record<string, unknown>,
+          });
+          await saveProviderUserContext(nextContext);
+
+          return jsonResponse({
+            requestId,
+            body: result as unknown as Record<string, unknown>,
           });
         }
 
@@ -146,67 +148,7 @@ export const providerRoutes = [
       }
     },
   ),
-  route("/api/v1/conversation/input", async ({ request }) => {
-    const requestId = getRequestId(request);
-
-    if (request.method !== "POST") {
-      return jsonError({
-        requestId,
-        status: 405,
-        code: "method_not_allowed",
-        message: "Method not allowed.",
-      });
-    }
-
-    try {
-      const input = await readJson<ProviderConversationInput>(request);
-      const auth = authenticateProviderRequest({
-        request,
-        providerId: input.provider_id,
-        requestId,
-      });
-
-      if (!auth.ok) {
-        return jsonError({
-          requestId,
-          status: auth.status,
-          code: auth.error.code,
-          message: auth.error.message,
-        });
-      }
-
-      const result = await handleProviderConversationInput({
-        input,
-        providerConfig: auth.providerConfig,
-        requestId,
-      });
-      return jsonResponse({
-        requestId,
-        body: result as unknown as Record<string, unknown>,
-      });
-    } catch (error) {
-      if (isProviderRateLimitError(error)) {
-        return jsonError({
-          requestId,
-          status: 429,
-          code: "rate_limited",
-          message: "Too many conversation requests. Try again shortly.",
-          details: {
-            retry_after_seconds: error.retryAfterSeconds,
-          },
-          retryAfterSeconds: error.retryAfterSeconds,
-        });
-      }
-
-      return jsonError({
-        requestId,
-        status: 400,
-        code: "invalid_request",
-        message:
-          error instanceof Error ? error.message : "Invalid request payload.",
-      });
-    }
-  }),
+  route("/api/v1/conversation/input", handleConversationInputEndpoint),
   route("/api/v1/threads", async ({ request }) => {
     const requestId = getRequestId(request);
 
@@ -230,6 +172,7 @@ export const providerRoutes = [
           id: string;
         };
       }>(request);
+      const idempotencyKey = getIdempotencyHeader(request);
       const auth = authenticateProviderRequest({
         request,
         providerId: input.provider_id,
@@ -242,6 +185,66 @@ export const providerRoutes = [
           status: auth.status,
           code: auth.error.code,
           message: auth.error.message,
+        });
+      }
+
+      if (idempotencyKey) {
+        const context = await loadOrCreateProviderUserContext({
+          providerId: input.provider_id,
+          userId: input.user_id,
+        });
+        const storageKey = buildIdempotencyKey({
+          method: request.method,
+          path: "/api/v1/threads",
+          idempotencyKey,
+        });
+        const requestHash = await hashIdempotencyRequest({
+          method: request.method,
+          path: storageKey,
+          body: input,
+        });
+        const replay = readIdempotencyReplay({
+          context,
+          storageKey,
+          requestHash,
+        });
+
+        if (replay.kind === "replay") {
+          return replayIdempotentResponse({ requestId, replay });
+        }
+
+        if (replay.kind === "conflict") {
+          return jsonError({
+            requestId,
+            status: 409,
+            code: "idempotency_conflict",
+            message: "Idempotency key was reused with a different request body.",
+          });
+        }
+
+        const result = await createProviderThread({
+          providerId: input.provider_id,
+          userId: input.user_id,
+          title: input.title,
+          isPrivate: input.is_private,
+          channel: input.channel,
+          requestId,
+        });
+        const nextContext = storeIdempotencyReplay({
+          context: await loadOrCreateProviderUserContext({
+            providerId: input.provider_id,
+            userId: input.user_id,
+          }),
+          storageKey,
+          requestHash,
+          status: 200,
+          body: result as unknown as Record<string, unknown>,
+        });
+        await saveProviderUserContext(nextContext);
+
+        return jsonResponse({
+          requestId,
+          body: result as unknown as Record<string, unknown>,
         });
       }
 
@@ -335,6 +338,7 @@ export const providerRoutes = [
         user_id: string;
         title?: string;
       }>(request);
+      const idempotencyKey = getIdempotencyHeader(request);
       const auth = authenticateProviderRequest({
         request,
         providerId: input.provider_id,
@@ -350,6 +354,50 @@ export const providerRoutes = [
         });
       }
 
+      const storageKey = idempotencyKey
+        ? buildIdempotencyKey({
+            method: request.method,
+            path: `/api/v1/threads/${params.threadId}`,
+            idempotencyKey,
+          })
+        : null;
+      const requestHash =
+        idempotencyKey && storageKey
+          ? await hashIdempotencyRequest({
+              method: request.method,
+              path: storageKey,
+              body: input,
+            })
+          : null;
+      const context =
+        idempotencyKey && storageKey && requestHash
+          ? await loadOrCreateProviderUserContext({
+              providerId: input.provider_id,
+              userId: input.user_id,
+            })
+          : null;
+      const replay =
+        context && storageKey && requestHash
+          ? readIdempotencyReplay({
+              context,
+              storageKey,
+              requestHash,
+            })
+          : null;
+
+      if (replay?.kind === "replay") {
+        return replayIdempotentResponse({ requestId, replay });
+      }
+
+      if (replay?.kind === "conflict") {
+        return jsonError({
+          requestId,
+          status: 409,
+          code: "idempotency_conflict",
+          message: "Idempotency key was reused with a different request body.",
+        });
+      }
+
       if (request.method === "PATCH") {
         const result = await renameProviderThread({
           providerId: input.provider_id,
@@ -358,6 +406,21 @@ export const providerRoutes = [
           title: input.title ?? "",
           requestId,
         });
+
+        if (context && storageKey && requestHash) {
+          await saveProviderUserContext(
+            storeIdempotencyReplay({
+              context: await loadOrCreateProviderUserContext({
+                providerId: input.provider_id,
+                userId: input.user_id,
+              }),
+              storageKey,
+              requestHash,
+              status: 200,
+              body: result as unknown as Record<string, unknown>,
+            }),
+          );
+        }
 
         return jsonResponse({
           requestId,
@@ -371,6 +434,21 @@ export const providerRoutes = [
         threadId: params.threadId,
         requestId,
       });
+
+      if (context && storageKey && requestHash) {
+        await saveProviderUserContext(
+          storeIdempotencyReplay({
+            context: await loadOrCreateProviderUserContext({
+              providerId: input.provider_id,
+              userId: input.user_id,
+            }),
+            storageKey,
+            requestHash,
+            status: 200,
+            body: result as unknown as Record<string, unknown>,
+          }),
+        );
+      }
 
       return jsonResponse({
         requestId,

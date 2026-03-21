@@ -250,6 +250,8 @@ If you want a browser UI for exercising the same routes, use `/sandbox/provider`
 
 Provider API responses now echo a `request_id` field and set an `X-Request-Id` response header. If you send your own `X-Request-Id`, Texty reuses it; otherwise Texty generates one for you.
 
+Write routes also support `Idempotency-Key`. If the same key is retried with the same request body, Texty replays the original response instead of performing the write again. If the same key is reused with a different body, Texty returns `409`.
+
 Tool execution states currently recognized by Texty are:
 
 - `completed`

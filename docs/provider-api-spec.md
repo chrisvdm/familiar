@@ -456,6 +456,13 @@ Recommended:
 - tool sync
 - conversation input from webhook-driven channels
 - thread creation if retried by providers
+- thread rename and delete for provider-managed retries
+
+Behavior:
+
+- if the same `Idempotency-Key` is retried with the same request body, Texty should replay the original response
+- if the same `Idempotency-Key` is reused with a different request body, Texty should return `409`
+- replayed responses may include `X-Idempotent-Replay: true`
 
 This avoids duplicate writes when a provider retries after a network failure.
 
