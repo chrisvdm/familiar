@@ -49,3 +49,5 @@ Follow-up change:
   - `/sandbox/demo-executor`
   - `/sandbox/demo-executor/playground/texty`
   - `/sandbox/demo-executor/tools/execute`
+- moved built-in demo tool execution onto an internal execution path to avoid
+  the worker HTTP-fetching itself during the public demo flow

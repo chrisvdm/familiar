@@ -1,3 +1,4 @@
+import { BUILT_IN_DEMO_PROVIDER_ID, executeBuiltInDemoTool } from "./provider.demo";
 import type { ProviderConfig, ProviderExecutionState } from "./provider.types";
 
 type ProviderToolExecutionResponse = {
@@ -92,6 +93,13 @@ export const executeProviderToolRequest = async ({
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }) => {
+  if (providerId === BUILT_IN_DEMO_PROVIDER_ID) {
+    return executeBuiltInDemoTool({
+      toolName,
+      args,
+    });
+  }
+
   if (!providerConfig.baseUrl) {
     throw new Error("Executor base URL is not configured.");
   }

@@ -5,6 +5,10 @@ import {
   normalizeProviderConfigMap,
 } from "./provider.auth-core";
 import { logProviderAudit } from "./provider.audit";
+import {
+  BUILT_IN_DEMO_PROVIDER_ID,
+  BUILT_IN_DEMO_TOKEN,
+} from "./provider.demo";
 import type { ProviderConfig } from "./provider.types";
 
 const providerEnv = env as typeof env & {
@@ -15,9 +19,6 @@ const providerEnv = env as typeof env & {
 let cachedRawConfig: string | undefined;
 let cachedProviderConfigs: Record<string, ProviderConfig> = {};
 let cachedConfigLabel: string | undefined;
-
-const BUILT_IN_DEMO_PROVIDER_ID = "demo_executor";
-const BUILT_IN_DEMO_TOKEN = "dev-token";
 
 const withBuiltInProviders = ({
   providerConfigs,

@@ -1,11 +1,18 @@
 import { route } from "rwsdk/router";
 
 import homePageTemplate from "../../../examples/minimal-executor/index.html?raw";
+import {
+  BUILT_IN_DEMO_CHANNEL_ID,
+  BUILT_IN_DEMO_PROVIDER_ID,
+  BUILT_IN_DEMO_TOKEN,
+  BUILT_IN_DEMO_USER_ID,
+  executeBuiltInDemoTool,
+} from "./provider.demo";
 
-const DEMO_TOKEN = "dev-token";
-const DEMO_EXECUTOR_ID = "demo_executor";
-const DEMO_USER_ID = "demo_user";
-const DEMO_CHANNEL_ID = "minimal-executor-playground";
+const DEMO_TOKEN = BUILT_IN_DEMO_TOKEN;
+const DEMO_EXECUTOR_ID = BUILT_IN_DEMO_PROVIDER_ID;
+const DEMO_USER_ID = BUILT_IN_DEMO_USER_ID;
+const DEMO_CHANNEL_ID = BUILT_IN_DEMO_CHANNEL_ID;
 
 const buildSyncBody = (userId: string) => ({
   provider_id: DEMO_EXECUTOR_ID,
@@ -275,14 +282,19 @@ export const providerDemoRoutes = [
       );
     }
 
-    if (payload.tool_name !== "notes.echo") {
+    const result = executeBuiltInDemoTool({
+      toolName: String(payload.tool_name || ""),
+      args: payload.arguments ?? {},
+    });
+
+    if (result.state === "failed") {
       return Response.json(
         {
           ok: false,
           state: "failed",
           error: {
             code: "unknown_tool",
-            message: `Unknown tool: ${payload.tool_name || "missing"}.`,
+            message: result.message,
             details: null,
           },
         },
@@ -290,25 +302,22 @@ export const providerDemoRoutes = [
       );
     }
 
-    const note = String(payload.arguments?.note || "").trim();
-    if (!note) {
+    if (result.state === "needs_clarification") {
       return Response.json({
         ok: true,
         state: "needs_clarification",
         result: {
-          summary: "What note should I save?",
+          summary: result.message,
         },
       });
     }
 
     return Response.json({
       ok: true,
-      state: "completed",
+      state: result.state,
       result: {
-        summary: `Saved note: ${note}`,
-        data: {
-          note,
-        },
+        summary: result.message,
+        data: result.data ?? undefined,
       },
     });
   }),
