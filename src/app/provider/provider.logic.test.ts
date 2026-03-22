@@ -7,6 +7,7 @@ import {
   applyConversationRateLimit,
   clampDecisionConfidence,
   determineMockExecutionState,
+  extractToolStringValue,
   getToolDecisionConfidenceAction,
   interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
@@ -163,5 +164,25 @@ test("pending tool confirmation leaves other replies unresolved", () => {
   assert.equal(
     interpretPendingToolConfirmation("tell me more about that"),
     "unknown",
+  );
+});
+
+test("tool string extraction strips add-to-note phrasing", () => {
+  assert.equal(
+    extractToolStringValue({
+      content: "add wash hair to note",
+      fieldName: "note",
+    }),
+    "wash hair",
+  );
+});
+
+test("tool string extraction strips save-note phrasing", () => {
+  assert.equal(
+    extractToolStringValue({
+      content: "save this note: buy dog food",
+      fieldName: "note",
+    }),
+    "buy dog food",
   );
 });

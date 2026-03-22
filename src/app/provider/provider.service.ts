@@ -43,6 +43,7 @@ import {
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
+  extractToolStringValue,
   getToolDecisionConfidenceAction,
   interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
@@ -79,7 +80,30 @@ type ConversationDecision =
       tool_name: string;
       arguments: Record<string, unknown>;
       confidence?: number;
+    }
+  | {
+      action: "tool_follow_up";
+      tool_name: string;
+      arguments: Record<string, unknown>;
+      question: string;
+      confidence?: number;
     };
+
+type RawConversationDecision = {
+  tool?: string;
+  arguments?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  reasoning?: string;
+  follow_up?: string | null;
+  followUp?: string | null;
+  confidence?: number;
+};
+
+type RawToolArgumentUpdate = {
+  arguments?: Record<string, unknown>;
+  follow_up?: string | null;
+  followUp?: string | null;
+};
 
 class ProviderRateLimitError extends Error {
   retryAfterSeconds: number;
@@ -95,20 +119,30 @@ const SYSTEM_PROMPT =
   "You are Texty, a concise conversational orchestration assistant. Return direct, useful replies without filler.";
 
 const TOOL_DECISION_PROMPT = [
-  "You decide whether to answer directly, ask a clarification question, or call a tool.",
+  "Analyze the user input and determine the user's intent.",
+  "Based on the intent, determine which tool is best suited to handle the request.",
   "Return strict JSON only. No markdown fences.",
-  'Use exactly one of these shapes:',
-  '{"action":"direct_reply","reply":"string"}',
-  '{"action":"clarification","question":"string"}',
-  '{"action":"tool_call","tool_name":"string","arguments":{},"confidence":0.0}',
-  "Only call a tool if the request is clearly asking for work to be performed.",
+  "Return a JSON object with exactly this structure:",
+  '{"tool":"string|none","arguments":{},"reasoning":"string","follow_up":"string|null","confidence":0.0}',
+  "Use tool = none when the user is not clearly asking to use one of the available tools.",
   "Do not call a tool for ordinary statements or facts unless the user is clearly asking to save, update, send, create, delete, or run something.",
-  "If the request is missing required details for a tool, ask a clarification question instead of guessing.",
-  "For tool_call, include a confidence score between 0 and 1 for how certain you are that this is the right tool.",
-  "For tool_call, arguments must contain only the extracted values for the tool schema.",
+  "If the request is missing required details for a tool, still choose the tool if appropriate, fill in the information you do have, and return a follow_up question for the missing information.",
+  "Include a confidence score between 0 and 1 for how certain you are that this is the right tool choice.",
+  "Arguments must contain only the extracted values for the tool schema.",
   "Do not include instruction words or filler in arguments.",
   'Example: if the user says "add wash hair to note", the note argument should be "wash hair", not "add wash hair to note".',
   'Example: if the user says "my name is john", that is a direct reply or normal conversation unless the user explicitly asks to save it.',
+].join("\n");
+
+const TOOL_ARGUMENT_UPDATE_PROMPT = [
+  "You are updating arguments for one already-selected tool.",
+  "Return strict JSON only. No markdown fences.",
+  'Use exactly this shape: {"arguments":{},"follow_up":"string|null"}',
+  "Merge the new user reply into the existing partial arguments.",
+  "Keep any valid existing argument values unless the user clearly corrects them.",
+  "Arguments must contain only the extracted values for the tool schema.",
+  "If required information is still missing, return a follow_up question.",
+  "If the required information is now complete, return follow_up as null.",
 ].join("\n");
 
 const STOP_WORDS = new Set([
@@ -140,6 +174,7 @@ const providerEnv = env as typeof env & {
     run: (model: string, inputs: Record<string, unknown>) => Promise<unknown>;
   };
   CLOUDFLARE_DECISION_MODEL?: string;
+  TEXTY_USE_WORKERS_AI_ROUTING?: string;
   OPENROUTER_DECISION_MODEL?: string;
   OPENROUTER_ROUTER_MODEL?: string;
 };
@@ -152,6 +187,9 @@ const getOpenRouterDecisionModel = () =>
   providerEnv.OPENROUTER_DECISION_MODEL?.trim() ||
   providerEnv.OPENROUTER_ROUTER_MODEL?.trim() ||
   DEFAULT_MODEL;
+
+const shouldUseWorkersAiRouting = () =>
+  providerEnv.TEXTY_USE_WORKERS_AI_ROUTING?.trim().toLowerCase() === "true";
 
 const sortThreadsByRecency = (threads: ChatThreadSummary[]) =>
   [...threads].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -477,7 +515,7 @@ const callDecisionModel = async ({
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   timeZone?: string | null;
 }) => {
-  if (providerEnv.AI) {
+  if (providerEnv.AI && shouldUseWorkersAiRouting()) {
     try {
       const payload = await providerEnv.AI.run(getCloudflareDecisionModel(), {
         messages: [
@@ -526,6 +564,59 @@ const formatAllowedTools = (tools: AllowedTool[]) => {
         )}\n  policy=${JSON.stringify(tool.policy)}`,
     )
     .join("\n");
+};
+
+const normalizeToolArguments = ({
+  tool,
+  args,
+  content,
+}: {
+  tool?: AllowedTool;
+  args: Record<string, unknown>;
+  content: string;
+}) => {
+  if (!tool) {
+    return args;
+  }
+
+  const properties = tool.inputSchema?.properties;
+
+  if (!properties || typeof properties !== "object") {
+    return args;
+  }
+
+  const stringEntries = Object.entries(properties).filter(([, value]) => {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    return (value as { type?: unknown }).type === "string";
+  });
+
+  if (stringEntries.length !== 1) {
+    return args;
+  }
+
+  const [fieldName] = stringEntries[0];
+  const currentValue = args[fieldName];
+
+  if (typeof currentValue !== "string") {
+    return args;
+  }
+
+  const extractedValue = extractToolStringValue({
+    content,
+    fieldName,
+  });
+
+  if (!extractedValue) {
+    return args;
+  }
+
+  return {
+    ...args,
+    [fieldName]: extractedValue,
+  };
 };
 
 const buildToolConfirmationQuestion = ({
@@ -614,6 +705,8 @@ const decideConversationAction = async ({
           "Available tools:",
           formatAllowedTools(tools),
           "",
+          "Choose only from these exact tool names or use none.",
+          "",
           "Recent conversation:",
           JSON.stringify(
             messages.slice(-6).map((message) => ({
@@ -628,7 +721,7 @@ const decideConversationAction = async ({
     ],
   });
 
-  const parsed = parseJsonObject<ConversationDecision>(decision);
+  const parsed = parseJsonObject<RawConversationDecision>(decision);
 
   if (!parsed) {
     return {
@@ -637,14 +730,129 @@ const decideConversationAction = async ({
     } satisfies ConversationDecision;
   }
 
-  if (parsed.action === "tool_call") {
+  const requestedTool = typeof parsed.tool === "string" ? parsed.tool.trim() : "";
+  const followUp =
+    typeof parsed.follow_up === "string"
+      ? parsed.follow_up.trim()
+      : typeof parsed.followUp === "string"
+        ? parsed.followUp.trim()
+        : "";
+
+  if (!requestedTool || requestedTool.toLowerCase() === "none") {
+    if (followUp) {
+      return {
+        action: "clarification",
+        question: followUp,
+      } satisfies ConversationDecision;
+    }
+
+    const reply = parsed.reasoning?.trim();
+
     return {
-      ...parsed,
+      action: "direct_reply",
+      reply:
+        reply && reply.length > 0
+          ? reply
+          : "I understand. Tell me what you want me to do.",
+    } satisfies ConversationDecision;
+  }
+
+  const matchingTool = tools.find((tool) => tool.toolName === requestedTool);
+
+  if (!matchingTool) {
+    return {
+      action: "clarification",
+      question:
+        followUp ||
+        "I could not match that request to an available tool. Can you say more about what you want me to do?",
+    } satisfies ConversationDecision;
+  }
+
+  if (followUp) {
+    return {
+      action: "tool_follow_up",
+      tool_name: matchingTool.toolName,
+      arguments:
+        parsed.arguments && typeof parsed.arguments === "object"
+          ? parsed.arguments
+          : parsed.data && typeof parsed.data === "object"
+            ? parsed.data
+            : {},
+      question: followUp,
       confidence: clampDecisionConfidence(parsed.confidence),
     } satisfies ConversationDecision;
   }
 
-  return parsed;
+  return {
+    action: "tool_call",
+    tool_name: matchingTool.toolName,
+    arguments:
+      parsed.arguments && typeof parsed.arguments === "object"
+        ? parsed.arguments
+        : parsed.data && typeof parsed.data === "object"
+          ? parsed.data
+          : {},
+    confidence: clampDecisionConfidence(parsed.confidence),
+  } satisfies ConversationDecision;
+};
+
+const updatePendingToolArguments = async ({
+  tool,
+  currentArguments,
+  userReply,
+  question,
+  timeZone,
+}: {
+  tool: AllowedTool;
+  currentArguments: Record<string, unknown>;
+  userReply: string;
+  question?: string;
+  timeZone?: string | null;
+}) => {
+  const decision = await callDecisionModel({
+    timeZone,
+    messages: [
+      {
+        role: "system",
+        content: TOOL_ARGUMENT_UPDATE_PROMPT,
+      },
+      {
+        role: "user",
+        content: [
+          `Tool name: ${tool.toolName}`,
+          `Tool description: ${tool.description}`,
+          `Tool schema: ${JSON.stringify(tool.inputSchema)}`,
+          `Current arguments: ${JSON.stringify(currentArguments)}`,
+          `Previous follow-up question: ${JSON.stringify(question || null)}`,
+          `New user reply: ${JSON.stringify(userReply)}`,
+        ].join("\n"),
+      },
+    ],
+  });
+
+  const parsed = parseJsonObject<RawToolArgumentUpdate>(decision);
+
+  if (!parsed) {
+    return {
+      arguments: currentArguments,
+      followUp: question || "I still need a bit more information before I can continue.",
+    };
+  }
+
+  const followUp =
+    typeof parsed.follow_up === "string"
+      ? parsed.follow_up.trim()
+      : typeof parsed.followUp === "string"
+        ? parsed.followUp.trim()
+        : "";
+
+  return {
+    arguments:
+      parsed.arguments && typeof parsed.arguments === "object"
+        ? parsed.arguments
+        : currentArguments,
+    followUp: followUp || null,
+  };
 };
 
 const executeProviderTool = async ({
@@ -1206,51 +1414,105 @@ export const handleProviderConversationInput = async ({
   let pendingToolConfirmation: PendingToolConfirmation | null = null;
 
   if (currentState.pendingToolConfirmation) {
-    const pendingReply = interpretPendingToolConfirmation(content);
     const pendingTool = currentContext.allowedTools.find(
       (tool) => tool.toolName === currentState.pendingToolConfirmation?.toolName,
     );
 
-    if (pendingReply === "confirm") {
-      const execution = await executeProviderTool({
-        providerConfig,
-        providerId: input.provider_id,
-        userId: input.user_id,
-        threadId,
-        toolName: currentState.pendingToolConfirmation.toolName,
-        args: currentState.pendingToolConfirmation.arguments,
-        requestId,
-      });
+    if (
+      currentState.pendingToolConfirmation.mode === "confirmation" ||
+      !pendingTool
+    ) {
+      const pendingReply = interpretPendingToolConfirmation(content);
 
-      assistantContent = execution.message;
-      action = "tool_call";
-      executionState = execution.state;
-
-      logProviderAudit({
-        event: "provider.tool.executed",
-        requestId,
-        providerId: input.provider_id,
-        userId: input.user_id,
-        threadId,
-        status: execution.state === "failed" ? "error" : "ok",
-        metadata: {
+      if (pendingReply === "confirm") {
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.provider_id,
+          userId: input.user_id,
+          threadId,
           toolName: currentState.pendingToolConfirmation.toolName,
-          executionState: execution.state,
-          viaConfirmation: true,
-        },
-      });
-    } else if (pendingReply === "reject") {
-      assistantContent =
-        "Okay, I will not use that tool. Tell me what you want me to do instead.";
-      action = "clarification";
-      executionState = "needs_clarification";
+          args: currentState.pendingToolConfirmation.arguments,
+          requestId,
+        });
+
+        assistantContent = execution.message;
+        action = "tool_call";
+        executionState = execution.state;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.provider_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: currentState.pendingToolConfirmation.toolName,
+            executionState: execution.state,
+            viaConfirmation: true,
+          },
+        });
+      } else if (pendingReply === "reject") {
+        assistantContent =
+          "Okay, I will not use that tool. Tell me what you want me to do instead.";
+        action = "clarification";
+        executionState = "needs_clarification";
+      } else {
+        assistantContent = buildPendingConfirmationReminder({
+          tool: pendingTool,
+        });
+        action = "clarification";
+        executionState = "needs_clarification";
+        pendingToolConfirmation = currentState.pendingToolConfirmation;
+      }
     } else {
-      assistantContent = buildPendingConfirmationReminder({
+      const updated = await updatePendingToolArguments({
         tool: pendingTool,
+        currentArguments: currentState.pendingToolConfirmation.arguments,
+        userReply: content,
+        question: currentState.pendingToolConfirmation.question,
+        timeZone,
       });
-      action = "clarification";
-      executionState = "needs_clarification";
-      pendingToolConfirmation = currentState.pendingToolConfirmation;
+
+      if (updated.followUp) {
+        assistantContent = updated.followUp;
+        action = "clarification";
+        executionState = "needs_clarification";
+        pendingToolConfirmation = {
+          ...currentState.pendingToolConfirmation,
+          mode: "follow_up",
+          arguments: updated.arguments,
+          question: updated.followUp,
+        };
+      } else {
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.provider_id,
+          userId: input.user_id,
+          threadId,
+          toolName: currentState.pendingToolConfirmation.toolName,
+          args: updated.arguments,
+          requestId,
+        });
+
+        assistantContent = execution.message;
+        action = "tool_call";
+        executionState = execution.state;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.provider_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: currentState.pendingToolConfirmation.toolName,
+            executionState: execution.state,
+            viaFollowUp: true,
+          },
+        });
+      }
     }
   } else {
     const decision = await decideConversationAction({
@@ -1269,11 +1531,38 @@ export const handleProviderConversationInput = async ({
       assistantContent = decision.question;
       action = "clarification";
       executionState = "needs_clarification";
+    } else if (decision.action === "tool_follow_up") {
+      const confidence = clampDecisionConfidence(decision.confidence);
+      const tool = currentContext.allowedTools.find(
+        (entry) => entry.toolName === decision.tool_name,
+      );
+      const normalizedArguments = normalizeToolArguments({
+        tool,
+        args: decision.arguments,
+        content,
+      });
+
+      assistantContent = decision.question;
+      action = "clarification";
+      executionState = "needs_clarification";
+      pendingToolConfirmation = {
+        mode: "follow_up",
+        toolName: decision.tool_name,
+        arguments: normalizedArguments,
+        confidence,
+        createdAt: new Date().toISOString(),
+        question: decision.question,
+      };
     } else {
       const confidence = clampDecisionConfidence(decision.confidence);
       const tool = currentContext.allowedTools.find(
         (entry) => entry.toolName === decision.tool_name,
       );
+      const normalizedArguments = normalizeToolArguments({
+        tool,
+        args: decision.arguments,
+        content,
+      });
       const confidenceAction = getToolDecisionConfidenceAction(confidence);
 
       if (confidenceAction === "clarify") {
@@ -1287,8 +1576,9 @@ export const handleProviderConversationInput = async ({
         action = "clarification";
         executionState = "needs_clarification";
         pendingToolConfirmation = {
+          mode: "confirmation",
           toolName: decision.tool_name,
-          arguments: decision.arguments,
+          arguments: normalizedArguments,
           confidence,
           createdAt: new Date().toISOString(),
         };
@@ -1299,7 +1589,7 @@ export const handleProviderConversationInput = async ({
           userId: input.user_id,
           threadId,
           toolName: decision.tool_name,
-          args: decision.arguments,
+          args: normalizedArguments,
           requestId,
         });
 

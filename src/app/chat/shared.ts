@@ -8,10 +8,12 @@ export type ChatMessage = {
 };
 
 export type PendingToolConfirmation = {
+  mode: "confirmation" | "follow_up";
   toolName: string;
   arguments: Record<string, unknown>;
   confidence: number;
   createdAt: string;
+  question?: string;
 };
 
 export type MemoryFact = {
@@ -611,11 +613,19 @@ export const normalizeChatSessionState = (
     typeof state.pendingToolConfirmation.arguments === "object" &&
     typeof state.pendingToolConfirmation.confidence === "number"
       ? {
+          mode:
+            state.pendingToolConfirmation.mode === "follow_up"
+              ? "follow_up"
+              : "confirmation",
           toolName: state.pendingToolConfirmation.toolName,
           arguments: state.pendingToolConfirmation.arguments,
           confidence: state.pendingToolConfirmation.confidence,
           createdAt:
             state.pendingToolConfirmation.createdAt ?? new Date().toISOString(),
+          question:
+            typeof state.pendingToolConfirmation.question === "string"
+              ? state.pendingToolConfirmation.question
+              : undefined,
         }
       : null,
 });

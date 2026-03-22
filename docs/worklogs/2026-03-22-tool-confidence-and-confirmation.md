@@ -15,6 +15,9 @@ Added a confidence-based confirmation step to tool routing so Texty behaves more
 - Added yes/no confirmation handling so a later user reply can resolve the saved tool choice.
 - Tightened the routing prompt so normal conversational statements are less likely to be treated as tool requests.
 - Tightened the note-tool example so extracted arguments should contain only the note value, not instruction words.
+- Added deterministic cleanup for one-field string tool arguments such as note-style inputs.
+- Switched routing quality back toward OpenRouter by default.
+- Workers AI routing is now intended to be opt-in through `TEXTY_USE_WORKERS_AI_ROUTING=true`.
 
 ## Why
 
@@ -26,6 +29,7 @@ Examples that should behave better now:
   - should stay ordinary conversation
 - `add wash hair to note`
   - should extract only `wash hair` for the note field
+- the cheaper routing model was still too eager for ordinary chat, so routing quality needed to take priority over speed by default
 
 ## Files
 

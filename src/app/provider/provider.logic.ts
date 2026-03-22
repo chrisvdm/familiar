@@ -88,6 +88,39 @@ export const interpretPendingToolConfirmation = (input: string) => {
   return "unknown" as const;
 };
 
+export const extractToolStringValue = ({
+  content,
+  fieldName,
+}: {
+  content: string;
+  fieldName: string;
+}) => {
+  const trimmed = content.trim();
+  const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(
+      `^(?:please\\s+)?(?:add|save|store|remember|note(?:\\s+down)?|write(?:\\s+down)?)\\s+(.+?)\\s+(?:to|in|into)\\s+(?:the\\s+)?${escapedFieldName}$`,
+      "i",
+    ),
+    new RegExp(
+      `^(?:please\\s+)?(?:add|save|store|remember|note(?:\\s+down)?|write(?:\\s+down)?)\\s+(?:this\\s+)?${escapedFieldName}\\s*[:,-]?\\s*(.+)$`,
+      "i",
+    ),
+    new RegExp(`^(?:please\\s+)?${escapedFieldName}\\s*[:,-]?\\s*(.+)$`, "i"),
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    const candidate = match?.[1]?.trim();
+
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return null;
+};
+
 export const selectProviderGlobalMemory = ({
   memoryPolicy,
   globalMemory,

@@ -282,13 +282,18 @@ This is mostly useful for admin tools, debug screens, or a UI that wants to show
 - input is rate-limited per connection/user pair
 - normal conversations are captured into memory by default
 - private threads are excluded from shared-memory capture and retrieval
-- Texty can use Cloudflare Workers AI for the routing step before tool handoff
+- OpenRouter is the default routing model for intent and tool choice
+- Texty can optionally use Cloudflare Workers AI for routing if explicitly enabled
 
 Optional routing model setting:
 
+- `TEXTY_USE_WORKERS_AI_ROUTING`
+  - set this to `true` if you want Texty to use Workers AI for the routing step
 - `CLOUDFLARE_DECISION_MODEL`
-  - use this to choose the Workers AI model for routing and intent decisions
+  - use this to choose the Workers AI model for routing and intent decisions when Workers AI routing is enabled
   - if unset, Texty uses `@cf/meta/llama-3.1-8b-instruct-fast`
+- `OPENROUTER_DECISION_MODEL`
+  - use this to choose the OpenRouter model for routing and intent decisions
 
 Execution states:
 
