@@ -6,6 +6,87 @@ export const CONVERSATION_RATE_LIMIT_WINDOW_MS = 60_000;
 export const CONVERSATION_RATE_LIMIT_MAX_REQUESTS = 30;
 export const TOOLS_SYNC_RATE_LIMIT_WINDOW_MS = 60_000;
 export const TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS = 10;
+export const TOOL_CONFIRMATION_MIN_CONFIDENCE = 0.6;
+export const TOOL_CONFIRMATION_MAX_CONFIDENCE = 0.75;
+
+export const clampDecisionConfidence = (
+  value: unknown,
+  fallback = 1,
+) => {
+  const numericValue =
+    typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+  if (numericValue < 0) {
+    return 0;
+  }
+
+  if (numericValue > 1) {
+    return 1;
+  }
+
+  return numericValue;
+};
+
+export const getToolDecisionConfidenceAction = (confidence: number) => {
+  if (confidence < TOOL_CONFIRMATION_MIN_CONFIDENCE) {
+    return "clarify" as const;
+  }
+
+  if (confidence <= TOOL_CONFIRMATION_MAX_CONFIDENCE) {
+    return "confirm" as const;
+  }
+
+  return "execute" as const;
+};
+
+const CONFIRM_WORDS = [
+  "yes",
+  "yeah",
+  "yep",
+  "yup",
+  "correct",
+  "that is right",
+  "that's right",
+  "thats right",
+  "please do",
+  "go ahead",
+  "do it",
+  "okay",
+  "ok",
+  "sure",
+];
+
+const REJECT_WORDS = [
+  "no",
+  "nope",
+  "nah",
+  "wrong",
+  "don't",
+  "dont",
+  "do not",
+  "not that",
+  "not quite",
+  "stop",
+  "cancel",
+];
+
+export const interpretPendingToolConfirmation = (input: string) => {
+  const normalized = input.trim().toLowerCase();
+
+  if (!normalized) {
+    return "unknown" as const;
+  }
+
+  if (CONFIRM_WORDS.some((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `))) {
+    return "confirm" as const;
+  }
+
+  if (REJECT_WORDS.some((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `))) {
+    return "reject" as const;
+  }
+
+  return "unknown" as const;
+};
 
 export const selectProviderGlobalMemory = ({
   memoryPolicy,

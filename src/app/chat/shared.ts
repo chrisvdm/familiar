@@ -7,6 +7,13 @@ export type ChatMessage = {
   createdAt: string;
 };
 
+export type PendingToolConfirmation = {
+  toolName: string;
+  arguments: Record<string, unknown>;
+  confidence: number;
+  createdAt: string;
+};
+
 export type MemoryFact = {
   key: string;
   value: string;
@@ -56,6 +63,7 @@ export type GlobalMemory = {
 export type ChatSessionState = {
   messages: ChatMessage[];
   memory: ThreadMemory;
+  pendingToolConfirmation: PendingToolConfirmation | null;
 };
 
 export type ChatThreadSummary = {
@@ -596,6 +604,20 @@ export const normalizeChatSessionState = (
 ): ChatSessionState => ({
   messages: state.messages,
   memory: normalizeThreadMemory(state.memory, state.messages),
+  pendingToolConfirmation:
+    state.pendingToolConfirmation &&
+    typeof state.pendingToolConfirmation.toolName === "string" &&
+    state.pendingToolConfirmation.arguments &&
+    typeof state.pendingToolConfirmation.arguments === "object" &&
+    typeof state.pendingToolConfirmation.confidence === "number"
+      ? {
+          toolName: state.pendingToolConfirmation.toolName,
+          arguments: state.pendingToolConfirmation.arguments,
+          confidence: state.pendingToolConfirmation.confidence,
+          createdAt:
+            state.pendingToolConfirmation.createdAt ?? new Date().toISOString(),
+        }
+      : null,
 });
 
 export const createAssistantMessage = (content: string): ChatMessage => ({
@@ -615,6 +637,7 @@ export const createUserMessage = (content: string): ChatMessage => ({
 export const createInitialChatState = (): ChatSessionState => ({
   messages: [],
   memory: createEmptyThreadMemory(),
+  pendingToolConfirmation: null,
 });
 
 export const createThreadSummary = (

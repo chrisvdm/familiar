@@ -23,6 +23,7 @@ import {
   getThreadTitleFromMessages,
   pruneGlobalMemoryByThreadId,
   type ChatMessage,
+  type PendingToolConfirmation,
   type ChatSessionState,
   type ChatThreadSummary,
 } from "../chat/shared";
@@ -39,8 +40,11 @@ import { logProviderAudit } from "./provider.audit";
 import { executeProviderToolRequest } from "./provider.execution";
 import {
   applyConversationRateLimit,
+  clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
+  getToolDecisionConfidenceAction,
+  interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
   TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
@@ -74,6 +78,7 @@ type ConversationDecision =
       action: "tool_call";
       tool_name: string;
       arguments: Record<string, unknown>;
+      confidence?: number;
     };
 
 class ProviderRateLimitError extends Error {
@@ -95,9 +100,15 @@ const TOOL_DECISION_PROMPT = [
   'Use exactly one of these shapes:',
   '{"action":"direct_reply","reply":"string"}',
   '{"action":"clarification","question":"string"}',
-  '{"action":"tool_call","tool_name":"string","arguments":{}}',
+  '{"action":"tool_call","tool_name":"string","arguments":{},"confidence":0.0}',
   "Only call a tool if the request is clearly asking for work to be performed.",
+  "Do not call a tool for ordinary statements or facts unless the user is clearly asking to save, update, send, create, delete, or run something.",
   "If the request is missing required details for a tool, ask a clarification question instead of guessing.",
+  "For tool_call, include a confidence score between 0 and 1 for how certain you are that this is the right tool.",
+  "For tool_call, arguments must contain only the extracted values for the tool schema.",
+  "Do not include instruction words or filler in arguments.",
+  'Example: if the user says "add wash hair to note", the note argument should be "wash hair", not "add wash hair to note".',
+  'Example: if the user says "my name is john", that is a direct reply or normal conversation unless the user explicitly asks to save it.',
 ].join("\n");
 
 const STOP_WORDS = new Set([
@@ -517,6 +528,33 @@ const formatAllowedTools = (tools: AllowedTool[]) => {
     .join("\n");
 };
 
+const buildToolConfirmationQuestion = ({
+  tool,
+}: {
+  tool?: AllowedTool;
+}) => {
+  const toolLabel = tool?.description?.trim()
+    ? `${tool.toolName} (${tool.description.trim()})`
+    : tool?.toolName || "that tool";
+
+  return `It looks like you want me to use ${toolLabel}. Is that right?`;
+};
+
+const buildLowConfidenceToolQuestion = () =>
+  "I am not confident enough to pick the right tool yet. Can you say a bit more about what you want me to do?";
+
+const buildPendingConfirmationReminder = ({
+  tool,
+}: {
+  tool?: AllowedTool;
+}) => {
+  const toolLabel = tool?.description?.trim()
+    ? `${tool.toolName} (${tool.description.trim()})`
+    : tool?.toolName || "that tool";
+
+  return `I was asking whether you wanted me to use ${toolLabel}. Please answer yes or no.`;
+};
+
 const decideConversationAction = async ({
   content,
   messages,
@@ -599,6 +637,13 @@ const decideConversationAction = async ({
     } satisfies ConversationDecision;
   }
 
+  if (parsed.action === "tool_call") {
+    return {
+      ...parsed,
+      confidence: clampDecisionConfidence(parsed.confidence),
+    } satisfies ConversationDecision;
+  }
+
   return parsed;
 };
 
@@ -658,14 +703,20 @@ const scheduleBackgroundTask = (task: Promise<unknown>) => {
 const appendMessagesToThread = async ({
   threadId,
   messages,
+  pendingToolConfirmation,
 }: {
   threadId: string;
   messages: ChatMessage[];
+  pendingToolConfirmation?: PendingToolConfirmation | null;
 }) => {
   const currentState = await loadChatSession(threadId);
   const nextState = {
     ...currentState,
     messages: [...currentState.messages, ...messages],
+    pendingToolConfirmation:
+      pendingToolConfirmation === undefined
+        ? currentState.pendingToolConfirmation
+        : pendingToolConfirmation,
   };
 
   await saveChatSession(threadId, nextState);
@@ -1144,14 +1195,6 @@ export const handleProviderConversationInput = async ({
     threadId,
     messages: [createUserMessage(content)],
   });
-  const decision = await decideConversationAction({
-    content,
-    messages: currentState.messages,
-    memoryContext,
-    tools: currentContext.allowedTools,
-    replyModel: model,
-    timeZone,
-  });
 
   let assistantContent = "";
   let action:
@@ -1160,46 +1203,131 @@ export const handleProviderConversationInput = async ({
     | "tool_call"
     | "command" = "direct_reply";
   let executionState: ProviderExecutionState | undefined;
+  let pendingToolConfirmation: PendingToolConfirmation | null = null;
 
-  if (decision.action === "direct_reply") {
-    assistantContent = decision.reply;
-    action = "direct_reply";
-  } else if (decision.action === "clarification") {
-    assistantContent = decision.question;
-    action = "clarification";
-    executionState = "needs_clarification";
+  if (currentState.pendingToolConfirmation) {
+    const pendingReply = interpretPendingToolConfirmation(content);
+    const pendingTool = currentContext.allowedTools.find(
+      (tool) => tool.toolName === currentState.pendingToolConfirmation?.toolName,
+    );
+
+    if (pendingReply === "confirm") {
+      const execution = await executeProviderTool({
+        providerConfig,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId,
+        toolName: currentState.pendingToolConfirmation.toolName,
+        args: currentState.pendingToolConfirmation.arguments,
+        requestId,
+      });
+
+      assistantContent = execution.message;
+      action = "tool_call";
+      executionState = execution.state;
+
+      logProviderAudit({
+        event: "provider.tool.executed",
+        requestId,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId,
+        status: execution.state === "failed" ? "error" : "ok",
+        metadata: {
+          toolName: currentState.pendingToolConfirmation.toolName,
+          executionState: execution.state,
+          viaConfirmation: true,
+        },
+      });
+    } else if (pendingReply === "reject") {
+      assistantContent =
+        "Okay, I will not use that tool. Tell me what you want me to do instead.";
+      action = "clarification";
+      executionState = "needs_clarification";
+    } else {
+      assistantContent = buildPendingConfirmationReminder({
+        tool: pendingTool,
+      });
+      action = "clarification";
+      executionState = "needs_clarification";
+      pendingToolConfirmation = currentState.pendingToolConfirmation;
+    }
   } else {
-    const execution = await executeProviderTool({
-      providerConfig,
-      providerId: input.provider_id,
-      userId: input.user_id,
-      threadId,
-      toolName: decision.tool_name,
-      args: decision.arguments,
-      requestId,
+    const decision = await decideConversationAction({
+      content,
+      messages: currentState.messages,
+      memoryContext,
+      tools: currentContext.allowedTools,
+      replyModel: model,
+      timeZone,
     });
 
-    assistantContent = execution.message;
-    action = "tool_call";
-    executionState = execution.state;
+    if (decision.action === "direct_reply") {
+      assistantContent = decision.reply;
+      action = "direct_reply";
+    } else if (decision.action === "clarification") {
+      assistantContent = decision.question;
+      action = "clarification";
+      executionState = "needs_clarification";
+    } else {
+      const confidence = clampDecisionConfidence(decision.confidence);
+      const tool = currentContext.allowedTools.find(
+        (entry) => entry.toolName === decision.tool_name,
+      );
+      const confidenceAction = getToolDecisionConfidenceAction(confidence);
 
-    logProviderAudit({
-      event: "provider.tool.executed",
-      requestId,
-      providerId: input.provider_id,
-      userId: input.user_id,
-      threadId,
-      status: execution.state === "failed" ? "error" : "ok",
-      metadata: {
-        toolName: decision.tool_name,
-        executionState: execution.state,
-      },
-    });
+      if (confidenceAction === "clarify") {
+        assistantContent = buildLowConfidenceToolQuestion();
+        action = "clarification";
+        executionState = "needs_clarification";
+      } else if (confidenceAction === "confirm") {
+        assistantContent = buildToolConfirmationQuestion({
+          tool,
+        });
+        action = "clarification";
+        executionState = "needs_clarification";
+        pendingToolConfirmation = {
+          toolName: decision.tool_name,
+          arguments: decision.arguments,
+          confidence,
+          createdAt: new Date().toISOString(),
+        };
+      } else {
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.provider_id,
+          userId: input.user_id,
+          threadId,
+          toolName: decision.tool_name,
+          args: decision.arguments,
+          requestId,
+        });
+
+        assistantContent = execution.message;
+        action = "tool_call";
+        executionState = execution.state;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.provider_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: decision.tool_name,
+            executionState: execution.state,
+            confidence,
+          },
+        });
+      }
+    }
   }
 
   const withAssistant = await appendMessagesToThread({
     threadId,
     messages: [createAssistantMessage(assistantContent)],
+    pendingToolConfirmation,
   });
 
   const finalContext = await saveProviderUserContext({

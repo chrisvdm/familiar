@@ -106,11 +106,14 @@ curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/to
     "tools": [
       {
         "tool_name": "notes.echo",
-        "description": "Return a note back to the user",
+        "description": "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
         "input_schema": {
           "type": "object",
           "properties": {
-            "note": { "type": "string" }
+            "note": {
+              "type": "string",
+              "description": "Only the note content, for example wash hair. Do not include phrases like add to note or save this note."
+            }
           },
           "required": ["note"]
         },

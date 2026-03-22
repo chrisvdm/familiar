@@ -8,11 +8,9 @@ const getChatStub = (sessionId: string) => {
 };
 
 export const loadChatSession = async (sessionId: string) => {
-  const result = await getChatStub(sessionId).getSession();
-
-  if ("error" in result) {
-    throw new Error(String(result.error));
-  }
+  const result = (await getChatStub(sessionId).getSession()) as {
+    value: ChatSessionState;
+  };
 
   return normalizeChatSessionState(result.value);
 };
