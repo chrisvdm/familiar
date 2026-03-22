@@ -1,14 +1,14 @@
-# Provider Quickstart
+# Tool Target Quickstart
 
 ## Purpose
 
-This document shows the smallest useful way to connect an external system to Texty.
+This document shows the smallest useful way to connect code to Texty.
 
 Current note:
 
-- the wire format still uses `provider_id`
-- the product framing is moving toward `executor`
-- for this document, "executor" means the connected app or service
+- the current wire format still uses `provider_id`
+- in plain language, this is just the connection id
+- Texty chooses the tool before it calls your code
 
 That external system does not need to be a large product. It can be:
 
@@ -17,21 +17,21 @@ That external system does not need to be a large product. It can be:
 - a workflow runner
 - an AI-generated executable system
 
-Texty handles the conversation. The external system handles the work.
+Texty handles the conversation. Your code handles the work.
 
 ## What You Need
 
 To connect something to Texty, you need three things:
 
-1. An executor id
-2. An executor API token
-3. A `/tools/execute` endpoint that Texty can call when work should run
+1. A connection id
+2. A shared API token
+3. A URL Texty can call when work should run
 
 That is enough for a first integration.
 
-## Step 1: Configure a Provider
+## Step 1: Configure a Connection
 
-In local development, add executor config to `.dev.vars`:
+In local development, add connection config to `.dev.vars`:
 
 ```shell
 TEXTY_EXECUTOR_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
@@ -39,9 +39,9 @@ TEXTY_EXECUTOR_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://loca
 
 Meaning:
 
-- `provider_a` is the current wire-format executor id
-- `dev-token` is the bearer token the executor will use when calling Texty
-- `baseUrl` is where Texty will call the provider for tool execution
+- `provider_a` is the current wire-format connection id
+- `dev-token` is the bearer token used for this connection
+- `baseUrl` is where Texty will call your code
 
 ## Step 2: Sync Allowed Tools
 
@@ -73,14 +73,14 @@ curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/to
   }'
 ```
 
-This gives Texty permission to reason over that tool for that executor/user pair.
+This gives Texty permission to reason over that tool for that connection/user pair.
 
 ## Step 3: Send Conversation Input
 
 Send a normal message into Texty.
 
 ```shell
-curl -X POST http://localhost:5173/api/v1/conversation/input \
+curl -X POST http://localhost:5173/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -109,31 +109,30 @@ Texty will then:
 If Texty decides that a tool should run, it will call:
 
 ```text
-POST {provider_base_url}/tools/execute
+POST {target_url}
 ```
 
 Example request sent by Texty:
 
 ```json
 {
-  "provider_id": "provider_a",
-  "user_id": "user_123",
-  "tool_name": "spreadsheet.update_row",
-  "arguments": {
-    "sheet": "Sales",
-    "row_id": "42",
-    "values": {
-      "status": "contacted"
-    }
-  },
-  "context": {
-    "thread_id": "thread_abc",
-    "request_id": "req_123"
+  "sheet": "Sales",
+  "row_id": "42",
+  "values": {
+    "status": "contacted"
   }
 }
 ```
 
 Your system should execute the work and return a structured result.
+
+Important:
+
+- Texty has already chosen the tool
+- your target does not need to decide which tool to run again
+- ideally, the request body is only the tool arguments
+- the current runtime still includes extra wrapper fields in the payload today
+- the simplest target just accepts the arguments and performs the action
 
 Example successful response:
 
@@ -182,8 +181,9 @@ If you are connecting something simple, think of it like this:
 
 - Texty listens to the user
 - Texty decides what the user wants
-- Texty calls your system when work should happen
-- your system performs the action
+- Texty picks the tool
+- Texty calls your code when work should happen
+- your code performs the action
 - Texty explains the result back to the user
 
 ## Channel Identity
@@ -223,7 +223,7 @@ If you create a private thread:
 For local development, these built-in routes are useful:
 
 - `/sandbox/provider`
-  - browser UI for exercising the provider API
+  - browser UI for exercising the current API
 - `/sandbox/mock-provider/tools/execute`
   - local mock tool execution endpoint
 
@@ -237,4 +237,4 @@ Once connected, your system does not need to build:
 - channel continuity
 - user-facing replies
 
-Texty handles those parts. Your system only needs to expose useful work.
+Texty handles those parts. Your system only needs to expose useful work at a URL Texty can trigger.

@@ -53,10 +53,10 @@ If the API surface is too large, too flexible, or too inconsistent:
 
 A new integration should have one clear first success path:
 
-1. configure a provider
+1. configure a connection
 2. sync tools
 3. send conversation input
-4. receive tool execution calls
+4. let Texty trigger the correct target
 
 Everything else should be optional or advanced.
 
@@ -98,11 +98,11 @@ The basic integration should not require understanding the whole Texty architect
 
 A connected system should be able to succeed with only:
 
-- provider identity
+- connection identity
 - user identity
 - channel identity
 - conversation input
-- tool execution
+- tool target
 
 ### 5. Clear, actionable errors
 
@@ -111,7 +111,7 @@ When something is wrong, Texty should say exactly what the caller needs to fix.
 Good:
 
 - missing bearer token
-- provider mismatch
+- connection mismatch
 - invalid request payload
 - thread not found
 
@@ -157,7 +157,7 @@ These are the simplification goals that should guide future API changes.
 
 ### Keep one primary endpoint
 
-`POST /api/v1/conversation/input` should remain the center of the integration story.
+`POST /api/v1/input` should remain the center of the integration story.
 
 That is the main thing a connected system should send repeatedly.
 
@@ -166,7 +166,7 @@ That is the main thing a connected system should send repeatedly.
 Tool sync should stay easy to understand:
 
 - here are the tools this user can use
-- here is the system Texty should call when one of them should run
+- here is where each tool lives
 
 It should not become a complicated patch or partial-sync protocol unless there is a strong reason.
 
@@ -234,9 +234,9 @@ For now, keep `provider` unless a better replacement becomes clearly simpler.
 
 It may help to eventually support one compact registration payload that says:
 
-- who the connected system is
+- who the connection is
 - what tools it exposes
-- where Texty should call it
+- where each tool should be triggered
 
 That could make AI-generated integrations even easier.
 

@@ -6,7 +6,7 @@ _coming soon..._
 
 Texty is a hosted conversation layer for executable systems.
 
-People talk to Texty. Texty keeps track of threads, context, and memory. When work needs to happen, Texty hands it off to a connected executor and then explains the result back to the user.
+People talk to Texty. Texty keeps track of threads, context, and memory. When work needs to happen, Texty decides which tool should run, triggers that tool's target, and then explains the result back to the user.
 
 ## Features
 
@@ -14,7 +14,7 @@ People talk to Texty. Texty keeps track of threads, context, and memory. When wo
 - shared memory across normal conversations
 - private threads that stay out of shared memory
 - channel-aware continuity across web, messaging, email, and other inputs
-- tool and workflow handoff to connected executors
+- tool and workflow handoff to connected tool targets
 - clarification flow when a request is missing information
 
 ## Why It’s Useful
@@ -67,7 +67,7 @@ Example:
 Why it matters:
 
 - fastest path
-- no executor call
+- no tool call
 - best for conversational continuity
 
 ### 2. Follow-up question
@@ -83,9 +83,9 @@ Why it matters:
 
 - prevents bad guesses
 - keeps work accurate
-- lets Texty gather what the executor will need before calling it
+- lets Texty gather what the tool will need before calling it
 
-### 3. Executor handoff
+### 3. Tool handoff
 
 This happens when work needs to be done outside Texty.
 
@@ -99,7 +99,7 @@ Why it matters:
 
 - this is how Texty turns conversation into action
 - Texty stays focused on the conversation
-- the executor stays focused on doing the work
+- the target stays focused on doing the work
 
 ```mermaid
 flowchart LR
@@ -108,23 +108,36 @@ flowchart LR
     C["Messaging app"] --> T
     D["Voice transcript"] --> T
     T --> M["Threads and memory"]
-    T --> E1["Executor A"]
-    T --> E2["Executor B"]
-    T --> E3["Executor C"]
+    T --> E1["Tool target A"]
+    T --> E2["Tool target B"]
+    T --> E3["Tool target C"]
 ```
 
 ## Minimum Integration Flow
 
-This is the smallest useful setup path for connecting an executor to Texty and getting a working request through the system.
+This is the smallest useful setup path for connecting code to Texty and getting a working request through the system.
 
-1. Create an executor and get a token.
-2. Sync the tools that executor exposes for a user.
+1. Create a connection and get a token.
+2. Sync the tools Texty can use for a user.
 3. Send user input to Texty.
-4. Let Texty call the executor when work should happen.
+4. Let Texty call the correct tool target when work should happen.
 
-There is a tiny reference executor here:
+There is a tiny reference example here:
 
-- [examples/minimal-executor/README.md](/Users/chris/Dev/texty/examples/minimal-executor/README.md)
+- [`examples/minimal-executor/README.md`](examples/minimal-executor/README.md)
+
+What that example is for:
+
+- you can copy that folder into your own project
+- run the tiny example server
+- point Texty at it
+- see a full request go from Texty to your tool target and back
+
+If you are new to this, think of it like this:
+
+- Texty is the thing the user talks to
+- your code or webhook is the thing that actually does the work
+- the example folder shows the smallest possible version of that target
 
 ## API Reference
 
@@ -136,11 +149,11 @@ Every API request needs this header:
 Authorization: Bearer YOUR_EXECUTOR_TOKEN
 ```
 
-That token identifies which executor is calling Texty.
+That token identifies which connected system is calling Texty.
 
 ### Sync tools
 
-Use this endpoint to tell Texty which tools an executor can expose for a specific user.
+Use this endpoint to tell Texty which tools are available for a specific user.
 
 ```shell
 curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/tools/sync \
@@ -171,15 +184,15 @@ curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/to
 Field guide:
 
 - `provider_id`
-  - the executor id
-  - this must match the executor making the request
+  - the current wire-format connection id
+  - this must match the token making the request
 - `user_id`
   - the end user who will be talking to Texty
   - use a stable id from your own app
 - `tools`
-  - the list of tools this executor wants Texty to use for this user
+  - the list of tools Texty is allowed to use for this user
 - `tool_name`
-  - the name Texty will use when asking your executor to run something
+  - the name Texty will use internally when choosing a tool
 - `description`
   - a plain-language explanation of what the tool does
   - Texty uses this to decide when the tool is relevant
@@ -192,7 +205,7 @@ Field guide:
 
 Plain English example:
 
-- `provider_id = "provider_a"` means “this executor is called provider_a”
+- `provider_id = "provider_a"` means “this connection is called provider_a”
 - `user_id = "user_123"` means “these tools are available for this user”
 - `tool_name = "spreadsheet.update_row"` means “this tool updates a spreadsheet row”
 
@@ -221,8 +234,8 @@ curl -X POST http://localhost:5173/api/v1/input \
 Field guide:
 
 - `provider_id`
-  - the executor id
-  - tells Texty which executor this conversation belongs to
+  - the current wire-format connection id
+  - tells Texty which tool set this conversation belongs to
 - `user_id`
   - the end user speaking through Texty
   - this is how Texty keeps memory and threads tied to the right person
@@ -266,10 +279,10 @@ This is mostly useful for admin tools, debug screens, or a UI that wants to show
 
 - responses include `request_id` and `X-Request-Id`
 - write routes support `Idempotency-Key`
-- input is rate-limited per executor/user pair
+- input is rate-limited per connection/user pair
 - normal conversations are captured into memory by default
 - private threads are excluded from shared-memory capture and retrieval
-- Texty can use Cloudflare Workers AI for the routing step before executor handoff
+- Texty can use Cloudflare Workers AI for the routing step before tool handoff
 
 Optional routing model setting:
 
@@ -288,15 +301,15 @@ Execution states:
 Meaning:
 
 - `completed`
-  - the executor finished the work
+  - the tool finished the work
 - `needs_clarification`
   - more information is needed before work can continue
 - `accepted`
-  - the executor accepted the work but has not finished yet
+  - the tool accepted the work but has not finished yet
 - `in_progress`
   - the work is actively running
 - `failed`
-  - the executor could not complete the work
+  - the tool could not complete the work
 
 ## Scripts
 

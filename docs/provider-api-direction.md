@@ -1,10 +1,10 @@
-# Texty Provider API Direction
+# Texty Tool Target Direction
 
 ## Summary
 
-Texty is moving toward a provider-agnostic architecture.
+Texty is moving toward a simpler tool-target architecture.
 
-Texty should act as the conversational interface and memory layer. External systems should expose tools and perform side effects. Texty should then decide when to answer directly, when to clarify, and when to call a provider-owned tool.
+Texty should act as the conversational interface and memory layer. External systems should expose tools and perform side effects. Texty should then decide when to answer directly, when to clarify, and when to call a tool target.
 
 This allows Texty to be reused by multiple execution systems such as:
 
@@ -12,21 +12,21 @@ This allows Texty to be reused by multiple execution systems such as:
 - third-party tool runtimes
 - future provider platforms
 
-This document focuses on the provider API boundary.
+This document focuses on the tool-target API boundary.
 Identity, storage, and memory-policy semantics are defined in `docs/architecture-foundations.md`.
 
 ## End Goal In Plain Language
 
 Texty should be the system a user talks to.
 
-Providers should be the systems that actually do things.
+Connected tools should be the things that actually do things.
 
 So when a user asks for something:
 
 1. Texty understands the request
 2. Texty uses memory and thread context
-3. Texty decides whether a provider tool should run
-4. the provider executes the work
+3. Texty decides whether a tool should run
+4. the target executes the work
 5. Texty explains the result back to the user
 
 ## Product Split
@@ -43,33 +43,49 @@ So when a user asks for something:
 - follow-up questions and clarification
 - final response composition
 
-### Providers own
+### Connected systems own
 
-- tool and workflow definitions
+- tool implementation
 - side effects
 - domain rules
 - execution logs
 - integrations with business systems
-- validation of domain-specific arguments
+- optional domain-specific argument validation
+
+## Important Execution Rule
+
+Texty chooses the tool.
+
+The target Texty calls does not need to decide which tool to run again.
+
+That means the simplest model is:
+
+- Texty stores the tool id
+- Texty stores where that tool lives
+- Texty decides when the tool is relevant
+- Texty sends the arguments to the correct target
+- the target just performs the work and returns the result
+
+This is intentionally simpler than a second dispatch layer.
 
 ## Identity Model
 
-### One provider can have many users
+### One connection can have many users
 
 Yes.
 
-A provider is a system that exposes tool execution capabilities to Texty. One provider may serve many end users.
+A connection is the external system identity Texty uses for auth, ownership, and tool sync. One connection may serve many end users.
 
 ### Purpose of `provider_id`
 
-`provider_id` identifies the external execution system.
+`provider_id` identifies the external connection in the current wire format.
 
 Its purpose is to:
 
-- route tool execution to the correct provider
+- route to the correct group of tools
 - namespace tools so names do not collide
-- support multiple providers for the same Texty deployment
-- separate permissions and sync state by provider
+- support multiple connections for the same Texty deployment
+- separate permissions and sync state by connection
 
 Examples:
 
@@ -78,14 +94,14 @@ Examples:
 
 ### Who is the user?
 
-The user is the human using the provider, not the provider itself.
+The user is the human using the connected system, not the system itself.
 
 Examples:
 
 - Chris using Provider A
 - Sam using Provider B
 
-The provider is the application/system.
+The connection is the application/system identity.
 The user is the person.
 
 So a valid identity tuple is:
@@ -100,11 +116,11 @@ This means:
 
 ## Memory Policy
 
-Providers should not be forced into one memory-retrieval model.
+Connected systems should not be forced into one memory-retrieval model.
 
 Texty should capture memory from normal conversations by default, unless the thread is explicitly private.
 
-After that, providers should be able to choose how much of that captured memory they want to retrieve and use.
+After that, connected systems should be able to choose how much of that captured memory they want to retrieve and use.
 
 Examples:
 
@@ -119,7 +135,7 @@ The full policy model is described in `docs/architecture-foundations.md`.
 
 ### 1. Tool sync
 
-Providers should sync the allowed tools for a given user into Texty.
+Connections should sync the allowed tools for a given user into Texty.
 
 This should happen:
 
@@ -162,7 +178,7 @@ Clients should talk to Texty through a single main input endpoint.
 
 Example request:
 
-`POST /api/v1/conversation/input`
+`POST /api/v1/input`
 
 ```json
 {
@@ -182,34 +198,29 @@ Texty should then:
 
 1. load memory and thread context
 2. reason over the user's allowed tools
-3. either answer directly, ask a follow-up, or call a provider tool
+3. either answer directly, ask a follow-up, or call a tool target
 
 ### 3. Tool execution
 
-When a tool should run, Texty should call the provider that owns it.
+When a tool should run, Texty should call the target that owns it.
 
-Example request from Texty to the provider:
+Example request from Texty to the target:
 
-`POST {provider_base_url}/tools/execute`
+`POST {target_url}`
 
 ```json
 {
-  "execution_id": "exec_123",
-  "provider_id": "provider_a",
-  "user_id": "user_123",
-  "tool_name": "spreadsheet.update_row",
-  "arguments": {
-    "sheet": "Sales Leads",
-    "row_id": "42",
-    "values": {
-      "status": "contacted"
-    }
-  },
-  "context": {
-    "thread_id": "thread_abc"
+  "sheet": "Sales Leads",
+  "row_id": "42",
+  "values": {
+    "status": "contacted"
   }
 }
 ```
+
+In the simpler model, the request body is just the tool arguments.
+The current runtime can still include extra wrapper fields in the payload today, but the target should not need them to do its job.
+Texty has already chosen the tool and already knows where it lives.
 
 Example response:
 
@@ -230,8 +241,8 @@ Example response:
 For efficiency and reduced LLM cost, the preferred direction is:
 
 - Texty performs the single conversational reasoning step
-- providers execute deterministically
-- providers should not do a second AI routing pass for requests coming from Texty unless there is a very strong reason
+- targets execute deterministically
+- targets should not do a second AI routing pass for requests coming from Texty unless there is a very strong reason
 
 That means:
 
@@ -244,7 +255,7 @@ That means:
 
 ## Current Status
 
-This provider model is the intended architecture direction.
+This tool-target model is the intended architecture direction.
 
 The current codebase already has:
 
@@ -253,4 +264,4 @@ The current codebase already has:
 - unified conversation input handling
 - command-based interaction
 
-But it does not yet expose the provider-facing HTTP API described here.
+But the current runtime and docs still contain older provider-oriented language and routes.

@@ -1,8 +1,8 @@
-# Texty Provider API Specification
+# Texty Tool Target API Specification
 
 ## Why This Document Exists
 
-The provider API direction document explains the architecture.
+The tool-target direction document explains the architecture.
 
 This document explains the actual contract Texty should expose to connected systems.
 
@@ -25,7 +25,7 @@ If you want the simplest path to connect an external script or service first, re
 
 ## Authentication Model
 
-Every provider request to Texty should be authenticated.
+Every connected-system request to Texty should be authenticated.
 
 Recommended default:
 
@@ -33,11 +33,11 @@ Recommended default:
 
 That token should identify:
 
-- the provider
+- the connection
 - the environment
 - the allowed API scope
 
-Texty should never accept unauthenticated provider requests for:
+Texty should never accept unauthenticated requests for:
 
 - tool sync
 - conversation input
@@ -56,7 +56,7 @@ And where applicable:
 
 - `thread_id`
 
-Texty must verify that the authenticated provider is allowed to act for the `provider_id` in the request.
+Texty must verify that the authenticated connection is allowed to act for the `provider_id` in the request.
 
 ## Common Headers
 
@@ -98,7 +98,7 @@ Error responses should use a consistent shape:
 
 Purpose:
 
-- tell Texty which tools this provider/user pair is allowed to use
+- tell Texty which tools this connection/user pair is allowed to use
 
 Request:
 
@@ -153,7 +153,7 @@ Status codes:
 
 ### 2. Conversation input
 
-`POST /api/v1/conversation/input`
+`POST /api/v1/input`
 
 Purpose:
 
@@ -240,7 +240,7 @@ Possible execution states:
 
 Rate limiting:
 
-- conversation input is rate limited per provider/user pair
+- conversation input is rate limited per connection/user pair
 - current MVP default: `30` requests per `60` seconds
 - rate-limited responses return `429`
 - rate-limited responses should include `Retry-After`
@@ -383,33 +383,39 @@ Purpose:
 
 ## Tool Execution Contract
 
-When Texty decides a tool should run, it should call the provider that owns the tool.
+When Texty decides a tool should run, it should call the target that owns the tool.
 
 Recommended request:
 
-`POST {provider_base_url}/tools/execute`
+`POST {target_url}`
 
 ```json
 {
-  "execution_id": "exec_123",
-  "provider_id": "provider_a",
-  "user_id": "user_123",
-  "thread_id": "thread_abc",
-  "tool_name": "spreadsheet.update_row",
-  "arguments": {
-    "sheet": "Sales Leads",
-    "row_id": "42",
-    "values": {
-      "status": "contacted"
-    }
-  },
-  "context": {
-    "request_id": "req_123"
+  "sheet": "Sales Leads",
+  "row_id": "42",
+  "values": {
+    "status": "contacted"
   }
 }
 ```
 
-Provider success response:
+The ideal request body is just the validated tool arguments.
+
+The target should not need to:
+
+- inspect `tool_name`
+- inspect `provider_id`
+- inspect `thread_id`
+- do another dispatch step
+
+Texty has already chosen the tool and validated the payload before making the call.
+
+Current runtime note:
+
+- the current MVP runtime still sends extra wrapper fields today
+- that is a transport detail, not the intended long-term DX
+
+Target success response:
 
 ```json
 {
@@ -423,7 +429,7 @@ Provider success response:
 }
 ```
 
-Provider failure response:
+Target failure response:
 
 ```json
 {
