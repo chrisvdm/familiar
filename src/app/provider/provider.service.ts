@@ -35,6 +35,7 @@ import type {
   ProviderUserContext,
 } from "./provider.types";
 import { logProviderAudit } from "./provider.audit";
+import { executeProviderToolRequest } from "./provider.execution";
 import {
   applyConversationRateLimit,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
@@ -71,20 +72,6 @@ type ConversationDecision =
       tool_name: string;
       arguments: Record<string, unknown>;
     };
-
-type ProviderToolExecutionResponse = {
-  ok: boolean;
-  state?: ProviderExecutionState;
-  result?: {
-    summary?: string;
-    data?: Record<string, unknown>;
-  };
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-};
 
 class ProviderRateLimitError extends Error {
   retryAfterSeconds: number;
@@ -514,58 +501,16 @@ const executeProviderTool = async ({
   toolName: string;
   args: Record<string, unknown>;
   requestId?: string;
-}) => {
-  if (!providerConfig.baseUrl) {
-    throw new Error("Provider base URL is not configured.");
-  }
-
-  const response = await fetch(`${providerConfig.baseUrl.replace(/\/$/, "")}/tools/execute`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${providerConfig.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      execution_id: crypto.randomUUID(),
-      provider_id: providerId,
-      user_id: userId,
-      thread_id: threadId,
-      tool_name: toolName,
-      arguments: args,
-      context: {
-        request_id: requestId ?? crypto.randomUUID(),
-        thread_id: threadId,
-      },
-    }),
+}) =>
+  executeProviderToolRequest({
+    providerConfig,
+    providerId,
+    userId,
+    threadId,
+    toolName,
+    args,
+    requestId,
   });
-
-  const payload = (await response.json()) as ProviderToolExecutionResponse;
-
-  if (!response.ok || !payload.ok) {
-    return {
-      state: "failed" as ProviderExecutionState,
-      message:
-        payload.error?.message || "The provider failed to execute the requested tool.",
-    };
-  }
-
-  const state = payload.state ?? "completed";
-  const message =
-    payload.result?.summary ||
-    (state === "accepted"
-      ? "The provider accepted the request."
-      : state === "in_progress"
-        ? "The requested work is now in progress."
-        : state === "needs_clarification"
-          ? "The provider needs more information to continue."
-          : "The tool ran successfully.");
-
-  return {
-    state,
-    message,
-    data: payload.result?.data ?? null,
-  };
-};
 
 const updateChannelState = ({
   context,
