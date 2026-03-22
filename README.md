@@ -45,31 +45,6 @@ Texty is currently an MVP in progress.
 
 The core shape is there, but the product is still being hardened and simplified before it should be treated as a stable hosted service.
 
-## Current Features
-
-- hosted conversation flow with a provider-style API
-- thread history and thread management
-- shared memory and thread-local memory
-- private threads
-- channel-aware thread continuation
-- tool sync for connected executors
-- tool execution callback flow
-- request tracing
-- idempotency on write routes
-- rate limiting on conversation input
-- local web client and sandbox testing routes
-- mock execution endpoint for local development
-
-## What’s Next
-
-- simplify the public API further for easier human and AI integration
-- replace remaining `provider` terminology in the wire format with clearer executor language
-- strengthen hosted onboarding and token management
-- remove more browser-era assumptions from the core architecture
-- improve async execution handling for longer-running work
-- provide a tiny canonical reference executor
-- continue hardening auth, observability, and operational behavior
-
 ## What Texty Should Become
 
 Texty should work as a hosted service that sits in front of many different executors.
@@ -115,10 +90,12 @@ The normal integration path is:
 The main endpoint is:
 
 ```text
-POST /api/v1/conversation/input
+POST /api/v1/input
 ```
 
 That is the center of the integration story.
+
+There is also a tiny reference executor in [examples/minimal-executor/README.md](/Users/chris/Dev/texty/examples/minimal-executor/README.md).
 
 ## Setup
 
@@ -187,7 +164,7 @@ curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/to
 Send input:
 
 ```shell
-curl -X POST http://localhost:5173/api/v1/conversation/input \
+curl -X POST http://localhost:5173/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{

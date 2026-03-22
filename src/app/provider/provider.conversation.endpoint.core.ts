@@ -114,6 +114,7 @@ export const createHandleConversationInputEndpoint = (
     }
 
     try {
+      const requestPath = new URL(request.url).pathname;
       const input = await deps.readJson<ProviderConversationInput>(request);
       const idempotencyKey = deps.getIdempotencyHeader(request);
       const auth = deps.authenticateProviderRequest({
@@ -138,7 +139,7 @@ export const createHandleConversationInputEndpoint = (
         });
         const storageKey = deps.buildIdempotencyKey({
           method: request.method,
-          path: "/api/v1/conversation/input",
+          path: requestPath,
           idempotencyKey,
         });
         const requestHash = await deps.hashIdempotencyRequest({

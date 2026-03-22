@@ -19,12 +19,14 @@ const createConversationRequest = ({
   body,
   requestId = "req_123",
   idempotencyKey,
+  path = "/api/v1/conversation/input",
 }: {
   body: ProviderConversationInput;
   requestId?: string;
   idempotencyKey?: string;
+  path?: string;
 }) =>
-  new Request("https://example.com/api/v1/conversation/input", {
+  new Request(`https://example.com${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -73,6 +75,44 @@ test("conversation endpoint includes request tracing on success", async () => {
   const response = await endpoint({
     request: createConversationRequest({
       body: createInput(),
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("X-Request-Id"), "req_123");
+  assert.deepEqual(await response.json(), {
+    state: "completed",
+    request_id_seen_by_service: "req_123",
+    request_id: "req_123",
+  });
+});
+
+test("conversation endpoint accepts the short /api/v1/input alias", async () => {
+  const endpoint = createHandleConversationInputEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    handleProviderConversationInput: async ({ requestId }) => ({
+      state: "completed",
+      request_id_seen_by_service: requestId,
+    }),
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const response = await endpoint({
+    request: createConversationRequest({
+      body: createInput(),
+      path: "/api/v1/input",
     }),
   });
 

@@ -24,6 +24,7 @@ export const providerRoutes = [
     "/api/v1/providers/:providerId/users/:userId/tools/sync",
     handleToolsSyncEndpoint,
   ),
+  route("/api/v1/input", handleConversationInputEndpoint),
   route("/api/v1/conversation/input", handleConversationInputEndpoint),
   route("/api/v1/threads", handleThreadCreateEndpoint),
   route(
