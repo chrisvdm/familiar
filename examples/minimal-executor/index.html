@@ -121,6 +121,11 @@
         background: #243fe0;
       }
 
+      .actions {
+        display: grid;
+        gap: 10px;
+      }
+
       pre {
         margin: 0;
         padding: 14px;
@@ -156,11 +161,11 @@
       <section class="panel">
         <h1>Minimal Texty Executor</h1>
         <p class="muted">
-          This local page helps you test what Texty will send to your executor.
-          Type a note, submit it, and you will see both the request payload and
-          the JSON result.
+          This local page demonstrates the real Texty flow from user message to
+          tool execution.
         </p>
         <div class="tag">Server running on http://localhost:__PORT__</div>
+        <div class="tag">Uses demo identity only. No account required.</div>
       </section>
 
       <section class="grid">
@@ -168,27 +173,47 @@
           <h2>Try It</h2>
           <form id="playground">
             <label>
-              Note text
-              <textarea id="note" name="note" placeholder="buy dog food"></textarea>
+              User input
+              <textarea id="text" name="text" placeholder="save this note: buy dog food"></textarea>
             </label>
             <label>
               Bearer token
               <input id="token" name="token" value="__TOKEN__" />
             </label>
-            <button type="submit">Send test request</button>
+            <label>
+              Texty base URL
+              <input id="textyBaseUrl" name="textyBaseUrl" value="__TEXTY_BASE_URL__" />
+            </label>
+            <label>
+              Demo executor ID
+              <input id="providerId" name="providerId" value="__PROVIDER_ID__" readonly />
+            </label>
+            <label>
+              Demo user ID
+              <input id="userId" name="userId" value="__USER_ID__" />
+            </label>
+            <div class="actions">
+              <button id="throughTexty" type="submit">Run Through Texty</button>
+            </div>
           </form>
           <p class="note" style="margin-top: 14px;">
-            This sends <code>POST /tools/execute</code> to this local server using
-            the same shape Texty uses today.
+            This example always goes through Texty. Type a normal user message,
+            send it, and inspect the real Texty request and response below.
           </p>
         </div>
 
         <div class="panel">
           <h2>What This Example Does</h2>
           <p class="muted">
-            It supports one tool: <code>notes.echo</code>.
+            It supports one tool: <code>notes.echo</code>. Texty decides whether
+            to reply normally or call that tool.
           </p>
           <ul>
+            <li>The page uses a built-in demo executor id and demo user id.</li>
+            <li>The page syncs the example tool with Texty.</li>
+            <li>The page sends your message to Texty.</li>
+            <li>Texty decides whether to chat normally or call the tool.</li>
+            <li>If Texty calls the tool, the tool returns a structured result.</li>
             <li>If the note is empty, it returns <code>needs_clarification</code>.</li>
             <li>If the note has text, it returns <code>completed</code>.</li>
             <li>If the token is wrong, it returns <code>unauthorized</code>.</li>
@@ -198,13 +223,13 @@
 
       <section class="grid">
         <div class="panel">
-          <h2>Request Payload</h2>
-          <pre id="payload">Submit the form to see the request payload.</pre>
+          <h2>Requests</h2>
+          <pre id="payload">Run the example to see the requests.</pre>
         </div>
 
         <div class="panel">
-          <h2>Result Body</h2>
-          <pre id="result">Submit the form to see the response.</pre>
+          <h2>Responses</h2>
+          <pre id="result">Run the example to see the responses.</pre>
         </div>
       </section>
     </main>
@@ -213,50 +238,80 @@
       const form = document.getElementById("playground");
       const payloadEl = document.getElementById("payload");
       const resultEl = document.getElementById("result");
-      const noteEl = document.getElementById("note");
+      const textEl = document.getElementById("text");
       const tokenEl = document.getElementById("token");
+      const textyBaseUrlEl = document.getElementById("textyBaseUrl");
+      const providerIdEl = document.getElementById("providerId");
+      const userIdEl = document.getElementById("userId");
+
+      const renderResult = (value) => {
+        resultEl.textContent = JSON.stringify(value, null, 2);
+      };
+
+      const renderPayload = (value) => {
+        payloadEl.textContent = JSON.stringify(value, null, 2);
+      };
+
+      const callEndpoint = async (url, body) => {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+
+        return {
+          status: response.status,
+          body: await response.json()
+        };
+      };
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         const payload = {
-          tool_name: "notes.echo",
-          arguments: {
-            note: noteEl.value
-          }
+          token: tokenEl.value,
+          text: textEl.value,
+          user_id: userIdEl.value,
+          texty_base_url: textyBaseUrlEl.value,
+          provider_id: providerIdEl.value
         };
 
-        payloadEl.textContent = JSON.stringify(payload, null, 2);
+        renderPayload({
+          demo_identity: {
+            executor_id: providerIdEl.value,
+            user_id: userIdEl.value
+          },
+          sync_request: {
+            url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/providers/" + providerIdEl.value + "/users/" + userIdEl.value + "/tools/sync"
+          },
+          input_request: {
+            url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/input",
+            body: {
+              provider_id: providerIdEl.value,
+              user_id: userIdEl.value,
+              input: {
+                kind: "text",
+                text: textEl.value
+              },
+              channel: {
+                type: "web",
+                id: "minimal-executor-playground"
+              }
+            }
+          }
+        });
         resultEl.textContent = "Loading...";
 
         try {
-          const response = await fetch("/tools/execute", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + tokenEl.value
-            },
-            body: JSON.stringify(payload)
-          });
-
-          const body = await response.json();
-          resultEl.textContent = JSON.stringify(
-            {
-              status: response.status,
-              body
-            },
-            null,
-            2
-          );
+          const result = await callEndpoint("/playground/texty", payload);
+          renderResult(result);
         } catch (error) {
-          resultEl.textContent = JSON.stringify(
-            {
-              status: "network_error",
-              message: error instanceof Error ? error.message : String(error)
-            },
-            null,
-            2
-          );
+          renderResult({
+            status: "network_error",
+            message: error instanceof Error ? error.message : String(error)
+          });
         }
       });
     </script>

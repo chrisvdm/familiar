@@ -1,5 +1,5 @@
 {
-  "executor_id": "provider_a",
+  "executor_id": "demo_executor",
   "base_url": "http://localhost:8787",
   "token_env": "TEXTY_EXECUTOR_TOKEN",
   "tools": [

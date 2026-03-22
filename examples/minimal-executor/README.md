@@ -12,6 +12,14 @@ It does one thing:
 - accepts one tool, `notes.echo`
 - returns either a clarification or a completed result
 
+It also gives you a no-signup demo path:
+
+- a fixed demo executor id
+- a fixed demo user id
+- a fixed demo token
+
+So you can test the Texty flow without creating an account first.
+
 ## What To Do With This Folder
 
 You have two easy options:
@@ -58,6 +66,7 @@ What this does:
 - starts a local server
 - serves a local test page at `GET /`
 - listens for `POST /tools/execute`
+- exposes a local route that sends input through Texty
 - checks the bearer token
 - returns a simple JSON result
 
@@ -71,38 +80,45 @@ If you open that address in your browser, you will now see a small local test UI
 
 That page lets you:
 
-- type a note
-- see the exact JSON payload sent to the executor
-- see the JSON result body that comes back
+- type normal user input
+- send that input through Texty
+- see the Texty requests and responses
 
-This is useful if you want to understand the executor shape before wiring it into Texty.
+This page is the marketing example, so it uses Texty itself rather than
+skipping around it.
+
+It uses pre-filled demo identity values so you can test the flow immediately.
 
 ## Local Texty Config
 
 Point local Texty at this executor:
 
 ```shell
-TEXTY_EXECUTOR_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
+TEXTY_EXECUTOR_CONFIG='{"demo_executor":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
 ```
 
 What this means:
 
-- `provider_a`
+- `demo_executor`
   - the executor id Texty will use for this connection
 - `token`
   - the shared token Texty and your executor both know
 - `baseUrl`
   - where Texty should send tool-execution requests
 
+You do not need to manually create `demo_executor` or `demo_user` first. Texty
+creates the demo provider-user context the first time the tool sync or input
+request arrives.
+
 ## Sync The Tool
 
 ```shell
-curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/tools/sync \
+curl -X POST http://localhost:5173/api/v1/providers/demo_executor/users/demo_user/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
-    "user_id": "user_123",
+    "provider_id": "demo_executor",
+    "user_id": "demo_user",
     "tools": [
       {
         "tool_name": "notes.echo",
@@ -130,8 +146,8 @@ curl -X POST http://localhost:5173/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
-    "user_id": "user_123",
+    "provider_id": "demo_executor",
+    "user_id": "demo_user",
     "input": {
       "kind": "text",
       "text": "Save this note: buy dog food"
@@ -155,11 +171,11 @@ http://localhost:8787
 
 That page is only for local testing. It is there to make the example easier to understand.
 
-It does not replace Texty. It simply shows:
+It uses Texty. It shows:
 
-- the note you typed
-- the request payload sent to `POST /tools/execute`
-- the executor response body
+- the request Texty receives
+- the sync request used to register the example tool
+- the response Texty returns
 
 ## What Happens Next
 
