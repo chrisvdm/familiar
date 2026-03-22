@@ -18,6 +18,8 @@ type ProviderAuthSuccess = {
 
 export type ProviderAuthResult = ProviderAuthFailure | ProviderAuthSuccess;
 
+const DEFAULT_CONFIG_LABEL = "TEXTY_EXECUTOR_CONFIG or TEXTY_PROVIDER_CONFIG";
+
 type ProviderAuditLogger = (event: {
   event: string;
   requestId?: string;
@@ -59,6 +61,7 @@ const normalizeBaseUrl = (rawBaseUrl: string) => {
 
 export const normalizeProviderConfigMap = (
   rawConfig: string | undefined | null,
+  configLabel = DEFAULT_CONFIG_LABEL,
 ): Record<string, ProviderConfig> => {
   if (!rawConfig?.trim()) {
     return {};
@@ -69,11 +72,11 @@ export const normalizeProviderConfigMap = (
   try {
     parsed = JSON.parse(rawConfig);
   } catch {
-    throw new Error("TEXTY_PROVIDER_CONFIG is not valid JSON.");
+    throw new Error(`${configLabel} is not valid JSON.`);
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("TEXTY_PROVIDER_CONFIG must be a JSON object.");
+    throw new Error(`${configLabel} must be a JSON object.`);
   }
 
   const entries = Object.entries(
@@ -82,7 +85,7 @@ export const normalizeProviderConfigMap = (
     const normalizedProviderId = providerId.trim();
 
     if (!normalizedProviderId) {
-      throw new Error("TEXTY_PROVIDER_CONFIG contains an empty provider id.");
+      throw new Error(`${configLabel} contains an empty provider id.`);
     }
 
     const config =

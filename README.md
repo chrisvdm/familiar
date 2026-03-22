@@ -112,7 +112,7 @@ OPENROUTER_API_KEY=your_openrouter_key
 OPENROUTER_MODEL=openai/gpt-4o-mini
 OPENROUTER_SITE_URL=http://localhost:5173
 OPENROUTER_SITE_NAME=Texty
-TEXTY_PROVIDER_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:5173/sandbox/mock-provider"}}'
+TEXTY_EXECUTOR_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:5173/sandbox/mock-provider"}}'
 ```
 
 3. Start the app:

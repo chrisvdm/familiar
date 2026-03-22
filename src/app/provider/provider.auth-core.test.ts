@@ -34,7 +34,7 @@ test("normalizeProviderConfigMap trims tokens and base URLs", () => {
 test("normalizeProviderConfigMap rejects invalid JSON", () => {
   assert.throws(
     () => normalizeProviderConfigMap("{nope"),
-    /TEXTY_PROVIDER_CONFIG is not valid JSON\./,
+    /TEXTY_EXECUTOR_CONFIG or TEXTY_PROVIDER_CONFIG is not valid JSON\./,
   );
 });
 

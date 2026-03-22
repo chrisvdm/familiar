@@ -8,21 +8,38 @@ import { logProviderAudit } from "./provider.audit";
 import type { ProviderConfig } from "./provider.types";
 
 const providerEnv = env as typeof env & {
+  TEXTY_EXECUTOR_CONFIG?: string;
   TEXTY_PROVIDER_CONFIG?: string;
 };
 
 let cachedRawConfig: string | undefined;
 let cachedProviderConfigs: Record<string, ProviderConfig> = {};
+let cachedConfigLabel: string | undefined;
+
+const getProviderConfigSource = () => {
+  if (providerEnv.TEXTY_EXECUTOR_CONFIG?.trim()) {
+    return {
+      rawConfig: providerEnv.TEXTY_EXECUTOR_CONFIG,
+      configLabel: "TEXTY_EXECUTOR_CONFIG",
+    };
+  }
+
+  return {
+    rawConfig: providerEnv.TEXTY_PROVIDER_CONFIG,
+    configLabel: "TEXTY_PROVIDER_CONFIG",
+  };
+};
 
 const getProviderConfigs = () => {
-  const rawConfig = providerEnv.TEXTY_PROVIDER_CONFIG;
+  const { rawConfig, configLabel } = getProviderConfigSource();
 
-  if (rawConfig === cachedRawConfig) {
+  if (rawConfig === cachedRawConfig && configLabel === cachedConfigLabel) {
     return cachedProviderConfigs;
   }
 
   cachedRawConfig = rawConfig;
-  cachedProviderConfigs = normalizeProviderConfigMap(rawConfig);
+  cachedConfigLabel = configLabel;
+  cachedProviderConfigs = normalizeProviderConfigMap(rawConfig, configLabel);
   return cachedProviderConfigs;
 };
 

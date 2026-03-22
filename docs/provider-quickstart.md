@@ -34,7 +34,7 @@ That is enough for a first integration.
 In local development, add executor config to `.dev.vars`:
 
 ```shell
-TEXTY_PROVIDER_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
+TEXTY_EXECUTOR_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
 ```
 
 Meaning:
