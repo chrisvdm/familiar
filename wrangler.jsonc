@@ -3,7 +3,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
 
   // Name of your worker
-  "name": "__change_me__",
+  "name": "texty",
+
+  // Cloudflare account for deployment
+  "account_id": "16c8a6a972c436d273eb9d61a717afbe",
 
   // Entry point for your worker
   "main": "src/worker.tsx",
