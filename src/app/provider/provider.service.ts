@@ -41,6 +41,8 @@ import {
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
   selectProviderGlobalMemory,
+  TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
+  TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
 } from "./provider.logic";
 import {
   loadOrCreateProviderUserContext,
@@ -322,7 +324,32 @@ const enforceConversationRateLimit = ({
   return {
     ...context,
     requestLog: {
+      ...context.requestLog,
       conversationInputTimestamps: result.timestamps,
+    },
+  };
+};
+
+const enforceToolsSyncRateLimit = ({
+  context,
+}: {
+  context: ProviderUserContext;
+}) => {
+  const result = applyConversationRateLimit({
+    timestamps: context.requestLog?.toolSyncTimestamps ?? [],
+    maxRequests: TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
+    windowMs: TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!result.allowed) {
+    throw new ProviderRateLimitError(result.retryAfterSeconds);
+  }
+
+  return {
+    ...context,
+    requestLog: {
+      ...context.requestLog,
+      toolSyncTimestamps: result.timestamps,
     },
   };
 };
@@ -614,8 +641,10 @@ export const syncProviderTools = async (
     userId: input.user_id,
   });
 
+  const rateLimitedContext = enforceToolsSyncRateLimit({ context });
+
   const nextContext: ProviderUserContext = {
-    ...context,
+    ...rateLimitedContext,
     allowedTools: input.tools.map((tool) => ({
       toolName: tool.tool_name,
       description: tool.description,

@@ -49,6 +49,7 @@ export const createProviderUserContext = ({
     channels: {},
     requestLog: {
       conversationInputTimestamps: [],
+      toolSyncTimestamps: [],
     },
     idempotency: {},
     createdAt: now,
@@ -96,6 +97,7 @@ export const saveProviderUserContext = async (context: ProviderUserContext) => {
     requestLog: {
       conversationInputTimestamps:
         context.requestLog?.conversationInputTimestamps ?? [],
+      toolSyncTimestamps: context.requestLog?.toolSyncTimestamps ?? [],
     },
     idempotency: context.idempotency ?? {},
     updatedAt: new Date().toISOString(),

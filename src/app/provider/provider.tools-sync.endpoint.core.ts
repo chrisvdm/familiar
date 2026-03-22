@@ -13,6 +13,10 @@ type AuthResult =
       };
     };
 
+type ProviderRateLimitShape = {
+  retryAfterSeconds: number;
+};
+
 export type ToolsSyncEndpointDeps = {
   getRequestId: (request: Request) => string;
   getIdempotencyHeader: (request: Request) => string | null;
@@ -81,6 +85,9 @@ export type ToolsSyncEndpointDeps = {
     input: ProviderToolSyncInput,
     requestId?: string,
   ) => Promise<Record<string, unknown>>;
+  isProviderRateLimitError: (
+    error: unknown,
+  ) => error is Error & ProviderRateLimitShape;
 };
 
 export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
@@ -195,6 +202,19 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
         body: result,
       });
     } catch (error) {
+      if (deps.isProviderRateLimitError(error)) {
+        return deps.jsonError({
+          requestId,
+          status: 429,
+          code: "rate_limited",
+          message: "Too many tool sync requests. Try again shortly.",
+          details: {
+            retry_after_seconds: error.retryAfterSeconds,
+          },
+          retryAfterSeconds: error.retryAfterSeconds,
+        });
+      }
+
       return deps.jsonError({
         requestId,
         status: 400,

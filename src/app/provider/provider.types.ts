@@ -42,6 +42,7 @@ export type ProviderUserContext = {
   channels: Record<string, ChannelIdentity>;
   requestLog: {
     conversationInputTimestamps: string[];
+    toolSyncTimestamps: string[];
   };
   idempotency: Record<
     string,

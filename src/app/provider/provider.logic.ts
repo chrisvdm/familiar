@@ -4,6 +4,8 @@ import type { MemoryPolicy, ProviderExecutionState } from "./provider.types";
 
 export const CONVERSATION_RATE_LIMIT_WINDOW_MS = 60_000;
 export const CONVERSATION_RATE_LIMIT_MAX_REQUESTS = 30;
+export const TOOLS_SYNC_RATE_LIMIT_WINDOW_MS = 60_000;
+export const TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS = 10;
 
 export const selectProviderGlobalMemory = ({
   memoryPolicy,
