@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { requestInfo } from "rwsdk/worker";
 
 import { buildMemoryContext, refreshMemories } from "../chat/chat.memory";
 import {
@@ -646,6 +647,14 @@ const updateChannelState = ({
   },
 });
 
+const scheduleBackgroundTask = (task: Promise<unknown>) => {
+  try {
+    requestInfo?.cf?.waitUntil?.(task);
+  } catch {
+    void task;
+  }
+};
+
 const appendMessagesToThread = async ({
   threadId,
   messages,
@@ -1193,32 +1202,31 @@ export const handleProviderConversationInput = async ({
     messages: [createAssistantMessage(assistantContent)],
   });
 
-  const refreshed = await refreshProviderMemories({
-    threadId,
-    state: withAssistant,
-    thread,
-    context: {
-      ...currentContext,
-      channels: updateChannelState({
-        context: currentContext,
-        channel: input.channel,
-        threadId,
-      }),
-      selectedModel: model,
-    },
-    isPrivate: thread.isTemporary,
-    timeZone,
-  });
-
   const finalContext = await saveProviderUserContext({
-    ...refreshed.context,
+    ...currentContext,
     selectedModel: model,
+    threads: updateThreadSummaries(
+      currentContext.threads,
+      buildThreadSummary(thread, withAssistant.messages),
+    ),
     channels: updateChannelState({
-      context: refreshed.context,
+      context: currentContext,
       channel: input.channel,
       threadId,
     }),
   });
+
+  scheduleBackgroundTask(
+    refreshProviderMemories({
+      threadId,
+      state: withAssistant,
+      thread:
+        finalContext.threads.find((entry) => entry.id === threadId) ?? thread,
+      context: finalContext,
+      isPrivate: thread.isTemporary,
+      timeZone,
+    }).then(() => undefined),
+  );
 
   logProviderAudit({
     event: "provider.conversation.completed",
@@ -1239,7 +1247,7 @@ export const handleProviderConversationInput = async ({
     provider_id: input.provider_id,
     user_id: input.user_id,
     thread_id: threadId,
-    messages: refreshed.state.messages.map((message) => ({
+    messages: withAssistant.messages.map((message) => ({
       message_id: message.id,
       role: message.role,
       content: message.content,
