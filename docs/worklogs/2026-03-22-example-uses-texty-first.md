@@ -38,3 +38,14 @@ the main thing.
 
 The only fake part left is identity bootstrap, so people can test the demo
 without first creating a real account.
+
+Follow-up change:
+
+- moved the deployable demo path into the main Texty worker instead of creating
+  a separate demo worker
+- added a built-in `demo_executor` config in the worker auth layer so the demo
+  can authenticate and execute like a normal connected executor
+- added worker routes for:
+  - `/sandbox/demo-executor`
+  - `/sandbox/demo-executor/playground/texty`
+  - `/sandbox/demo-executor/tools/execute`

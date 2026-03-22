@@ -9,6 +9,7 @@ import { Home } from "@/app/pages/home";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
 import { SandboxProvider } from "@/app/pages/sandbox-provider";
 import { providerRoutes } from "@/app/provider/provider.routes";
+import { providerDemoRoutes } from "@/app/provider/provider.demo.routes";
 import { providerMockRoutes } from "@/app/provider/provider.mock.routes";
 import { ProviderUserContextDurableObject } from "@/app/provider/provider-user-context-do";
 import { BrowserSessionDurableObject } from "@/app/session/browser-session-do";
@@ -60,6 +61,7 @@ export default defineApp([
     ctx.session = session;
   },
   ...providerRoutes,
+  ...providerDemoRoutes,
   ...providerMockRoutes,
   render(Document, [
     route("/", Home),

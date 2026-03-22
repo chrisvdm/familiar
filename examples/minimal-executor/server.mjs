@@ -18,7 +18,8 @@ const renderHomePage = () =>
     .replaceAll("__TOKEN__", expectedToken)
     .replaceAll("__TEXTY_BASE_URL__", textyBaseUrl)
     .replaceAll("__PROVIDER_ID__", providerId)
-    .replaceAll("__USER_ID__", defaultUserId);
+    .replaceAll("__USER_ID__", defaultUserId)
+    .replaceAll("__PLAYGROUND_PATH__", "/playground/texty");
 
 const buildSyncBody = (userId) => ({
   provider_id: providerId,

@@ -1,0 +1,315 @@
+import { route } from "rwsdk/router";
+
+import homePageTemplate from "../../../examples/minimal-executor/index.html?raw";
+
+const DEMO_TOKEN = "dev-token";
+const DEMO_EXECUTOR_ID = "demo_executor";
+const DEMO_USER_ID = "demo_user";
+const DEMO_CHANNEL_ID = "minimal-executor-playground";
+
+const buildSyncBody = (userId: string) => ({
+  provider_id: DEMO_EXECUTOR_ID,
+  user_id: userId,
+  tools: [
+    {
+      tool_name: "notes.echo",
+      description:
+        "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
+      input_schema: {
+        type: "object",
+        properties: {
+          note: {
+            type: "string",
+            description:
+              "Only the note content, for example wash hair. Do not include phrases like add to note or save this note.",
+          },
+        },
+        required: ["note"],
+      },
+      status: "active",
+    },
+  ],
+});
+
+const buildInputBody = (userId: string, text: string) => ({
+  provider_id: DEMO_EXECUTOR_ID,
+  user_id: userId,
+  input: {
+    kind: "text" as const,
+    text,
+  },
+  channel: {
+    type: "web",
+    id: DEMO_CHANNEL_ID,
+  },
+});
+
+const renderHomePage = (origin: string) =>
+  homePageTemplate
+    .replaceAll("__PORT__", origin)
+    .replaceAll("__TOKEN__", DEMO_TOKEN)
+    .replaceAll("__TEXTY_BASE_URL__", origin)
+    .replaceAll("__PROVIDER_ID__", DEMO_EXECUTOR_ID)
+    .replaceAll("__USER_ID__", DEMO_USER_ID)
+    .replaceAll("__PLAYGROUND_PATH__", "/sandbox/demo-executor/playground/texty");
+
+const unauthorized = () =>
+  Response.json(
+    {
+      ok: false,
+      state: "failed",
+      error: {
+        code: "unauthorized",
+        message: "Missing or invalid executor token.",
+      },
+    },
+    { status: 401 },
+  );
+
+const getBearerToken = (request: Request) => {
+  const authorization = request.headers.get("Authorization");
+  if (!authorization?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authorization.slice("Bearer ".length).trim();
+  return token || null;
+};
+
+const syncNotesToolWithTexty = async ({
+  token,
+  userId,
+  origin,
+}: {
+  token: string;
+  userId: string;
+  origin: string;
+}) => {
+  const response = await fetch(
+    `${origin}/api/v1/providers/${DEMO_EXECUTOR_ID}/users/${userId}/tools/sync`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildSyncBody(userId)),
+    },
+  );
+
+  return {
+    status: response.status,
+    body: await response.json(),
+  };
+};
+
+const runTextyInput = async ({
+  token,
+  userId,
+  text,
+  origin,
+}: {
+  token: string;
+  userId: string;
+  text: string;
+  origin: string;
+}) => {
+  const response = await fetch(`${origin}/api/v1/input`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(buildInputBody(userId, text)),
+  });
+
+  return {
+    status: response.status,
+    body: await response.json(),
+  };
+};
+
+export const providerDemoRoutes = [
+  route("/sandbox/demo-executor", async ({ request }) => {
+    if (request.method !== "GET") {
+      return Response.json(
+        {
+          error: {
+            code: "method_not_allowed",
+            message: "Method not allowed.",
+            details: null,
+          },
+        },
+        { status: 405 },
+      );
+    }
+
+    return new Response(renderHomePage(new URL(request.url).origin), {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    });
+  }),
+  route("/sandbox/demo-executor/playground/texty", async ({ request }) => {
+    if (request.method !== "POST") {
+      return Response.json(
+        {
+          error: {
+            code: "method_not_allowed",
+            message: "Method not allowed.",
+            details: null,
+          },
+        },
+        { status: 405 },
+      );
+    }
+
+    let payload: { token?: string; user_id?: string; text?: string };
+
+    try {
+      payload = (await request.json()) as typeof payload;
+    } catch {
+      return Response.json(
+        {
+          ok: false,
+          error: {
+            code: "invalid_json",
+            message: "Request body must be valid JSON.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const token = String(payload.token || "").trim();
+    const userId = String(payload.user_id || DEMO_USER_ID).trim();
+    const text = String(payload.text || "").trim();
+
+    if (!token || token !== DEMO_TOKEN) {
+      return unauthorized();
+    }
+
+    if (!text) {
+      return Response.json(
+        {
+          ok: false,
+          error: {
+            code: "missing_text",
+            message: "Text input is required.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const origin = new URL(request.url).origin;
+
+    try {
+      const syncResult = await syncNotesToolWithTexty({ token, userId, origin });
+      const textyResult = await runTextyInput({ token, userId, text, origin });
+
+      return Response.json({
+        ok: true,
+        demo_identity: {
+          executor_id: DEMO_EXECUTOR_ID,
+          user_id: userId,
+        },
+        observed: {
+          sync_status: syncResult.status,
+          sync_response: syncResult.body,
+          input_status: textyResult.status,
+          input_response: textyResult.body,
+        },
+      });
+    } catch (error) {
+      return Response.json(
+        {
+          ok: false,
+          error: {
+            code: "texty_unreachable",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        },
+        { status: 502 },
+      );
+    }
+  }),
+  route("/sandbox/demo-executor/tools/execute", async ({ request }) => {
+    if (request.method !== "POST") {
+      return Response.json(
+        {
+          error: {
+            code: "method_not_allowed",
+            message: "Method not allowed.",
+            details: null,
+          },
+        },
+        { status: 405 },
+      );
+    }
+
+    const token = getBearerToken(request);
+    if (!token || token !== DEMO_TOKEN) {
+      return unauthorized();
+    }
+
+    let payload: {
+      tool_name?: string;
+      arguments?: Record<string, unknown>;
+    };
+
+    try {
+      payload = (await request.json()) as typeof payload;
+    } catch {
+      return Response.json(
+        {
+          ok: false,
+          state: "failed",
+          error: {
+            code: "invalid_json",
+            message: "Request body must be valid JSON.",
+            details: null,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    if (payload.tool_name !== "notes.echo") {
+      return Response.json(
+        {
+          ok: false,
+          state: "failed",
+          error: {
+            code: "unknown_tool",
+            message: `Unknown tool: ${payload.tool_name || "missing"}.`,
+            details: null,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const note = String(payload.arguments?.note || "").trim();
+    if (!note) {
+      return Response.json({
+        ok: true,
+        state: "needs_clarification",
+        result: {
+          summary: "What note should I save?",
+        },
+      });
+    }
+
+    return Response.json({
+      ok: true,
+      state: "completed",
+      result: {
+        summary: `Saved note: ${note}`,
+        data: {
+          note,
+        },
+      },
+    });
+  }),
+];

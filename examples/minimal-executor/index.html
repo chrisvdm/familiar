@@ -243,6 +243,7 @@
       const textyBaseUrlEl = document.getElementById("textyBaseUrl");
       const providerIdEl = document.getElementById("providerId");
       const userIdEl = document.getElementById("userId");
+      const playgroundPath = "__PLAYGROUND_PATH__";
 
       const renderResult = (value) => {
         resultEl.textContent = JSON.stringify(value, null, 2);
@@ -305,7 +306,7 @@
         resultEl.textContent = "Loading...";
 
         try {
-          const result = await callEndpoint("/playground/texty", payload);
+          const result = await callEndpoint(playgroundPath, payload);
           renderResult(result);
         } catch (error) {
           renderResult({

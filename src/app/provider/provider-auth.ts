@@ -16,6 +16,27 @@ let cachedRawConfig: string | undefined;
 let cachedProviderConfigs: Record<string, ProviderConfig> = {};
 let cachedConfigLabel: string | undefined;
 
+const BUILT_IN_DEMO_PROVIDER_ID = "demo_executor";
+const BUILT_IN_DEMO_TOKEN = "dev-token";
+
+const withBuiltInProviders = ({
+  providerConfigs,
+  request,
+}: {
+  providerConfigs: Record<string, ProviderConfig>;
+  request: Request;
+}) => {
+  const origin = new URL(request.url).origin;
+
+  return {
+    ...providerConfigs,
+    [BUILT_IN_DEMO_PROVIDER_ID]: {
+      token: BUILT_IN_DEMO_TOKEN,
+      baseUrl: `${origin}/sandbox/demo-executor`,
+    },
+  };
+};
+
 const getProviderConfigSource = () => {
   if (providerEnv.TEXTY_EXECUTOR_CONFIG?.trim()) {
     return {
@@ -56,7 +77,10 @@ export const authenticateProviderRequest = ({
     request,
     providerId,
     requestId,
-    providerConfigs: getProviderConfigs(),
+    providerConfigs: withBuiltInProviders({
+      providerConfigs: getProviderConfigs(),
+      request,
+    }),
     logAudit: logProviderAudit,
   });
 };
