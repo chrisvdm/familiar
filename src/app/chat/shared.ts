@@ -227,7 +227,12 @@ export const addFactToGlobalMemory = (
     },
   };
 
-  if (fact.key === "name" || fact.key === "location") {
+  if (
+    fact.key === "name" ||
+    fact.key === "location" ||
+    fact.key === "gender" ||
+    fact.key === "pronouns"
+  ) {
     placeFactInGroup(nextMemory.identity, fact.key, fact);
     return nextMemory;
   }

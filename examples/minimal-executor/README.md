@@ -2,46 +2,44 @@
 
 This is the smallest useful example of an executor that can connect to Texty.
 
-This file is meant to answer the practical question:
+This folder answers the practical question:
 
 - "What do I actually build if I want Texty to call my code?"
 
 It does one thing:
 
 - exposes `POST /tools/execute`
-- accepts one tool, `notes.echo`
-- returns either a clarification or a completed result
+- accepts one tool, `todos.add`
+- updates a visible todo list in the browser demo
 
-It also gives you a no-signup demo path:
+That visual todo list is intentional.
 
-- a fixed demo executor id
-- a fixed demo user id
-- a fixed demo token
+It makes the side effect obvious without forcing someone to read raw response JSON first.
 
-So you can test the Texty flow without creating an account first.
+## What This Example Shows
 
-## What To Do With This Folder
+The flow is:
 
-You have two easy options:
+1. the browser sends a normal user message
+2. the example syncs the allowed tool with Texty
+3. the example sends the message to Texty
+4. Texty decides whether to reply normally or call the tool
+5. if the tool runs, the external executor updates the todo list
+6. the browser shows both the assistant reply and the visible todo state
 
-1. Read it to understand the shape of a Texty executor.
-2. Copy it into your own project and change it to do real work.
+So the person trying the demo can immediately see:
 
-If you are just getting started, the easiest path is:
-
-1. copy `server.mjs` into your own project
-2. run it locally
-3. connect Texty to it
-4. replace the fake `notes.echo` tool with your real tool
-
-So yes, the folder is there to be copied, run, and adapted.
+- what they said
+- how Texty responded
+- whether a tool ran
+- what changed in external state
 
 ## Files
 
 - `server.mjs`
   - tiny local HTTP server using only Node built-ins
 - `index.html`
-  - the small local browser UI shown at `http://localhost:8787`
+  - the local browser UI shown at `http://localhost:8787`
 - `texty.json`
   - example manifest shape for this executor
 
@@ -61,33 +59,18 @@ If you are already inside the `examples/minimal-executor` folder:
 TEXTY_EXECUTOR_TOKEN=dev-token node server.mjs
 ```
 
-What this does:
-
-- starts a local server
-- serves a local test page at `GET /`
-- listens for `POST /tools/execute`
-- exposes a local route that sends input through Texty
-- checks the bearer token
-- returns a simple JSON result
-
 It listens on:
 
 ```text
 http://localhost:8787
 ```
 
-If you open that address in your browser, you will now see a small local test UI.
+If you open that address in your browser, you will see:
 
-That page lets you:
-
-- type normal user input
-- send that input through Texty
-- see the Texty requests and responses
-
-This page is the marketing example, so it uses Texty itself rather than
-skipping around it.
-
-It uses pre-filled demo identity values so you can test the flow immediately.
+- a simple message box
+- the assistant transcript
+- a todo list sidebar
+- optional debug JSON
 
 ## Local Texty Config
 
@@ -97,18 +80,8 @@ Point local Texty at this executor:
 TEXTY_EXECUTOR_CONFIG='{"demo_executor":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
 ```
 
-What this means:
-
-- `demo_executor`
-  - the executor id Texty will use for this connection
-- `token`
-  - the shared token Texty and your executor both know
-- `baseUrl`
-  - where Texty should send tool-execution requests
-
-You do not need to manually create `demo_executor` or `demo_user` first. Texty
-creates the demo provider-user context the first time the tool sync or input
-request arrives.
+You do not need to manually create `demo_executor` or `demo_user` first.
+Texty creates the demo provider-user context on first sync or input.
 
 ## Sync The Tool
 
@@ -121,17 +94,17 @@ curl -X POST http://localhost:5173/api/v1/providers/demo_executor/users/demo_use
     "user_id": "demo_user",
     "tools": [
       {
-        "tool_name": "notes.echo",
-        "description": "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
+        "tool_name": "todos.add",
+        "description": "Add one item to the user'\''s visible todo list. Use this only when the user clearly asks to add, capture, or remember a task. The todo field should contain only the task text itself.",
         "input_schema": {
           "type": "object",
           "properties": {
-            "note": {
+            "todo": {
               "type": "string",
-              "description": "Only the note content, for example wash hair. Do not include phrases like add to note or save this note."
+              "description": "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list."
             }
           },
-          "required": ["note"]
+          "required": ["todo"]
         },
         "status": "active"
       }
@@ -150,7 +123,7 @@ curl -X POST http://localhost:5173/api/v1/input \
     "user_id": "demo_user",
     "input": {
       "kind": "text",
-      "text": "Save this note: buy dog food"
+      "text": "Add buy dog food to my todo list"
     },
     "channel": {
       "type": "web",
@@ -159,9 +132,9 @@ curl -X POST http://localhost:5173/api/v1/input \
   }'
 ```
 
-Texty should decide to call `notes.echo`, then the executor will reply with a completed result.
+Texty should decide to call `todos.add`, and the executor should return a completed result with the updated todo list.
 
-## Browser Test Page
+## Browser Demo
 
 Once the server is running, open:
 
@@ -169,23 +142,25 @@ Once the server is running, open:
 http://localhost:8787
 ```
 
-That page is only for local testing. It is there to make the example easier to understand.
+Try messages like:
 
-It uses Texty. It shows:
+- `add buy dog food to my todo list`
+- `remember to email the landlord`
+- `what should I cook for dinner?`
 
-- the request Texty receives
-- the sync request used to register the example tool
-- the response Texty returns
+The first two should usually trigger the tool and update the visible list.
+The last one should usually stay ordinary conversation.
 
 ## What Happens Next
 
-After you send that request:
+After you send a message:
 
-1. Texty receives the user message.
-2. Texty decides that work should be handed off.
-3. Texty sends a `POST /tools/execute` request to your local executor.
-4. Your executor returns JSON.
+1. Texty receives the user input.
+2. Texty decides whether a tool should run.
+3. If needed, Texty sends `POST /tools/execute` to your local executor.
+4. Your executor updates the todo list and returns structured JSON.
 5. Texty turns that result into the assistant reply.
+6. The browser shows the updated todo list state.
 
 That is the basic integration loop.
 
@@ -195,12 +170,12 @@ Once you understand the example, the normal next step is:
 
 - keep the same route shape
 - keep the same token check
-- replace `notes.echo` with your own tool
-- replace the fake response with real work
+- replace `todos.add` with your own tool
+- replace the in-memory todo update with your real side effect
 
 Examples:
 
+- create a task in a real task system
 - update a spreadsheet
-- send an email
 - create a record
-- run a script
+- run a workflow

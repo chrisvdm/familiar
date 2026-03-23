@@ -7,9 +7,11 @@
     <style>
       :root {
         color-scheme: light;
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #f6f7fb;
-        color: #171923;
+        font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, #fff4d8 0, rgba(255, 244, 216, 0.25) 28%, transparent 54%),
+          linear-gradient(180deg, #f7f3ea 0%, #eef2f1 100%);
+        color: #172126;
       }
 
       * {
@@ -18,67 +20,90 @@
 
       body {
         margin: 0;
-        padding: 32px 20px;
-        background: #f6f7fb;
-        color: #171923;
+        min-height: 100vh;
+        padding: 28px 18px 40px;
       }
 
       main {
-        max-width: 960px;
+        max-width: 1180px;
         margin: 0 auto;
         display: grid;
-        gap: 20px;
+        gap: 18px;
       }
 
+      .hero,
       .panel {
-        background: #fff;
-        border: 1px solid #d7dce8;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 8px 30px rgba(20, 28, 45, 0.06);
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(35, 49, 57, 0.12);
+        border-radius: 22px;
+        box-shadow: 0 18px 50px rgba(44, 58, 66, 0.08);
+        backdrop-filter: blur(8px);
       }
 
-      h1,
-      h2,
-      p {
+      .hero {
+        padding: 22px;
+      }
+
+      .hero h1,
+      .hero p,
+      .panel h2,
+      .panel p {
         margin: 0;
       }
 
-      h1 {
-        font-size: 28px;
-        margin-bottom: 8px;
-      }
-
-      h2 {
-        font-size: 16px;
+      .hero h1 {
+        font-size: 30px;
         margin-bottom: 10px;
       }
 
-      p,
-      li,
-      label,
-      button,
-      input,
-      textarea,
-      pre,
-      code {
-        font-size: 14px;
-        line-height: 1.5;
+      .hero p {
+        max-width: 760px;
+        color: #48555d;
+        line-height: 1.55;
+      }
+
+      .hero-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #eef5f1;
+        border: 1px solid #d3e1d8;
+        color: #234436;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .layout {
+        display: grid;
+        gap: 18px;
+      }
+
+      @media (min-width: 960px) {
+        .layout {
+          grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+          align-items: start;
+        }
+      }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .panel h2 {
+        font-size: 17px;
+        margin-bottom: 10px;
       }
 
       .muted {
-        color: #5f6778;
-      }
-
-      .grid {
-        display: grid;
-        gap: 20px;
-      }
-
-      @media (min-width: 840px) {
-        .grid {
-          grid-template-columns: 1fr 1fr;
-        }
+        color: #5b676e;
       }
 
       form {
@@ -86,150 +111,282 @@
         gap: 14px;
       }
 
+      .field-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 720px) {
+        .field-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
       label {
         display: grid;
         gap: 6px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      input,
+      textarea,
+      button {
+        font: inherit;
       }
 
       input,
       textarea {
         width: 100%;
-        border: 1px solid #c9d1e3;
-        border-radius: 10px;
-        padding: 10px 12px;
-        background: #fff;
-        color: #171923;
+        border: 1px solid #c7d0d4;
+        border-radius: 14px;
+        padding: 11px 13px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #172126;
       }
 
       textarea {
-        min-height: 120px;
+        min-height: 108px;
         resize: vertical;
       }
 
       button {
         border: 0;
-        border-radius: 10px;
-        padding: 12px 16px;
-        background: #2c4bff;
+        border-radius: 14px;
+        padding: 13px 16px;
+        background: linear-gradient(135deg, #1f6a52 0%, #2e8b68 100%);
         color: #fff;
         font-weight: 700;
         cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+        box-shadow: 0 10px 24px rgba(31, 106, 82, 0.22);
       }
 
       button:hover {
-        background: #243fe0;
+        transform: translateY(-1px);
       }
 
-      .actions {
-        display: grid;
-        gap: 10px;
+      button:disabled {
+        opacity: 0.65;
+        cursor: wait;
+        transform: none;
       }
 
-      pre {
-        margin: 0;
-        padding: 14px;
-        border-radius: 12px;
-        background: #0f1728;
-        color: #e7edf9;
-        overflow: auto;
-        white-space: pre-wrap;
-        word-break: break-word;
+      .helper {
+        border-radius: 14px;
+        padding: 12px 13px;
+        background: #f4f8f7;
+        color: #425057;
+        line-height: 1.5;
       }
 
-      .tag {
-        display: inline-block;
-        border-radius: 999px;
-        background: #eef2ff;
-        color: #3040a0;
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 700;
+      .example-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
         margin-top: 10px;
       }
 
-      .note {
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: #f3f6fb;
-        color: #43506a;
+      .example-pills button {
+        background: #fff;
+        color: #1f6a52;
+        border: 1px solid #bfd7ca;
+        box-shadow: none;
+        padding: 9px 12px;
+      }
+
+      .chat-log {
+        display: grid;
+        gap: 12px;
+        min-height: 280px;
+      }
+
+      .bubble {
+        border-radius: 18px;
+        padding: 14px 15px;
+        line-height: 1.55;
+      }
+
+      .bubble.user {
+        background: #e8f1ed;
+        margin-left: auto;
+        max-width: 90%;
+      }
+
+      .bubble.assistant {
+        background: #f9f6ef;
+        border: 1px solid #ede3ce;
+        max-width: 92%;
+      }
+
+      .bubble-label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #5b676e;
+      }
+
+      .todo-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .todo-item,
+      .todo-empty {
+        border-radius: 16px;
+        padding: 13px 14px;
+      }
+
+      .todo-item {
+        background: linear-gradient(135deg, #fff9eb 0%, #fff 100%);
+        border: 1px solid #eedfb3;
+      }
+
+      .todo-empty {
+        background: #f4f6f7;
+        color: #617078;
+      }
+
+      .todo-item strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .status-card {
+        margin-top: 14px;
+        border-radius: 16px;
+        padding: 13px 14px;
+        background: #f1f6f4;
+        border: 1px solid #d8e4dd;
+      }
+
+      .status-card code {
+        font-size: 12px;
+      }
+
+      details {
+        margin-top: 14px;
+      }
+
+      summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      pre {
+        margin: 10px 0 0;
+        padding: 14px;
+        border-radius: 16px;
+        background: #101821;
+        color: #e8edf7;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 12px;
+        line-height: 1.55;
       }
     </style>
   </head>
   <body>
     <main>
-      <section class="panel">
+      <section class="hero">
         <h1>Minimal Texty Executor</h1>
-        <p class="muted">
-          This local page demonstrates the real Texty flow from user message to
-          tool execution.
+        <p>
+          This demo shows Texty driving a real external tool. Instead of hiding
+          the effect inside API JSON, the example adds todos to a live sidebar
+          so you can immediately see how the conversation changes state.
         </p>
-        <div class="tag">Running on __PORT__</div>
-        <div class="tag">Uses demo identity only. No account required.</div>
+        <div class="hero-tags">
+          <div class="tag">Running on __PORT__</div>
+          <div class="tag">Demo identity only</div>
+          <div class="tag">Tool: <code>todos.add</code></div>
+        </div>
       </section>
 
-      <section class="grid">
+      <section class="layout">
         <div class="panel">
-          <h2>Try It</h2>
-          <form id="playground">
+          <h2>Talk To Texty</h2>
+          <p class="muted">
+            Try messages like “add buy dog food to my todo list” or “remember to
+            call mom tomorrow”.
+          </p>
+
+          <form id="playground" style="margin-top: 14px;">
             <label>
               User input
-              <textarea id="text" name="text" placeholder="save this note: buy dog food"></textarea>
+              <textarea id="text" name="text" placeholder="add buy dog food to my todo list"></textarea>
             </label>
-            <label>
-              Bearer token
-              <input id="token" name="token" value="__TOKEN__" />
-            </label>
-            <label>
-              Texty base URL
-              <input id="textyBaseUrl" name="textyBaseUrl" value="__TEXTY_BASE_URL__" />
-            </label>
-            <label>
-              Demo executor ID
-              <input id="providerId" name="providerId" value="__PROVIDER_ID__" readonly />
-            </label>
-            <label>
-              Demo user ID
-              <input id="userId" name="userId" value="__USER_ID__" />
-            </label>
-            <div class="actions">
-              <button id="throughTexty" type="submit">Run Through Texty</button>
+
+            <div class="example-pills">
+              <button type="button" data-example="add buy dog food to my todo list">Buy dog food</button>
+              <button type="button" data-example="remember to email the landlord">Email landlord</button>
+              <button type="button" data-example="what should I cook for dinner?">Normal chat</button>
             </div>
+
+            <div class="field-grid">
+              <label>
+                Bearer token
+                <input id="token" name="token" value="__TOKEN__" />
+              </label>
+              <label>
+                Demo user ID
+                <input id="userId" name="userId" value="__USER_ID__" />
+              </label>
+              <label>
+                Texty base URL
+                <input id="textyBaseUrl" name="textyBaseUrl" value="__TEXTY_BASE_URL__" />
+              </label>
+              <label>
+                Demo executor ID
+                <input id="providerId" name="providerId" value="__PROVIDER_ID__" readonly />
+              </label>
+            </div>
+
+            <button id="throughTexty" type="submit">Send Through Texty</button>
           </form>
-          <p class="note" style="margin-top: 14px;">
-            This example always goes through Texty. Type a normal user message,
-            send it, and inspect the real Texty request and response below.
-          </p>
+
+          <div class="helper" style="margin-top: 14px;">
+            The page always syncs the tool and sends your message through Texty.
+            If Texty decides a tool should run, the external executor updates the
+            todo list shown on the right.
+          </div>
+
+          <div class="panel" style="margin-top: 16px; padding: 16px;">
+            <h2>Conversation</h2>
+            <div id="chatLog" class="chat-log">
+              <div class="bubble assistant">
+                <span class="bubble-label">Texty</span>
+                Say something that should become a todo item and watch the list on the right update.
+              </div>
+            </div>
+          </div>
+
+          <details>
+            <summary>Debug Details</summary>
+            <pre id="payload">Run the example to see the requests.</pre>
+            <pre id="result">Run the example to see the responses.</pre>
+          </details>
         </div>
 
         <div class="panel">
-          <h2>What This Example Does</h2>
+          <h2>Visible Todo List</h2>
           <p class="muted">
-            It supports one tool: <code>notes.echo</code>. Texty decides whether
-            to reply normally or call that tool.
+            This is the state returned by the external tool target. It makes the
+            side effect obvious without reading the raw API response first.
           </p>
-          <ul>
-            <li>The page uses a built-in demo executor id and demo user id.</li>
-            <li>The page syncs the example tool with Texty.</li>
-            <li>The page sends your message to Texty.</li>
-            <li>Texty decides whether to chat normally or call the tool.</li>
-            <li>If Texty calls the tool, the tool returns a structured result.</li>
-            <li>If the note is empty, it returns <code>needs_clarification</code>.</li>
-            <li>If the note has text, it returns <code>completed</code>.</li>
-            <li>If the token is wrong, it returns <code>unauthorized</code>.</li>
-          </ul>
-        </div>
-      </section>
 
-      <section class="grid">
-        <div class="panel">
-          <h2>Requests</h2>
-          <pre id="payload">Run the example to see the requests.</pre>
-        </div>
+          <div id="statusCard" class="status-card">
+            <strong>Latest task</strong>
+            <div class="muted">No tool call yet.</div>
+          </div>
 
-        <div class="panel">
-          <h2>Responses</h2>
-          <pre id="result">Run the example to see the responses.</pre>
+          <div id="todoList" class="todo-list">
+            <div class="todo-empty">No todos yet. Ask Texty to add one.</div>
+          </div>
         </div>
       </section>
     </main>
@@ -243,15 +400,75 @@
       const textyBaseUrlEl = document.getElementById("textyBaseUrl");
       const providerIdEl = document.getElementById("providerId");
       const userIdEl = document.getElementById("userId");
+      const chatLogEl = document.getElementById("chatLog");
+      const todoListEl = document.getElementById("todoList");
+      const statusCardEl = document.getElementById("statusCard");
+      const submitButtonEl = document.getElementById("throughTexty");
       const playgroundPath = "__PLAYGROUND_PATH__";
       const playgroundMode = "__PLAYGROUND_MODE__";
 
-      const renderResult = (value) => {
-        resultEl.textContent = JSON.stringify(value, null, 2);
+      const renderJson = (element, value) => {
+        element.textContent = JSON.stringify(value, null, 2);
       };
 
-      const renderPayload = (value) => {
-        payloadEl.textContent = JSON.stringify(value, null, 2);
+      const appendBubble = ({ label, role, content }) => {
+        const bubble = document.createElement("div");
+        bubble.className = "bubble " + role;
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "bubble-label";
+        labelEl.textContent = label;
+
+        const contentEl = document.createElement("div");
+        contentEl.textContent = content;
+
+        bubble.appendChild(labelEl);
+        bubble.appendChild(contentEl);
+        chatLogEl.appendChild(bubble);
+      };
+
+      const renderTodos = (todos) => {
+        todoListEl.innerHTML = "";
+
+        if (!Array.isArray(todos) || todos.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "todo-empty";
+          empty.textContent = "No todos yet. Ask Texty to add one.";
+          todoListEl.appendChild(empty);
+          return;
+        }
+
+        todos.forEach((todo, index) => {
+          const item = document.createElement("div");
+          item.className = "todo-item";
+
+          const title = document.createElement("strong");
+          title.textContent = (index + 1) + ". " + (todo.text || "(missing todo text)");
+
+          const meta = document.createElement("div");
+          meta.className = "muted";
+          meta.textContent = todo.created_at
+            ? "Added at " + new Date(todo.created_at).toLocaleString()
+            : "Added just now";
+
+          item.appendChild(title);
+          item.appendChild(meta);
+          todoListEl.appendChild(item);
+        });
+      };
+
+      const renderStatus = (task, assistantReply) => {
+        const action = task && task.action ? task.action : "none";
+        const executionState = task && task.execution_state ? task.execution_state : "none";
+
+        statusCardEl.innerHTML = [
+          "<strong>Latest task</strong>",
+          "<div class=\"muted\" style=\"margin-top: 6px;\">Action: <code>" + action + "</code></div>",
+          "<div class=\"muted\">Execution: <code>" + executionState + "</code></div>",
+          assistantReply
+            ? "<div class=\"muted\" style=\"margin-top: 8px;\">Assistant reply: " + assistantReply.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>"
+            : ""
+        ].join("");
       };
 
       const callEndpoint = async (url, body) => {
@@ -269,103 +486,31 @@
         };
       };
 
-      const callTextyDirectly = async ({ token, text, userId, baseUrl, providerId }) => {
-        const trimmedBaseUrl = baseUrl.replace(/\/$/, "");
-        const syncRequest = {
-          url: trimmedBaseUrl + "/api/v1/providers/" + providerId + "/users/" + userId + "/tools/sync",
-          body: {
-            provider_id: providerId,
-            user_id: userId,
-            tools: [
-              {
-                tool_name: "notes.echo",
-                description: "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
-                input_schema: {
-                  type: "object",
-                  properties: {
-                    note: {
-                      type: "string",
-                      description: "Only the note content, for example wash hair. Do not include phrases like add to note or save this note."
-                    }
-                  },
-                  required: ["note"]
-                },
-                status: "active"
-              }
-            ]
-          }
-        };
-
-        const inputRequest = {
-          url: trimmedBaseUrl + "/api/v1/input",
-          body: {
-            provider_id: providerId,
-            user_id: userId,
-            input: {
-              kind: "text",
-              text
-            },
-            channel: {
-              type: "web",
-              id: "minimal-executor-playground"
-            }
-          }
-        };
-
-        const headers = {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
-        };
-
-        const syncResponse = await fetch(syncRequest.url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(syncRequest.body)
+      document.querySelectorAll("[data-example]").forEach((button) => {
+        button.addEventListener("click", () => {
+          textEl.value = button.getAttribute("data-example") || "";
+          textEl.focus();
         });
-
-        const syncResult = {
-          status: syncResponse.status,
-          body: await syncResponse.json()
-        };
-
-        const inputResponse = await fetch(inputRequest.url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(inputRequest.body)
-        });
-
-        const inputResult = {
-          status: inputResponse.status,
-          body: await inputResponse.json()
-        };
-
-        return {
-          ok: true,
-          demo_identity: {
-            executor_id: providerId,
-            user_id: userId
-          },
-          observed: {
-            sync_status: syncResult.status,
-            sync_response: syncResult.body,
-            input_status: inputResult.status,
-            input_response: inputResult.body
-          }
-        };
-      };
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
+        const userText = textEl.value.trim();
+
+        if (!userText) {
+          return;
+        }
+
         const payload = {
           token: tokenEl.value,
-          text: textEl.value,
+          text: userText,
           user_id: userIdEl.value,
           texty_base_url: textyBaseUrlEl.value,
           provider_id: providerIdEl.value
         };
 
-        renderPayload({
+        renderJson(payloadEl, {
           demo_identity: {
             executor_id: providerIdEl.value,
             user_id: userIdEl.value
@@ -380,7 +525,7 @@
               user_id: userIdEl.value,
               input: {
                 kind: "text",
-                text: textEl.value
+                text: userText
               },
               channel: {
                 type: "web",
@@ -389,24 +534,61 @@
             }
           }
         });
+
+        appendBubble({
+          label: "You",
+          role: "user",
+          content: userText
+        });
+
+        textEl.value = "";
+        submitButtonEl.disabled = true;
+        submitButtonEl.textContent = "Sending...";
         resultEl.textContent = "Loading...";
 
         try {
           const result = playgroundMode === "proxy"
             ? await callEndpoint(playgroundPath, payload)
-            : await callTextyDirectly({
-                token: tokenEl.value,
-                text: textEl.value,
-                userId: userIdEl.value,
-                baseUrl: textyBaseUrlEl.value,
-                providerId: providerIdEl.value
-              });
-          renderResult(result);
+            : await callEndpoint(playgroundPath, payload);
+
+          renderJson(resultEl, result);
+
+          if (result.body && result.body.ok) {
+            const assistantReply = result.body.assistant_reply || "No assistant reply returned.";
+
+            appendBubble({
+              label: "Texty",
+              role: "assistant",
+              content: assistantReply
+            });
+
+            renderTodos(result.body.todos || []);
+            renderStatus(result.body.task || null, assistantReply);
+          } else {
+            appendBubble({
+              label: "Error",
+              role: "assistant",
+              content: result.body && result.body.error
+                ? result.body.error.message
+                : "Something went wrong."
+            });
+          }
         } catch (error) {
-          renderResult({
+          const message = error instanceof Error ? error.message : String(error);
+
+          renderJson(resultEl, {
             status: "network_error",
-            message: error instanceof Error ? error.message : String(error)
+            message
           });
+
+          appendBubble({
+            label: "Error",
+            role: "assistant",
+            content: message
+          });
+        } finally {
+          submitButtonEl.disabled = false;
+          submitButtonEl.textContent = "Send Through Texty";
         }
       });
     </script>

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
-import { createDateTimeSystemPrompt, DEFAULT_MODEL } from "./conversation.runtime";
+import { sanitizeExtractedMemoryFact } from "./chat.memory.identity.ts";
+import { createDateTimeSystemPrompt, DEFAULT_MODEL } from "./conversation.runtime.ts";
 
 import {
   addFactToGlobalMemory,
@@ -11,7 +12,7 @@ import {
   type GlobalThreadSummary,
   type MemoryFact,
   type ThreadMemory,
-} from "./shared";
+} from "./shared.ts";
 
 type OpenRouterMessage = {
   role: "system" | "user" | "assistant";
@@ -196,7 +197,7 @@ const QUERY_ALIASES: Record<string, string[]> = {
 };
 
 const MEMORY_EXTRACTION_SYSTEM_PROMPT =
-  "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Ignore transient tasks, moods, and one-off requests.";
+  "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Do not infer gender, sex, or pronouns from a name, writing style, relationship terms, or any other indirect cue. Only store gender or pronouns if the user explicitly stated them. Ignore transient tasks, moods, and one-off requests.";
 
 const clampConfidence = (value: number | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -241,6 +242,7 @@ const parseExtraction = (content: string): MemoryExtraction | null => {
     return null;
   }
 };
+
 
 const createHeuristicFact = ({
   key,
@@ -363,6 +365,10 @@ const mergeThreadSummaries = (
 
 const sanitizeGlobalFact = (fact: MemoryFact) => {
   if (!GLOBAL_MEMORY_KEYS.has(fact.key)) {
+    if (fact.key === "gender" || fact.key === "pronouns") {
+      return fact;
+    }
+
     return null;
   }
 
@@ -813,6 +819,7 @@ export const refreshMemories = async ({
   globalMemory: GlobalMemory;
   timeZone?: string | null;
 }) => {
+  const messagesById = new Map(messages.map((message) => [message.id, message]));
   const extractionPrompt = `Previous thread summary: ${
     previousThreadMemory.summary || "(none)"
   }
@@ -865,6 +872,8 @@ Return strict JSON with this shape:
   const threadFacts = (extraction.thread_facts ?? [])
     .map((rawFact) => toMemoryFact({ rawFact, timestamp, threadId }))
     .filter((fact): fact is MemoryFact => fact !== null)
+    .map((fact) => sanitizeExtractedMemoryFact({ fact, messagesById }))
+    .filter((fact): fact is MemoryFact => fact !== null)
     .slice(0, MEMORY_FACT_LIMIT);
   const threadKeywords = dedupeStrings(extraction.thread_keywords ?? []).slice(0, 12);
   const threadSummary = extraction.thread_summary?.trim() || previousThreadMemory.summary;
@@ -884,6 +893,8 @@ Return strict JSON with this shape:
 
   const extractedProfileFacts = (extraction.profile_facts ?? [])
     .map((rawFact) => toMemoryFact({ rawFact, timestamp, threadId }))
+    .filter((fact): fact is MemoryFact => fact !== null)
+    .map((fact) => sanitizeExtractedMemoryFact({ fact, messagesById }))
     .filter((fact): fact is MemoryFact => fact !== null)
     .map((fact) => sanitizeGlobalFact(fact))
     .filter((fact): fact is MemoryFact => fact !== null)

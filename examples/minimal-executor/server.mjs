@@ -11,6 +11,7 @@ const defaultUserId = (process.env.TEXTY_USER_ID || "demo_user").trim();
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = dirname(currentFile);
 const homePageTemplate = readFileSync(join(currentDir, "index.html"), "utf8");
+const todoStore = new Map();
 
 const renderHomePage = () =>
   homePageTemplate
@@ -28,19 +29,19 @@ const buildSyncBody = (userId) => ({
   user_id: userId,
   tools: [
     {
-      tool_name: "notes.echo",
+      tool_name: "todos.add",
       description:
-        "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
+        "Add one item to the user's visible todo list. Use this only when the user is clearly asking to add, capture, or remember a task. The todo field should contain only the task text itself.",
       input_schema: {
         type: "object",
         properties: {
-          note: {
+          todo: {
             type: "string",
             description:
-              "Only the note content, for example wash hair. Do not include phrases like add to note or save this note.",
+              "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list.",
           },
         },
-        required: ["note"],
+        required: ["todo"],
       },
       status: "active",
     },
@@ -60,18 +61,32 @@ const buildInputBody = (userId, text) => ({
   },
 });
 
-const normalizeDemoNote = (value) => {
-  const note = typeof value === "string" ? value.trim() : "";
+const normalizeTodo = (value) => {
+  const todo = typeof value === "string" ? value.trim() : "";
 
-  if (!note) {
+  if (!todo) {
     return "";
   }
 
-  if (note.toLowerCase() === "null" || note.toLowerCase() === "undefined") {
+  if (todo.toLowerCase() === "null" || todo.toLowerCase() === "undefined") {
     return "";
   }
 
-  return note;
+  return todo;
+};
+
+const getTodosForUser = (userId) => [...(todoStore.get(userId) ?? [])];
+
+const addTodoForUser = ({ userId, todo }) => {
+  const currentTodos = getTodosForUser(userId);
+  const nextTodo = {
+    id: crypto.randomUUID(),
+    text: todo,
+    created_at: new Date().toISOString(),
+  };
+  const nextTodos = [...currentTodos, nextTodo];
+  todoStore.set(userId, nextTodos);
+  return nextTodos;
 };
 
 const sendJson = (response, status, body) => {
@@ -101,7 +116,7 @@ const unauthorized = (response) =>
     },
   });
 
-const syncNotesToolWithTexty = async ({ token, userId }) => {
+const syncTodoToolWithTexty = async ({ token, userId }) => {
   const response = await fetch(
     `${textyBaseUrl.replace(/\/$/, "")}/api/v1/providers/${providerId}/users/${userId}/tools/sync`,
     {
@@ -134,6 +149,12 @@ const runTextyInput = async ({ token, userId, text }) => {
     status: response.status,
     body: await response.json(),
   };
+};
+
+const extractAssistantReply = (inputResponse) => {
+  const messages = Array.isArray(inputResponse?.messages) ? inputResponse.messages : [];
+  const assistantMessage = [...messages].reverse().find((message) => message.role === "assistant");
+  return typeof assistantMessage?.content === "string" ? assistantMessage.content : "";
 };
 
 const server = createServer(async (request, response) => {
@@ -182,7 +203,7 @@ const server = createServer(async (request, response) => {
     }
 
     try {
-      const syncResult = await syncNotesToolWithTexty({
+      const syncResult = await syncTodoToolWithTexty({
         token,
         userId,
       });
@@ -198,6 +219,13 @@ const server = createServer(async (request, response) => {
           executor_id: providerId,
           user_id: userId,
         },
+        assistant_reply: extractAssistantReply(textyResult.body),
+        task: {
+          thread_id: textyResult.body?.thread_id ?? null,
+          action: textyResult.body?.action?.type ?? null,
+          execution_state: textyResult.body?.execution?.state ?? null,
+        },
+        todos: getTodosForUser(userId),
         observed: {
           sync_status: syncResult.status,
           sync_response: syncResult.body,
@@ -255,7 +283,7 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  if (payload.tool_name !== "notes.echo") {
+  if (payload.tool_name !== "todos.add") {
     sendJson(response, 400, {
       ok: false,
       state: "failed",
@@ -267,26 +295,33 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  const note = normalizeDemoNote(payload.arguments?.note);
+  const userId = String(payload.user_id || defaultUserId).trim();
+  const todo = normalizeTodo(payload.arguments?.todo);
 
-  if (!note) {
+  if (!todo) {
     sendJson(response, 200, {
       ok: true,
       state: "needs_clarification",
       result: {
-        summary: "What note should I save?",
+        summary: "What should I add to the todo list?",
       },
     });
     return;
   }
 
+  const todos = addTodoForUser({
+    userId,
+    todo,
+  });
+
   sendJson(response, 200, {
     ok: true,
     state: "completed",
     result: {
-      summary: `Saved note: ${note}`,
+      summary: `Added "${todo}" to the todo list.`,
       data: {
-        note,
+        added_todo: todo,
+        todos,
       },
     },
   });

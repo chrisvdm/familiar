@@ -4,17 +4,17 @@
   "token_env": "TEXTY_EXECUTOR_TOKEN",
   "tools": [
     {
-      "tool_name": "notes.echo",
-      "description": "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
+      "tool_name": "todos.add",
+      "description": "Add one item to the user's visible todo list. Use this only when the user clearly asks to add, capture, or remember a task. The todo field should contain only the task text itself.",
       "input_schema": {
         "type": "object",
         "properties": {
-          "note": {
+          "todo": {
             "type": "string",
-            "description": "Only the note content, for example 'wash hair'. Do not include phrases like 'add to note' or 'save this note'."
+            "description": "Only the todo text, for example 'buy dog food'. Do not include phrases like 'add to my todo list'."
           }
         },
-        "required": ["note"]
+        "required": ["todo"]
       }
     }
   ]
