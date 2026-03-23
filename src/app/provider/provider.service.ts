@@ -375,6 +375,24 @@ const parseJsonObject = <T,>(content: string): T | null => {
   }
 };
 
+const normalizeNullableModelText = (value: unknown) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  if (trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") {
+    return "";
+  }
+
+  return trimmed;
+};
+
 const enforceConversationRateLimit = ({
   context,
 }: {
@@ -732,12 +750,7 @@ const decideConversationAction = async ({
   }
 
   const requestedTool = typeof parsed.tool === "string" ? parsed.tool.trim() : "";
-  const followUp =
-    typeof parsed.follow_up === "string"
-      ? parsed.follow_up.trim()
-      : typeof parsed.followUp === "string"
-        ? parsed.followUp.trim()
-        : "";
+  const followUp = normalizeNullableModelText(parsed.follow_up ?? parsed.followUp);
 
   if (!requestedTool || requestedTool.toLowerCase() === "none") {
     if (followUp) {
@@ -747,7 +760,7 @@ const decideConversationAction = async ({
       } satisfies ConversationDecision;
     }
 
-    const reply = parsed.reasoning?.trim();
+    const reply = normalizeNullableModelText(parsed.reasoning);
 
     return {
       action: "direct_reply",
@@ -841,11 +854,7 @@ const updatePendingToolArguments = async ({
   }
 
   const followUp =
-    typeof parsed.follow_up === "string"
-      ? parsed.follow_up.trim()
-      : typeof parsed.followUp === "string"
-        ? parsed.followUp.trim()
-        : "";
+    normalizeNullableModelText(parsed.follow_up ?? parsed.followUp);
 
   return {
     arguments:

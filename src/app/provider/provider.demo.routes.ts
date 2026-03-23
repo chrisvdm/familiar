@@ -88,7 +88,17 @@ const extractAssistantReply = (inputResponse: Record<string, unknown>) => {
     return "";
   }
 
-  return typeof response.content === "string" ? response.content : "";
+  if (typeof response.content !== "string") {
+    return "";
+  }
+
+  const trimmed = response.content.trim();
+
+  if (!trimmed || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") {
+    return "";
+  }
+
+  return trimmed;
 };
 
 const extractTask = (inputResponse: Record<string, unknown>) => {
@@ -208,7 +218,9 @@ export const providerDemoRoutes = [
           executor_id: DEMO_EXECUTOR_ID,
           user_id: userId,
         },
-        assistant_reply: extractAssistantReply(textyResult),
+        assistant_reply:
+          extractAssistantReply(textyResult) ||
+          "I need a bit more information before I can continue. Please clarify what should be added to the todo list.",
         task: extractTask(textyResult),
         todos: getBuiltInDemoTodos(userId),
         observed: {
