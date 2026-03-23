@@ -12,42 +12,19 @@ const todoStore = new Map<
   }>
 >();
 
-const TODO_ITEM_VERB_PATTERN =
-  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get|wash|clean|groom|feed|walk|take|make|finish|submit|check|review|prepare)\b/i;
-
-const normalizeDemoTodo = (value: unknown) => {
-  const todo = typeof value === "string" ? value.trim() : "";
-
-  if (!todo) {
-    return "";
+const normalizeDemoTodoItems = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  if (todo.toLowerCase() === "null" || todo.toLowerCase() === "undefined") {
-    return "";
-  }
-
-  return todo;
-};
-
-const splitDemoTodoItems = (todo: string) => {
-  const normalized = todo
-    .replace(/\b(?:to do|todo)\s+list\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const parts = normalized
-    .split(/\s*(?:,|;|\band\b)\s*/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (
-    parts.length > 1 &&
-    parts.every((part) => TODO_ITEM_VERB_PATTERN.test(part))
-  ) {
-    return parts;
-  }
-
-  return [normalized];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(
+      (item) =>
+        item &&
+        item.toLowerCase() !== "null" &&
+        item.toLowerCase() !== "undefined",
+    );
 };
 
 export const getBuiltInDemoTodos = (userId: string) => [
@@ -89,13 +66,12 @@ export const executeBuiltInDemoTool = ({
     };
   }
 
-  const todo = normalizeDemoTodo(args.todo);
-  const todoItems = todo ? splitDemoTodoItems(todo) : [];
+  const todoItems = normalizeDemoTodoItems(args.todo_items);
 
   if (todoItems.length === 0) {
     return {
       state: "needs_clarification" as const,
-      message: "What should I add to the todo list?",
+      message: "What todo items should I add?",
       data: null,
     };
   }

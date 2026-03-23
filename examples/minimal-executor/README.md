@@ -12,6 +12,12 @@ It does one thing:
 - accepts one tool, `todos.add`
 - updates a visible todo list in the browser demo
 
+The sync contract for this example lives in:
+
+- `texty.json`
+
+That file is the source of truth for what Texty should extract and send.
+
 The example is now split into two parts:
 
 - transport/server code
@@ -28,11 +34,12 @@ It makes the side effect obvious without forcing someone to read raw response JS
 The flow is:
 
 1. the browser sends a normal user message
-2. the example syncs the allowed tool with Texty
+2. the example syncs `texty.json` with Texty
 3. the example sends the message to Texty
-4. Texty decides whether to reply normally or call the tool
-5. if the tool runs, the external executor updates the todo list
-6. the browser shows both the assistant reply and the visible todo state
+4. Texty decides whether to reply normally, ask a follow-up, or call the tool
+5. if the tool runs, Texty sends schema-valid arguments to the external executor
+6. the external executor updates the todo list
+7. the browser shows both the assistant reply and the visible todo state
 
 So the person trying the demo can immediately see:
 
@@ -48,11 +55,13 @@ So the person trying the demo can immediately see:
   - handles auth, JSON parsing, and routes
 - `executor.mjs`
   - the executor implementation itself
-  - exports the tool definitions and the function that handles a Texty tool call
+  - imports the synced tool definitions from `texty.json`
+  - exports the function that handles a Texty tool call
 - `index.html`
   - the local browser UI shown at `http://localhost:8787`
 - `texty.json`
-  - example manifest shape for this executor
+  - the sync manifest
+  - the source of truth for the tool schema Texty must satisfy
 
 ## Clean Executor Shape
 
@@ -67,6 +76,17 @@ executeToolCall({ payload, defaultUserId })
 ```
 
 Where `payload` is the request Texty sends to `POST /tools/execute`.
+
+Texty is expected to send arguments that already match the schema from `texty.json`.
+For this demo, that means `todos.add` should receive:
+
+```json
+{
+  "todo_items": ["call dad", "buy milk"]
+}
+```
+
+not one raw string that still needs executor-side interpretation.
 
 For this example, the server route is intentionally thin and just does:
 
@@ -131,16 +151,20 @@ curl -X POST http://localhost:5173/api/v1/providers/demo_executor/users/demo_use
     "tools": [
       {
         "tool_name": "todos.add",
-        "description": "Add one item to the user'\''s visible todo list. Use this only when the user clearly asks to add, capture, or remember a task. The todo field should contain only the task text itself.",
+        "description": "Add one or more items to the user'\''s visible todo list. Use this only when the user clearly asks to add, capture, or remember tasks. The todo_items field should contain only the task text values themselves.",
         "input_schema": {
           "type": "object",
           "properties": {
-            "todo": {
-              "type": "string",
-              "description": "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list."
+            "todo_items": {
+              "type": "array",
+              "description": "The exact todo items to add.",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
             }
           },
-          "required": ["todo"]
+          "required": ["todo_items"]
         },
         "status": "active"
       }
@@ -168,7 +192,7 @@ curl -X POST http://localhost:5173/api/v1/input \
   }'
 ```
 
-Texty should decide to call `todos.add`, and the executor should return a completed result with the updated todo list.
+Texty should decide to call `todos.add`, extract `todo_items`, and the executor should return a completed result with the updated todo list.
 
 ## Browser Demo
 
@@ -194,9 +218,10 @@ After you send a message:
 1. Texty receives the user input.
 2. Texty decides whether a tool should run.
 3. If needed, Texty sends `POST /tools/execute` to your local executor.
-4. Your executor updates the todo list and returns structured JSON.
-5. Texty turns that result into the assistant reply.
-6. The browser shows the updated todo list state.
+4. Texty sends your executor validated arguments that match the schema in `texty.json`.
+5. Your executor updates the todo list and returns structured JSON.
+6. Texty turns that result into the assistant reply.
+7. The browser shows the updated todo list state.
 
 That is the basic integration loop.
 

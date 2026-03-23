@@ -54,9 +54,10 @@ If the API surface is too large, too flexible, or too inconsistent:
 A new integration should have one clear first success path:
 
 1. configure a connection
-2. sync tools
-3. send conversation input
-4. let Texty trigger the correct target
+2. define tools in `texty.json`
+3. sync that manifest into Texty
+4. send conversation input
+5. let Texty trigger the correct target with schema-valid arguments
 
 Everything else should be optional or advanced.
 
@@ -165,10 +166,24 @@ That is the main thing a connected system should send repeatedly.
 
 Tool sync should stay easy to understand:
 
+- here is the `texty.json` manifest for this user
 - here are the tools this user can use
-- here is where each tool lives
+- here is the schema Texty must satisfy before executing them
 
 It should not become a complicated patch or partial-sync protocol unless there is a strong reason.
+
+### Keep schema ownership in Texty
+
+If a tool declares an input schema, Texty should treat that schema as the execution contract.
+
+That means:
+
+- Texty chooses the tool
+- Texty extracts the arguments
+- Texty asks follow-up questions for missing required fields
+- the executor receives already-structured arguments
+
+The executor should not need to reinterpret the user's natural-language request.
 
 ### Treat thread CRUD as advanced
 
@@ -238,7 +253,7 @@ It may help to eventually support one compact registration payload that says:
 - what tools it exposes
 - where each tool should be triggered
 
-That could make AI-generated integrations even easier.
+That is now the preferred direction for examples through `texty.json`.
 
 ### 3. Should a one-tool integration be even simpler?
 

@@ -49,6 +49,7 @@ import {
   getToolDecisionConfidenceAction,
   interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
+  splitTodoItemsFromText,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
   TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
 } from "./provider.logic";
@@ -135,8 +136,10 @@ const TOOL_DECISION_PROMPT = [
   "If the request is missing required details for a tool, still choose the tool if appropriate, fill in the information you do have, and return a follow_up question for the missing information.",
   "Include a confidence score between 0 and 1 for how certain you are that this is the right tool choice.",
   "Arguments must contain only the extracted values for the tool schema.",
+  "If a schema field is an array, return an array that already matches the schema instead of one joined string.",
   "Do not include instruction words or filler in arguments.",
   'Example: if the user says "add wash hair to note", the note argument should be "wash hair", not "add wash hair to note".',
+  'Example: if the schema requires todo_items and the user says "call dad and buy milk", return {"todo_items":["call dad","buy milk"]}.',
   'Example: if the user says "my name is john", that is a direct reply or normal conversation unless the user explicitly asks to save it.',
 ].join("\n");
 
@@ -147,6 +150,7 @@ const TOOL_ARGUMENT_UPDATE_PROMPT = [
   "Merge the new user reply into the existing partial arguments.",
   "Keep any valid existing argument values unless the user clearly corrects them.",
   "Arguments must contain only the extracted values for the tool schema.",
+  "If a schema field is an array, keep it as an array instead of collapsing it into one string.",
   "If required information is still missing, return a follow_up question.",
   "If the required information is now complete, return follow_up as null.",
 ].join("\n");
@@ -614,6 +618,39 @@ const normalizeToolArguments = ({
     return args;
   }
 
+  if (tool.toolName === "todos.add") {
+    const currentValue = args.todo_items;
+
+    if (Array.isArray(currentValue)) {
+      return {
+        ...args,
+        todo_items: currentValue
+          .flatMap((item) =>
+            typeof item === "string" ? splitTodoItemsFromText(item) : [],
+          )
+          .filter(Boolean),
+      };
+    }
+
+    if (typeof currentValue === "string") {
+      return {
+        ...args,
+        todo_items: splitTodoItemsFromText(currentValue),
+      };
+    }
+
+    const explicitTodo = extractExplicitTodoCandidate(content);
+    const implicitTodo = extractImplicitTodoCandidate(content);
+    const fallbackTodo = explicitTodo ?? implicitTodo;
+
+    if (fallbackTodo) {
+      return {
+        ...args,
+        todo_items: splitTodoItemsFromText(fallbackTodo),
+      };
+    }
+  }
+
   const stringEntries = Object.entries(properties).filter(([, value]) => {
     if (!value || typeof value !== "object") {
       return false;
@@ -654,9 +691,10 @@ const getSingleActiveTool = (tools: AllowedTool[]) => {
 };
 
 const TODO_LEADING_VERB_PATTERN =
-  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get)\b/i;
+  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get|wash|clean|groom|feed|walk|take|make|finish|submit|check|review|prepare)\b/i;
 
-const looksLikeTodoClause = (value: string) => TODO_LEADING_VERB_PATTERN.test(value.trim());
+const looksLikeTodoClause = (value: string) =>
+  TODO_LEADING_VERB_PATTERN.test(value.trim());
 
 const extractExplicitTodoCandidate = (content: string) => {
   const trimmed = content.trim();
@@ -729,11 +767,11 @@ const getTodoHeuristicDecision = ({
       action: "tool_call" as const,
       tool_name: tool.toolName,
       arguments: {
-        todo: explicitTodo,
+        todo_items: splitTodoItemsFromText(explicitTodo),
       },
       confidence: 0.9,
       reasoning:
-        "The user directly stated one or more task phrases, so Texty should add them to the todo list.",
+        "The user directly stated task phrases, so Texty should extract todo_items and add them to the todo list.",
     };
   }
 
@@ -744,11 +782,11 @@ const getTodoHeuristicDecision = ({
       action: "tool_call" as const,
       tool_name: tool.toolName,
       arguments: {
-        todo: implicitTodo,
+        todo_items: splitTodoItemsFromText(implicitTodo),
       },
       confidence: 0.65,
       reasoning:
-        "The user described a likely personal task using implicit task language, so Texty should confirm whether it belongs on the todo list.",
+        "The user described likely personal tasks using implicit task language, so Texty should extract todo_items and confirm whether they belong on the todo list.",
     };
   }
 

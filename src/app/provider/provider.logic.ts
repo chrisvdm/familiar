@@ -151,6 +151,34 @@ export const extractToolStringValue = ({
   return null;
 };
 
+const TODO_ITEM_VERB_PATTERN =
+  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get|wash|clean|groom|feed|walk|take|make|finish|submit|check|review|prepare)\b/i;
+
+export const splitTodoItemsFromText = (value: string) => {
+  const normalized = value
+    .replace(/\b(?:to do|todo)\s+list\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  const parts = normalized
+    .split(/\s*(?:,|;|\band\b)\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (
+    parts.length > 1 &&
+    parts.every((part) => TODO_ITEM_VERB_PATTERN.test(part))
+  ) {
+    return parts;
+  }
+
+  return [normalized];
+};
+
 export const selectProviderGlobalMemory = ({
   memoryPolicy,
   globalMemory,

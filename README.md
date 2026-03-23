@@ -118,9 +118,10 @@ flowchart LR
 This is the smallest useful setup path for connecting code to Texty and getting a working request through the system.
 
 1. Create a connection and get a token.
-2. Sync the tools Texty can use for a user.
-3. Send user input to Texty.
-4. Let Texty call the correct tool target when work should happen.
+2. Define your tools in `texty.json`.
+3. Sync the tools Texty can use for a user.
+4. Send user input to Texty.
+5. Let Texty call the correct tool target when work should happen.
 
 There is a tiny reference example here:
 
@@ -136,8 +137,27 @@ What that example is for:
 If you are new to this, think of it like this:
 
 - Texty is the thing the user talks to
-- your code or webhook is the thing that actually does the work
+- `texty.json` is the contract that tells Texty what tools exist and what arguments they need
+- your code or webhook is the thing that actually does the work once Texty has already extracted those arguments
 - the example folder shows the smallest possible version of that target
+
+## Tool Contract
+
+`texty.json` is the sync manifest.
+
+It is the source of truth for:
+
+- which tools Texty may use
+- what each tool does
+- the exact schema Texty must satisfy before calling the executor
+
+That means Texty should use the manifest to:
+
+- choose the right tool
+- extract arguments into the declared schema
+- ask follow-up questions when required fields are missing
+
+The executor should receive validated tool arguments, not raw user language that still needs interpretation.
 
 ## API Reference
 
@@ -154,6 +174,8 @@ That token identifies which connected system is calling Texty.
 ### Sync tools
 
 Use this endpoint to tell Texty which tools are available for a specific user.
+
+In practice, this payload should usually come from your `texty.json` file.
 
 ```shell
 curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/tools/sync \
@@ -209,6 +231,12 @@ Plain English example:
 - `user_id = "user_123"` means “these tools are available for this user”
 - `tool_name = "spreadsheet.update_row"` means “this tool updates a spreadsheet row”
 
+What Texty should do with that schema:
+
+- if the user asks for spreadsheet work, Texty should choose `spreadsheet.update_row`
+- if the schema needs `sheet`, `row_id`, and `values`, Texty should extract those fields
+- if one is missing, Texty should ask for it before calling the executor
+
 ### Send input
 
 Use this endpoint when a user sends a message into Texty.
@@ -258,6 +286,31 @@ Why `channel` matters:
 
 - Texty shares memory at the user level
 - but it can keep different recent thread continuity per channel
+
+## Execution Contract
+
+When Texty calls a tool target, the important part of the payload is the validated `arguments` object.
+
+The target may also receive metadata such as:
+
+- `provider_id`
+- `user_id`
+- `thread_id`
+- `tool_name`
+
+But the executor should not have to decide intent again or parse the user's natural-language request again.
+
+Example:
+
+If `texty.json` says `todos.add` requires:
+
+```json
+{
+  "todo_items": ["call dad", "buy dad a birthday present"]
+}
+```
+
+then Texty should send exactly that schema-shaped data to the executor once it is ready.
 
 Plain English example:
 

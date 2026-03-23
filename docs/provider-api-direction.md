@@ -50,7 +50,7 @@ So when a user asks for something:
 - domain rules
 - execution logs
 - integrations with business systems
-- optional domain-specific argument validation
+- optional final validation of already-structured arguments
 
 ## Important Execution Rule
 
@@ -63,7 +63,7 @@ That means the simplest model is:
 - Texty stores the tool id
 - Texty stores where that tool lives
 - Texty decides when the tool is relevant
-- Texty sends the arguments to the correct target
+- Texty extracts schema-valid arguments and sends them to the correct target
 - the target just performs the work and returns the result
 
 This is intentionally simpler than a second dispatch layer.
@@ -136,6 +136,8 @@ The full policy model is described in `docs/architecture-foundations.md`.
 ### 1. Tool sync
 
 Connections should sync the allowed tools for a given user into Texty.
+
+The preferred source of that sync payload is a manifest file named `texty.json`.
 
 This should happen:
 
@@ -210,16 +212,21 @@ Example request from Texty to the target:
 
 ```json
 {
-  "sheet": "Sales Leads",
-  "row_id": "42",
-  "values": {
-    "status": "contacted"
+  "tool_name": "spreadsheet.update_row",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "arguments": {
+    "sheet": "Sales Leads",
+    "row_id": "42",
+    "values": {
+      "status": "contacted"
+    }
   }
 }
 ```
 
-In the simpler model, the request body is just the tool arguments.
-The current runtime can still include extra wrapper fields in the payload today, but the target should not need them to do its job.
+The important rule is that `arguments` must already match the synced `input_schema`.
+The target may receive metadata fields such as `tool_name`, `user_id`, and `thread_id`, but it should not need to re-run intent detection or argument extraction.
 Texty has already chosen the tool and already knows where it lives.
 
 Example response:

@@ -1,57 +1,25 @@
+import manifest from "./texty.json" with { type: "json" };
+
 const todoStore = new Map();
-const todoItemVerbPattern =
-  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get|wash|clean|groom|feed|walk|take|make|finish|submit|check|review|prepare)\b/i;
 
-export const toolDefinitions = [
-  {
-    tool_name: "todos.add",
-    description:
-      "Add one item to the user's visible todo list. Use this only when the user clearly asks to add, capture, or remember a task. The todo field should contain only the task text itself.",
-    input_schema: {
-      type: "object",
-      properties: {
-        todo: {
-          type: "string",
-          description:
-            "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list.",
-        },
-      },
-      required: ["todo"],
-    },
-    status: "active",
-  },
-];
+export const toolDefinitions = manifest.tools.map((tool) => ({
+  ...tool,
+  status: "active",
+}));
 
-const normalizeTodo = (value) => {
-  const todo = typeof value === "string" ? value.trim() : "";
-
-  if (!todo) {
-    return "";
+const normalizeTodoItems = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  if (todo.toLowerCase() === "null" || todo.toLowerCase() === "undefined") {
-    return "";
-  }
-
-  return todo;
-};
-
-const splitTodoItems = (todo) => {
-  const normalized = todo
-    .replace(/\b(?:to do|todo)\s+list\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const parts = normalized
-    .split(/\s*(?:,|;|\band\b)\s*/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (parts.length > 1 && parts.every((part) => todoItemVerbPattern.test(part))) {
-    return parts;
-  }
-
-  return [normalized];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(
+      (item) =>
+        item &&
+        item.toLowerCase() !== "null" &&
+        item.toLowerCase() !== "undefined",
+    );
 };
 
 export const getTodosForUser = (userId) => [...(todoStore.get(userId) ?? [])];
@@ -84,15 +52,14 @@ export const executeToolCall = ({
   }
 
   const userId = String(payload.user_id || defaultUserId).trim();
-  const todo = normalizeTodo(payload.arguments?.todo);
-  const todoItems = todo ? splitTodoItems(todo) : [];
+  const todoItems = normalizeTodoItems(payload.arguments?.todo_items);
 
   if (todoItems.length === 0) {
     return {
       ok: true,
       state: "needs_clarification",
       result: {
-        summary: "What should I add to the todo list?",
+        summary: "What todo items should I add?",
       },
     };
   }

@@ -5,16 +5,20 @@
   "tools": [
     {
       "tool_name": "todos.add",
-      "description": "Add one item to the user's visible todo list. Use this only when the user clearly asks to add, capture, or remember a task. The todo field should contain only the task text itself.",
+      "description": "Add one or more items to the user's visible todo list. Use this only when the user clearly asks to add, capture, or remember tasks. The todo_items field should contain only the task text values themselves.",
       "input_schema": {
         "type": "object",
         "properties": {
-          "todo": {
-            "type": "string",
-            "description": "Only the todo text, for example 'buy dog food'. Do not include phrases like 'add to my todo list'."
+          "todo_items": {
+            "type": "array",
+            "description": "The exact todo items to add, for example ['buy dog food', 'email the landlord'].",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
           }
         },
-        "required": ["todo"]
+        "required": ["todo_items"]
       }
     }
   ]

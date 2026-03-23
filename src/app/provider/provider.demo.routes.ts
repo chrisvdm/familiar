@@ -1,6 +1,7 @@
 import { route } from "rwsdk/router";
 
 import homePageTemplate from "../../../examples/minimal-executor/index.html?raw";
+import demoManifest from "../../../examples/minimal-executor/texty.json";
 import {
   handleProviderConversationInput,
   syncProviderTools,
@@ -22,25 +23,10 @@ const DEMO_CHANNEL_ID = BUILT_IN_DEMO_CHANNEL_ID;
 const buildSyncBody = (userId: string) => ({
   provider_id: DEMO_EXECUTOR_ID,
   user_id: userId,
-  tools: [
-    {
-      tool_name: "todos.add",
-      description:
-        "Add one item to the user's visible todo list. Use this only when the user is clearly asking to add, capture, or remember a task. The todo field should contain only the task text itself.",
-      input_schema: {
-        type: "object",
-        properties: {
-          todo: {
-            type: "string",
-            description:
-              "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list.",
-          },
-        },
-        required: ["todo"],
-      },
-      status: "active" as const,
-    },
-  ],
+  tools: demoManifest.tools.map((tool) => ({
+    ...tool,
+    status: "active" as const,
+  })),
 });
 
 const buildInputBody = (userId: string, text: string) => ({

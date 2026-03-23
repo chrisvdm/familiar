@@ -12,6 +12,7 @@ import {
   getToolDecisionConfidenceAction,
   interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
+  splitTodoItemsFromText,
 } from "./provider.logic.ts";
 
 test("private threads do not expose shared global memory", () => {
@@ -195,4 +196,11 @@ test("tool string extraction strips save-note phrasing", () => {
     }),
     "buy dog food",
   );
+});
+
+test("todo item splitting produces multiple items for compound task text", () => {
+  assert.deepEqual(splitTodoItemsFromText("wash my dog and buy dad a present"), [
+    "wash my dog",
+    "buy dad a present",
+  ]);
 });
