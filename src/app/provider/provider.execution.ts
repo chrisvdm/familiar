@@ -97,6 +97,7 @@ export const executeProviderToolRequest = async ({
     return executeBuiltInDemoTool({
       toolName,
       args,
+      userId,
     });
   }
 

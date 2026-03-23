@@ -2,11 +2,16 @@ import { route } from "rwsdk/router";
 
 import homePageTemplate from "../../../examples/minimal-executor/index.html?raw";
 import {
+  handleProviderConversationInput,
+  syncProviderTools,
+} from "./provider.service";
+import {
   BUILT_IN_DEMO_CHANNEL_ID,
   BUILT_IN_DEMO_PROVIDER_ID,
   BUILT_IN_DEMO_TOKEN,
   BUILT_IN_DEMO_USER_ID,
   executeBuiltInDemoTool,
+  getBuiltInDemoTodos,
 } from "./provider.demo";
 
 const DEMO_TOKEN = BUILT_IN_DEMO_TOKEN;
@@ -19,21 +24,21 @@ const buildSyncBody = (userId: string) => ({
   user_id: userId,
   tools: [
     {
-      tool_name: "notes.echo",
+      tool_name: "todos.add",
       description:
-        "Save a short note. Use this only when the user clearly asks to save or add a note. The note field should contain only the note text itself, not instruction words.",
+        "Add one item to the user's visible todo list. Use this only when the user is clearly asking to add, capture, or remember a task. The todo field should contain only the task text itself.",
       input_schema: {
         type: "object",
         properties: {
-          note: {
+          todo: {
             type: "string",
             description:
-              "Only the note content, for example wash hair. Do not include phrases like add to note or save this note.",
+              "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list.",
           },
         },
-        required: ["note"],
+        required: ["todo"],
       },
-      status: "active",
+      status: "active" as const,
     },
   ],
 });
@@ -50,17 +55,6 @@ const buildInputBody = (userId: string, text: string) => ({
     id: DEMO_CHANNEL_ID,
   },
 });
-
-type DemoApiResponse = {
-  error?: {
-    message?: string;
-  };
-  response?: {
-    type?: string;
-    content?: string | null;
-    task_status?: string | null;
-  };
-};
 
 const renderHomePage = (origin: string) =>
   homePageTemplate
@@ -85,66 +79,38 @@ const unauthorized = () =>
     { status: 401 },
   );
 
-const getBearerToken = (request: Request) => {
-  const authorization = request.headers.get("Authorization");
-  if (!authorization?.startsWith("Bearer ")) {
-    return null;
+const extractAssistantReply = (inputResponse: Record<string, unknown>) => {
+  const response = inputResponse.response as
+    | { content?: unknown }
+    | undefined;
+
+  if (!response || typeof response !== "object") {
+    return "";
   }
 
-  const token = authorization.slice("Bearer ".length).trim();
-  return token || null;
+  return typeof response.content === "string" ? response.content : "";
 };
 
-const syncNotesToolWithTexty = async ({
-  token,
-  userId,
-  origin,
-}: {
-  token: string;
-  userId: string;
-  origin: string;
-}) => {
-  const response = await fetch(
-    `${origin}/api/v1/providers/${DEMO_EXECUTOR_ID}/users/${userId}/tools/sync`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(buildSyncBody(userId)),
-    },
-  );
+const extractTask = (inputResponse: Record<string, unknown>) => {
+  const response = inputResponse.response as
+    | { type?: unknown; task_status?: unknown }
+    | undefined;
+
+  if (!response || typeof response !== "object") {
+    return {
+      thread_id:
+        typeof inputResponse.thread_id === "string" ? inputResponse.thread_id : null,
+      action: null,
+      execution_state: null,
+    };
+  }
 
   return {
-    status: response.status,
-    body: (await response.json()) as DemoApiResponse,
-  };
-};
-
-const runTextyInput = async ({
-  token,
-  userId,
-  text,
-  origin,
-}: {
-  token: string;
-  userId: string;
-  text: string;
-  origin: string;
-}) => {
-  const response = await fetch(`${origin}/api/v1/input`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(buildInputBody(userId, text)),
-  });
-
-  return {
-    status: response.status,
-    body: (await response.json()) as DemoApiResponse,
+    thread_id:
+      typeof inputResponse.thread_id === "string" ? inputResponse.thread_id : null,
+    action: typeof response.type === "string" ? response.type : null,
+    execution_state:
+      typeof response.task_status === "string" ? response.task_status : null,
   };
 };
 
@@ -227,42 +193,39 @@ export const providerDemoRoutes = [
       );
     }
 
-    const origin = new URL(request.url).origin;
-
     try {
-      const syncResult = await syncNotesToolWithTexty({ token, userId, origin });
-      const textyResult = await runTextyInput({ token, userId, text, origin });
-
-      if (syncResult.status !== 200) {
-        return Response.json(
-          {
-            status_code: syncResult.status,
-            response:
-              syncResult.body?.error?.message ||
-              "Tool sync failed before the demo input could run.",
-            task: "setup_failed",
-          },
-          { status: syncResult.status },
-        );
-      }
+      const syncResult = await syncProviderTools(buildSyncBody(userId));
+      const textyResult = await handleProviderConversationInput({
+        input: buildInputBody(userId, text),
+        providerConfig: {
+          token: DEMO_TOKEN,
+        },
+      });
 
       return Response.json({
-        status_code: textyResult.status,
-        response:
-          textyResult.body?.response?.content ||
-          textyResult.body?.error?.message ||
-          "No response content returned.",
-        task:
-          textyResult.body?.response?.task_status ||
-          textyResult.body?.response?.type ||
-          "chat",
+        ok: true,
+        demo_identity: {
+          executor_id: DEMO_EXECUTOR_ID,
+          user_id: userId,
+        },
+        assistant_reply: extractAssistantReply(textyResult),
+        task: extractTask(textyResult),
+        todos: getBuiltInDemoTodos(userId),
+        observed: {
+          sync_status: 200,
+          sync_response: syncResult,
+          input_status: 200,
+          input_response: textyResult,
+        },
       });
     } catch (error) {
       return Response.json(
         {
-          status_code: 502,
-          response: error instanceof Error ? error.message : String(error),
-          task: "failed",
+          ok: false,
+          error: {
+            code: "demo_failed",
+            message: error instanceof Error ? error.message : String(error),
+          },
         },
         { status: 502 },
       );
@@ -272,23 +235,29 @@ export const providerDemoRoutes = [
     if (request.method !== "POST") {
       return Response.json(
         {
+          ok: false,
+          state: "failed",
           error: {
             code: "method_not_allowed",
             message: "Method not allowed.",
-            details: null,
           },
         },
         { status: 405 },
       );
     }
 
-    const token = getBearerToken(request);
+    const authorization = request.headers.get("Authorization") || "";
+    const token = authorization.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : "";
+
     if (!token || token !== DEMO_TOKEN) {
       return unauthorized();
     }
 
     let payload: {
       tool_name?: string;
+      user_id?: string;
       arguments?: Record<string, unknown>;
     };
 
@@ -302,7 +271,6 @@ export const providerDemoRoutes = [
           error: {
             code: "invalid_json",
             message: "Request body must be valid JSON.",
-            details: null,
           },
         },
         { status: 400 },
@@ -312,40 +280,24 @@ export const providerDemoRoutes = [
     const result = executeBuiltInDemoTool({
       toolName: String(payload.tool_name || ""),
       args: payload.arguments ?? {},
+      userId: String(payload.user_id || DEMO_USER_ID).trim(),
     });
 
-    if (result.state === "failed") {
-      return Response.json(
-        {
-          ok: false,
-          state: "failed",
-          error: {
-            code: "unknown_tool",
-            message: result.message,
-            details: null,
-          },
-        },
-        { status: 400 },
-      );
-    }
-
-    if (result.state === "needs_clarification") {
-      return Response.json({
-        ok: true,
-        state: "needs_clarification",
-        result: {
-          summary: result.message,
-        },
-      });
-    }
-
     return Response.json({
-      ok: true,
+      ok: result.state !== "failed",
       state: result.state,
       result: {
         summary: result.message,
-        data: result.data ?? undefined,
+        data: result.data,
       },
+      ...(result.state === "failed"
+        ? {
+            error: {
+              code: "execution_failed",
+              message: result.message,
+            },
+          }
+        : {}),
     });
   }),
 ];

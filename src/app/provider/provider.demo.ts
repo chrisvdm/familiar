@@ -3,28 +3,61 @@ export const BUILT_IN_DEMO_TOKEN = "dev-token";
 export const BUILT_IN_DEMO_USER_ID = "demo_user";
 export const BUILT_IN_DEMO_CHANNEL_ID = "minimal-executor-playground";
 
-const normalizeDemoNote = (value: unknown) => {
-  const note = typeof value === "string" ? value.trim() : "";
+const todoStore = new Map<
+  string,
+  Array<{
+    id: string;
+    text: string;
+    created_at: string;
+  }>
+>();
 
-  if (!note) {
+const normalizeDemoTodo = (value: unknown) => {
+  const todo = typeof value === "string" ? value.trim() : "";
+
+  if (!todo) {
     return "";
   }
 
-  if (note.toLowerCase() === "null" || note.toLowerCase() === "undefined") {
+  if (todo.toLowerCase() === "null" || todo.toLowerCase() === "undefined") {
     return "";
   }
 
-  return note;
+  return todo;
+};
+
+export const getBuiltInDemoTodos = (userId: string) => [
+  ...(todoStore.get(userId) ?? []),
+];
+
+const addBuiltInDemoTodo = ({
+  userId,
+  todo,
+}: {
+  userId: string;
+  todo: string;
+}) => {
+  const currentTodos = getBuiltInDemoTodos(userId);
+  const nextTodo = {
+    id: crypto.randomUUID(),
+    text: todo,
+    created_at: new Date().toISOString(),
+  };
+  const nextTodos = [...currentTodos, nextTodo];
+  todoStore.set(userId, nextTodos);
+  return nextTodos;
 };
 
 export const executeBuiltInDemoTool = ({
   toolName,
   args,
+  userId,
 }: {
   toolName: string;
   args: Record<string, unknown>;
+  userId?: string;
 }) => {
-  if (toolName !== "notes.echo") {
+  if (toolName !== "todos.add") {
     return {
       state: "failed" as const,
       message: `Unknown tool: ${toolName || "missing"}.`,
@@ -32,21 +65,27 @@ export const executeBuiltInDemoTool = ({
     };
   }
 
-  const note = normalizeDemoNote(args.note);
+  const todo = normalizeDemoTodo(args.todo);
 
-  if (!note) {
+  if (!todo) {
     return {
       state: "needs_clarification" as const,
-      message: "What note should I save?",
+      message: "What should I add to the todo list?",
       data: null,
     };
   }
 
+  const todos = addBuiltInDemoTodo({
+    userId: userId || BUILT_IN_DEMO_USER_ID,
+    todo,
+  });
+
   return {
     state: "completed" as const,
-    message: `Saved note: ${note}`,
+    message: `Added "${todo}" to the todo list.`,
     data: {
-      note,
+      added_todo: todo,
+      todos,
     },
   };
 };
