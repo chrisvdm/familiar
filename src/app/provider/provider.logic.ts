@@ -179,6 +179,54 @@ export const splitTodoItemsFromText = (value: string) => {
   return [normalized];
 };
 
+export const getRequiredToolArgumentFields = (
+  inputSchema: Record<string, unknown> | undefined,
+) => {
+  if (!inputSchema || typeof inputSchema !== "object") {
+    return [];
+  }
+
+  const required = (inputSchema as { required?: unknown }).required;
+
+  if (!Array.isArray(required)) {
+    return [];
+  }
+
+  return required.filter((field): field is string => typeof field === "string");
+};
+
+export const hasMeaningfulToolArgumentValue = (value: unknown): boolean => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return Boolean(
+      normalized &&
+        normalized !== "null" &&
+        normalized !== "undefined",
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulToolArgumentValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value).some((entry) => hasMeaningfulToolArgumentValue(entry));
+  }
+
+  return value !== null && value !== undefined;
+};
+
+export const getMissingRequiredToolArgumentFields = ({
+  inputSchema,
+  args,
+}: {
+  inputSchema: Record<string, unknown> | undefined;
+  args: Record<string, unknown>;
+}) =>
+  getRequiredToolArgumentFields(inputSchema).filter(
+    (field) => !hasMeaningfulToolArgumentValue(args[field]),
+  );
+
 export const selectProviderGlobalMemory = ({
   memoryPolicy,
   globalMemory,

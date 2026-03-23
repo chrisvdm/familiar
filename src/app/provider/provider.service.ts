@@ -46,7 +46,9 @@ import {
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
+  getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
+  hasMeaningfulToolArgumentValue,
   interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
@@ -138,9 +140,12 @@ const TOOL_DECISION_PROMPT = [
   "Arguments must contain only the extracted values for the tool schema.",
   "If a schema field is an array, return an array that already matches the schema instead of one joined string.",
   "Do not include instruction words or filler in arguments.",
+  "Use tool = none for ordinary conversation, introductions, opinions, preferences, or future-thinking statements unless the user is clearly asking to save, remember, add, send, create, update, delete, or run something.",
   'Example: if the user says "add wash hair to note", the note argument should be "wash hair", not "add wash hair to note".',
   'Example: if the schema requires todo_items and the user says "call dad and buy milk", return {"todo_items":["call dad","buy milk"]}.',
   'Example: if the user says "my name is john", that is a direct reply or normal conversation unless the user explicitly asks to save it.',
+  'Example: if the user says "i want to retire", that is normal conversation, not a todo.',
+  'Example: if the user says "i think i will buy canidae", that is a statement unless they are clearly asking to add it as a task.',
 ].join("\n");
 
 const TOOL_ARGUMENT_UPDATE_PROMPT = [
@@ -694,6 +699,129 @@ const formatAllowedTools = (tools: AllowedTool[]) => {
     .join("\n");
 };
 
+const scoreToolRelevance = ({
+  tool,
+  content,
+}: {
+  tool: AllowedTool;
+  content: string;
+}) => {
+  const contentTokens = new Set(tokenize(content));
+
+  if (contentTokens.size === 0) {
+    return 0;
+  }
+
+  const toolCorpus = [
+    tool.toolName,
+    tool.description,
+    JSON.stringify(tool.inputSchema),
+  ].join(" ");
+  const toolTokens = new Set(tokenize(toolCorpus));
+  let matches = 0;
+
+  for (const token of contentTokens) {
+    if (toolTokens.has(token)) {
+      matches += 1;
+    }
+  }
+
+  return matches / Math.max(contentTokens.size, 1);
+};
+
+const getCandidateTools = ({
+  tools,
+  content,
+}: {
+  tools: AllowedTool[];
+  content: string;
+}) => {
+  const activeTools = tools.filter((tool) => tool.status === "active");
+
+  if (activeTools.length <= 3) {
+    return activeTools;
+  }
+
+  const ranked = activeTools
+    .map((tool) => ({
+      tool,
+      score: scoreToolRelevance({
+        tool,
+        content,
+      }),
+    }))
+    .sort((left, right) => right.score - left.score);
+
+  const bestScore = ranked[0]?.score ?? 0;
+
+  if (bestScore <= 0) {
+    return activeTools.slice(0, 3);
+  }
+
+  return ranked
+    .filter((entry, index) => index < 3 || entry.score === bestScore)
+    .slice(0, 3)
+    .map((entry) => entry.tool);
+};
+
+const buildMissingToolArgumentQuestion = ({
+  tool,
+  missingFields,
+}: {
+  tool: AllowedTool;
+  missingFields: string[];
+}) => {
+  if (tool.toolName === "todos.add") {
+    return "What todo items should I add?";
+  }
+
+  const properties =
+    tool.inputSchema &&
+    typeof tool.inputSchema === "object" &&
+    tool.inputSchema.properties &&
+    typeof tool.inputSchema.properties === "object"
+      ? (tool.inputSchema.properties as Record<string, unknown>)
+      : {};
+
+  const fieldLabels = missingFields.map((field) => {
+    const property = properties[field];
+
+    if (property && typeof property === "object") {
+      const description = (property as { description?: unknown }).description;
+
+      if (typeof description === "string" && description.trim()) {
+        return description.trim().replace(/[.]+$/, "");
+      }
+    }
+
+    return field;
+  });
+
+  if (fieldLabels.length === 1) {
+    return `I still need ${fieldLabels[0]} before I can use ${tool.toolName}.`;
+  }
+
+  return `I still need ${fieldLabels.join(" and ")} before I can use ${tool.toolName}.`;
+};
+
+const validateToolDecision = ({
+  tool,
+  args,
+}: {
+  tool: AllowedTool;
+  args: Record<string, unknown>;
+}) => {
+  const missingFields = getMissingRequiredToolArgumentFields({
+    inputSchema: tool.inputSchema,
+    args,
+  });
+
+  return {
+    missingFields,
+    isComplete: missingFields.length === 0,
+  };
+};
+
 const normalizeToolArguments = ({
   tool,
   args,
@@ -959,6 +1087,11 @@ const decideConversationAction = async ({
     return todoHeuristicDecision satisfies ConversationDecision;
   }
 
+  const candidateTools = getCandidateTools({
+    tools,
+    content,
+  });
+
   const decision = await callDecisionModel({
     timeZone,
     stage: "routing",
@@ -979,7 +1112,7 @@ const decideConversationAction = async ({
         role: "user",
         content: [
           "Available tools:",
-          formatAllowedTools(tools),
+          formatAllowedTools(candidateTools),
           "",
           "Choose only from these exact tool names or use none.",
           "",
@@ -1047,16 +1180,53 @@ const decideConversationAction = async ({
   }
 
   if (followUp) {
+    const extractedArguments =
+      parsed.arguments && typeof parsed.arguments === "object"
+        ? parsed.arguments
+        : parsed.data && typeof parsed.data === "object"
+          ? parsed.data
+          : {};
+    const validation = validateToolDecision({
+      tool: matchingTool,
+      args: extractedArguments,
+    });
+
     return {
       action: "tool_follow_up",
       tool_name: matchingTool.toolName,
-      arguments:
-        parsed.arguments && typeof parsed.arguments === "object"
-          ? parsed.arguments
-          : parsed.data && typeof parsed.data === "object"
-            ? parsed.data
-            : {},
-      question: followUp,
+      arguments: extractedArguments,
+      question:
+        validation.isComplete || validation.missingFields.length === 0
+          ? followUp
+          : buildMissingToolArgumentQuestion({
+              tool: matchingTool,
+              missingFields: validation.missingFields,
+            }),
+      confidence: clampDecisionConfidence(parsed.confidence),
+      reasoning: reasoning ?? undefined,
+    } satisfies ConversationDecision;
+  }
+
+  const extractedArguments =
+    parsed.arguments && typeof parsed.arguments === "object"
+      ? parsed.arguments
+      : parsed.data && typeof parsed.data === "object"
+        ? parsed.data
+        : {};
+  const validation = validateToolDecision({
+    tool: matchingTool,
+    args: extractedArguments,
+  });
+
+  if (!validation.isComplete) {
+    return {
+      action: "tool_follow_up",
+      tool_name: matchingTool.toolName,
+      arguments: extractedArguments,
+      question: buildMissingToolArgumentQuestion({
+        tool: matchingTool,
+        missingFields: validation.missingFields,
+      }),
       confidence: clampDecisionConfidence(parsed.confidence),
       reasoning: reasoning ?? undefined,
     } satisfies ConversationDecision;
@@ -1065,12 +1235,7 @@ const decideConversationAction = async ({
   return {
     action: "tool_call",
     tool_name: matchingTool.toolName,
-    arguments:
-      parsed.arguments && typeof parsed.arguments === "object"
-        ? parsed.arguments
-        : parsed.data && typeof parsed.data === "object"
-          ? parsed.data
-          : {},
+    arguments: extractedArguments,
     confidence: clampDecisionConfidence(parsed.confidence),
     reasoning: reasoning ?? undefined,
   } satisfies ConversationDecision;
@@ -1128,7 +1293,24 @@ const updatePendingToolArguments = async ({
       parsed.arguments && typeof parsed.arguments === "object"
         ? parsed.arguments
         : currentArguments,
-    followUp: followUp || null,
+    followUp:
+      followUp ||
+      (() => {
+        const missingFields = getMissingRequiredToolArgumentFields({
+          inputSchema: tool.inputSchema,
+          args:
+            parsed.arguments && typeof parsed.arguments === "object"
+              ? parsed.arguments
+              : currentArguments,
+        });
+
+        return missingFields.length > 0
+          ? buildMissingToolArgumentQuestion({
+              tool,
+              missingFields,
+            })
+          : null;
+      })(),
   };
 };
 

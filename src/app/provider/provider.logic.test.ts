@@ -9,7 +9,9 @@ import {
   determineMockExecutionState,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
+  getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
+  hasMeaningfulToolArgumentValue,
   interpretPendingToolConfirmation,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
@@ -203,4 +205,25 @@ test("todo item splitting produces multiple items for compound task text", () =>
     "wash my dog",
     "buy dad a present",
   ]);
+});
+
+test("required tool argument detection treats empty strings as missing", () => {
+  assert.deepEqual(
+    getMissingRequiredToolArgumentFields({
+      inputSchema: {
+        type: "object",
+        required: ["sheet", "row_id"],
+      },
+      args: {
+        sheet: "Sales",
+        row_id: "   ",
+      },
+    }),
+    ["row_id"],
+  );
+});
+
+test("required tool argument detection treats non-empty arrays as present", () => {
+  assert.equal(hasMeaningfulToolArgumentValue(["buy milk"]), true);
+  assert.equal(hasMeaningfulToolArgumentValue([]), false);
 });

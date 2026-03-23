@@ -1,4 +1,7 @@
-import { BUILT_IN_DEMO_PROVIDER_ID, executeBuiltInDemoTool } from "./provider.demo";
+import {
+  BUILT_IN_DEMO_PROVIDER_ID,
+  executeBuiltInDemoTool,
+} from "./provider.demo.ts";
 import type { ProviderConfig, ProviderExecutionState } from "./provider.types";
 
 type ProviderToolExecutionResponse = {
