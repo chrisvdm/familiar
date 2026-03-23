@@ -647,11 +647,44 @@ const normalizeToolArguments = ({
   };
 };
 
+const getSingleActiveTool = (tools: AllowedTool[]) => {
+  const activeTools = tools.filter((tool) => tool.status === "active");
+  return activeTools.length === 1 ? activeTools[0] : null;
+};
+
+const extractImplicitTodoCandidate = (content: string) => {
+  const trimmed = content.trim();
+
+  if (!trimmed || trimmed.includes("?")) {
+    return null;
+  }
+
+  const patterns = [
+    /^(?:i need to|i have to|i should)\s+(.+)$/i,
+    /^(?:remember|remind me)\s+to\s+(.+)$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    const candidate = match?.[1]?.trim();
+
+    if (candidate) {
+      return candidate.replace(/[.?!]+$/, "").trim();
+    }
+  }
+
+  return null;
+};
+
 const buildToolConfirmationQuestion = ({
   tool,
 }: {
   tool?: AllowedTool;
 }) => {
+  if (tool?.toolName === "todos.add") {
+    return "Do you want to add that to your todo list?";
+  }
+
   const toolLabel = tool?.description?.trim()
     ? `${tool.toolName} (${tool.description.trim()})`
     : tool?.toolName || "that tool";
@@ -710,6 +743,25 @@ const decideConversationAction = async ({
       action: "direct_reply",
       reply,
     } satisfies ConversationDecision;
+  }
+
+  const singleActiveTool = getSingleActiveTool(tools);
+
+  if (singleActiveTool?.toolName === "todos.add") {
+    const implicitTodo = extractImplicitTodoCandidate(content);
+
+    if (implicitTodo) {
+      return {
+        action: "tool_call",
+        tool_name: singleActiveTool.toolName,
+        arguments: {
+          todo: implicitTodo,
+        },
+        confidence: 0.65,
+        reasoning:
+          "The user described a likely personal task using implicit task language, so Texty should confirm whether it belongs on the todo list.",
+      } satisfies ConversationDecision;
+    }
   }
 
   const decision = await callDecisionModel({
