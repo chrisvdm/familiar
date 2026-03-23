@@ -13,7 +13,7 @@ const todoStore = new Map<
 >();
 
 const TODO_ITEM_VERB_PATTERN =
-  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get)\b/i;
+  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get|wash|clean|groom|feed|walk|take|make|finish|submit|check|review|prepare)\b/i;
 
 const normalizeDemoTodo = (value: unknown) => {
   const todo = typeof value === "string" ? value.trim() : "";

@@ -12,6 +12,13 @@ It does one thing:
 - accepts one tool, `todos.add`
 - updates a visible todo list in the browser demo
 
+The example is now split into two parts:
+
+- transport/server code
+- executor logic
+
+That separation is deliberate so the executor API shape is easy to see.
+
 That visual todo list is intentional.
 
 It makes the side effect obvious without forcing someone to read raw response JSON first.
@@ -38,10 +45,39 @@ So the person trying the demo can immediately see:
 
 - `server.mjs`
   - tiny local HTTP server using only Node built-ins
+  - handles auth, JSON parsing, and routes
+- `executor.mjs`
+  - the executor implementation itself
+  - exports the tool definitions and the function that handles a Texty tool call
 - `index.html`
   - the local browser UI shown at `http://localhost:8787`
 - `texty.json`
   - example manifest shape for this executor
+
+## Clean Executor Shape
+
+If you only want to see what the executor API looks like, start with:
+
+- `examples/minimal-executor/executor.mjs`
+
+The main exported function is:
+
+```js
+executeToolCall({ payload, defaultUserId })
+```
+
+Where `payload` is the request Texty sends to `POST /tools/execute`.
+
+For this example, the server route is intentionally thin and just does:
+
+```js
+const result = executeToolCall({
+  payload,
+  defaultUserId,
+});
+```
+
+That keeps the executor example readable without mixing business logic into the HTTP handler.
 
 ## Run It
 
@@ -168,8 +204,9 @@ That is the basic integration loop.
 
 Once you understand the example, the normal next step is:
 
-- keep the same route shape
+- keep the same route shape in `server.mjs`
 - keep the same token check
+- replace the implementation inside `executor.mjs`
 - replace `todos.add` with your own tool
 - replace the in-memory todo update with your real side effect
 

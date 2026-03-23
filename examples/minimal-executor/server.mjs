@@ -3,6 +3,12 @@ import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  executeToolCall,
+  getTodosForUser,
+  toolDefinitions,
+} from "./executor.mjs";
+
 const port = Number(process.env.PORT || 8787);
 const expectedToken = (process.env.TEXTY_EXECUTOR_TOKEN || "dev-token").trim();
 const textyBaseUrl = (process.env.TEXTY_BASE_URL || "http://localhost:5173").trim();
@@ -11,9 +17,6 @@ const defaultUserId = (process.env.TEXTY_USER_ID || "demo_user").trim();
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = dirname(currentFile);
 const homePageTemplate = readFileSync(join(currentDir, "index.html"), "utf8");
-const todoStore = new Map();
-const todoItemVerbPattern =
-  /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get)\b/i;
 
 const renderHomePage = () =>
   homePageTemplate
@@ -29,25 +32,7 @@ const renderHomePage = () =>
 const buildSyncBody = (userId) => ({
   provider_id: providerId,
   user_id: userId,
-  tools: [
-    {
-      tool_name: "todos.add",
-      description:
-        "Add one item to the user's visible todo list. Use this only when the user is clearly asking to add, capture, or remember a task. The todo field should contain only the task text itself.",
-      input_schema: {
-        type: "object",
-        properties: {
-          todo: {
-            type: "string",
-            description:
-              "Only the todo text, for example buy dog food. Do not include phrases like add to my todo list.",
-          },
-        },
-        required: ["todo"],
-      },
-      status: "active",
-    },
-  ],
+  tools: toolDefinitions,
 });
 
 const buildInputBody = (userId, text) => ({
@@ -62,52 +47,6 @@ const buildInputBody = (userId, text) => ({
     id: "minimal-executor-playground",
   },
 });
-
-const normalizeTodo = (value) => {
-  const todo = typeof value === "string" ? value.trim() : "";
-
-  if (!todo) {
-    return "";
-  }
-
-  if (todo.toLowerCase() === "null" || todo.toLowerCase() === "undefined") {
-    return "";
-  }
-
-  return todo;
-};
-
-const splitTodoItems = (todo) => {
-  const normalized = todo
-    .replace(/\b(?:to do|todo)\s+list\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const parts = normalized
-    .split(/\s*(?:,|;|\band\b)\s*/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (parts.length > 1 && parts.every((part) => todoItemVerbPattern.test(part))) {
-    return parts;
-  }
-
-  return [normalized];
-};
-
-const getTodosForUser = (userId) => [...(todoStore.get(userId) ?? [])];
-
-const addTodoForUser = ({ userId, todo }) => {
-  const currentTodos = getTodosForUser(userId);
-  const nextTodo = {
-    id: crypto.randomUUID(),
-    text: todo,
-    created_at: new Date().toISOString(),
-  };
-  const nextTodos = [...currentTodos, nextTodo];
-  todoStore.set(userId, nextTodos);
-  return nextTodos;
-};
 
 const sendJson = (response, status, body) => {
   response.writeHead(status, {
@@ -303,57 +242,12 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  if (payload.tool_name !== "todos.add") {
-    sendJson(response, 400, {
-      ok: false,
-      state: "failed",
-      error: {
-        code: "unknown_tool",
-        message: `Unknown tool: ${payload.tool_name || "missing"}.`,
-      },
-    });
-    return;
-  }
-
-  const userId = String(payload.user_id || defaultUserId).trim();
-  const todo = normalizeTodo(payload.arguments?.todo);
-  const todoItems = todo ? splitTodoItems(todo) : [];
-
-  if (todoItems.length === 0) {
-    sendJson(response, 200, {
-      ok: true,
-      state: "needs_clarification",
-      result: {
-        summary: "What should I add to the todo list?",
-      },
-    });
-    return;
-  }
-
-  let todos = getTodosForUser(userId);
-
-  for (const todoItem of todoItems) {
-    todos = addTodoForUser({
-      userId,
-      todo: todoItem,
-    });
-  }
-
-  sendJson(response, 200, {
-    ok: true,
-    state: "completed",
-    result: {
-      summary:
-        todoItems.length === 1
-          ? `Added "${todoItems[0]}" to the todo list.`
-          : `Added ${todoItems.length} items to the todo list: ${todoItems.join(", ")}.`,
-      data: {
-        added_todo: todoItems[0],
-        added_todos: todoItems,
-        todos,
-      },
-    },
+  const result = executeToolCall({
+    payload,
+    defaultUserId,
   });
+
+  sendJson(response, result.state === "failed" ? 400 : 200, result);
 });
 
 server.listen(port, () => {
