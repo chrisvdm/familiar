@@ -20,7 +20,8 @@ const renderHomePage = () =>
     .replaceAll("__PROVIDER_ID__", providerId)
     .replaceAll("__USER_ID__", defaultUserId)
     .replaceAll("__PLAYGROUND_PATH__", "/playground/texty")
-    .replaceAll("__PLAYGROUND_MODE__", "proxy");
+    .replaceAll("__PLAYGROUND_MODE__", "proxy")
+    .replaceAll("__NONCE__", "");
 
 const buildSyncBody = (userId) => ({
   provider_id: providerId,

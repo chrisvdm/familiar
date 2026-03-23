@@ -138,7 +138,7 @@ const runTextyInput = async ({
 };
 
 export const providerDemoRoutes = [
-  route("/sandbox/demo-executor", async ({ request }) => {
+  route("/sandbox/demo-executor", async ({ request, rw }) => {
     if (request.method !== "GET") {
       return Response.json(
         {
@@ -152,11 +152,17 @@ export const providerDemoRoutes = [
       );
     }
 
-    return new Response(renderHomePage(new URL(request.url).origin), {
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
+    return new Response(
+      renderHomePage(new URL(request.url).origin).replaceAll(
+        "__NONCE__",
+        rw.nonce,
+      ),
+      {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
       },
-    });
+    );
   }),
   route("/sandbox/demo-executor/playground/texty", async ({ request }) => {
     if (request.method !== "POST") {

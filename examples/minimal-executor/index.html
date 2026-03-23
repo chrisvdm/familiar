@@ -164,7 +164,7 @@
           This local page demonstrates the real Texty flow from user message to
           tool execution.
         </p>
-        <div class="tag">Server running on http://localhost:__PORT__</div>
+        <div class="tag">Running on __PORT__</div>
         <div class="tag">Uses demo identity only. No account required.</div>
       </section>
 
@@ -234,7 +234,7 @@
       </section>
     </main>
 
-    <script>
+    <script nonce="__NONCE__">
       const form = document.getElementById("playground");
       const payloadEl = document.getElementById("payload");
       const resultEl = document.getElementById("result");
