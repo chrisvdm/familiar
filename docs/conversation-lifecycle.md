@@ -34,7 +34,7 @@ Example:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "input": {

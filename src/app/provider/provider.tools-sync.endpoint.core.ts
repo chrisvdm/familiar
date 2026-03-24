@@ -97,7 +97,7 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
   }: {
     request: Request;
     params: {
-      providerId: string;
+      integrationId: string;
       userId: string;
     };
   }) => {
@@ -114,7 +114,7 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
 
     const auth = deps.authenticateProviderRequest({
       request,
-      providerId: params.providerId,
+      providerId: params.integrationId,
       requestId,
     });
 
@@ -132,25 +132,25 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
       const idempotencyKey = deps.getIdempotencyHeader(request);
 
       if (
-        input.provider_id !== params.providerId ||
+        input.integration_id !== params.integrationId ||
         input.user_id !== params.userId
       ) {
         return deps.jsonError({
           requestId,
           status: 403,
           code: "forbidden",
-          message: "Provider or user mismatch.",
+          message: "Integration or user mismatch.",
         });
       }
 
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
         });
         const storageKey = deps.buildIdempotencyKey({
           method: request.method,
-          path: `/api/v1/providers/${params.providerId}/users/${params.userId}/tools/sync`,
+          path: `/api/v1/integrations/${params.integrationId}/users/${params.userId}/tools/sync`,
           idempotencyKey,
         });
         const requestHash = await deps.hashIdempotencyRequest({
@@ -180,7 +180,7 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
         const result = await deps.syncProviderTools(input, requestId);
         const nextContext = deps.storeIdempotencyReplay({
           context: await deps.loadOrCreateProviderUserContext({
-            providerId: input.provider_id,
+            providerId: input.integration_id,
             userId: input.user_id,
           }),
           storageKey,

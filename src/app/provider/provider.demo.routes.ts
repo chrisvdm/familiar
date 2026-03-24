@@ -21,7 +21,7 @@ const DEMO_USER_ID = BUILT_IN_DEMO_USER_ID;
 const DEMO_CHANNEL_ID = BUILT_IN_DEMO_CHANNEL_ID;
 
 const buildSyncBody = (userId: string) => ({
-  provider_id: DEMO_EXECUTOR_ID,
+  integration_id: DEMO_EXECUTOR_ID,
   user_id: userId,
   tools: demoManifest.tools.map((tool) => ({
     ...tool,
@@ -30,7 +30,7 @@ const buildSyncBody = (userId: string) => ({
 });
 
 const buildInputBody = (userId: string, text: string) => ({
-  provider_id: DEMO_EXECUTOR_ID,
+  integration_id: DEMO_EXECUTOR_ID,
   user_id: userId,
   input: {
     kind: "text" as const,

@@ -38,7 +38,7 @@ const createConversationRequest = ({
   });
 
 const createInput = (): ProviderConversationInput => ({
-  provider_id: "provider_a",
+  integration_id: "provider_a",
   user_id: "user_123",
   channel: {
     type: "web",

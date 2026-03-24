@@ -31,13 +31,13 @@ An account owns billing and connected apps.
 
 For MVP:
 
-- one account can own many executors
-- each executor gets one shared runtime token
+- one account can own many integrations
+- each integration gets one shared runtime token
 - that token is shared by the team working on that app
 
-### Executor
+### Integration
 
-An executor is an external system connected to Texty.
+An integration is a configured Texty connection for one app, instance, or deployment.
 
 It is not a person.
 
@@ -49,7 +49,7 @@ It represents the system that:
 
 Key fields:
 
-- `executor_id`
+- `integration_id`
 - `name`
 - `base_url`
 - `auth_config`
@@ -59,25 +59,20 @@ Example:
 
 ```json
 {
-  "executor_id": "executor_a",
-  "name": "Executor A",
-  "base_url": "https://provider-a.example.com",
+  "integration_id": "integration_a",
+  "name": "Integration A",
+  "base_url": "https://integration-a.example.com",
   "status": "active"
 }
 ```
 
-Current note:
-
-- the current API wire format still uses `provider_id`
-- the product framing is moving toward `executor`
-
 ### End User
 
-An end user is the human represented inside an executor.
+An end user is the human represented inside an integration.
 
 Key fields:
 
-- `executor_id`
+- `integration_id`
 - `user_id`
 - `display_name`
 - `memory_policy`
@@ -85,24 +80,24 @@ Key fields:
 
 Important rule:
 
-`user_id` is scoped to an executor unless a higher-level shared identity is added later.
+`user_id` is scoped to an integration unless a higher-level shared identity is added later.
 
-### Executor User Context
+### Integration User Context
 
-This is the user-level Texty record for one executor/user pair.
+This is the user-level Texty record for one integration/user pair.
 
 It should store:
 
 - default model
 - memory policy
 - allowed tools
-- executor-specific preferences
+- integration-specific preferences
 - references to global memory scope
 - linked channel identities
 
 Recommended key:
 
-- `(executor_id, user_id)`
+- `(integration_id, user_id)`
 
 ### Thread
 
@@ -111,7 +106,7 @@ A thread is one conversation.
 It should store:
 
 - `thread_id`
-- `executor_id`
+- `integration_id`
 - `user_id`
 - `title`
 - `is_private`
@@ -121,7 +116,7 @@ It should store:
 
 Important rule:
 
-A thread belongs to one executor/user pair.
+A thread belongs to one integration/user pair.
 
 It may also carry channel metadata so Texty can resolve likely continuation when no `thread_id` is supplied.
 
@@ -137,7 +132,7 @@ Examples:
 
 Key fields:
 
-- `executor_id`
+- `integration_id`
 - `user_id`
 - `channel_type`
 - `channel_id`
@@ -148,7 +143,7 @@ Important rule:
 
 A channel is not a separate user.
 
-It is a linked identity or surface for the same executor/user pair.
+It is a linked identity or surface for the same integration/user pair.
 
 Its purpose is to help Texty decide which thread is most likely to continue naturally when no explicit `thread_id` is provided.
 
@@ -209,7 +204,7 @@ Global memory should be scoped by policy, not assumed to be universal.
 
 Memory policy controls what Texty may retrieve and use.
 
-It should be attached to the executor/user context.
+It should be attached to the integration/user context.
 
 Common modes:
 
@@ -231,7 +226,7 @@ Important rule:
 
 A memory scope is the bucket from which shared memory is retrieved.
 
-In the simplest case, that scope is the executor/user pair.
+In the simplest case, that scope is the integration/user pair.
 
 Later, a custom shared scope could allow controlled memory sharing across systems.
 
@@ -243,11 +238,11 @@ Key fields:
 
 ### Allowed Tool
 
-An allowed tool is one tool that Texty may consider for a specific executor/user pair.
+An allowed tool is one tool that Texty may consider for a specific integration/user pair.
 
 It should contain:
 
-- `executor_id`
+- `integration_id`
 - `tool_name`
 - `description`
 - `input_schema`
@@ -275,7 +270,7 @@ This is the structured request Texty sends to an executor.
 It should contain:
 
 - `execution_id`
-- `executor_id`
+- `integration_id`
 - `user_id`
 - `thread_id`
 - `tool_name`
@@ -297,23 +292,23 @@ It should contain:
 
 In plain terms:
 
-- one account has many executors
-- one executor has many users
-- one executor/user pair can have many linked channels
-- one executor/user pair has many threads
+- one account has many integrations
+- one integration has many users
+- one integration/user pair can have many linked channels
+- one integration/user pair has many threads
 - one thread has many messages
 - one thread has one thread-memory record
-- one executor/user pair has one main shared memory scope by default
-- one executor/user pair has many allowed tools
+- one integration/user pair has one main shared memory scope by default
+- one integration/user pair has many allowed tools
 
 ## Suggested Storage Keys
 
-- Executor: `executor_id`
-- Executor user context: `(executor_id, user_id)`
+- Integration: `integration_id`
+- Integration user context: `(integration_id, user_id)`
 - Thread: `thread_id`
 - Message: `message_id`
-- Shared memory: `memory_scope_id` or `(executor_id, user_id)`
-- Allowed tool: `(executor_id, user_id, tool_name)`
+- Shared memory: `memory_scope_id` or `(integration_id, user_id)`
+- Allowed tool: `(integration_id, user_id, tool_name)`
 
 ## Current vs Intended State
 
@@ -330,7 +325,7 @@ Today, the live implementation is still centered on:
 
 The intended model is:
 
-- executor-scoped users
+- integration-scoped users
 - explicit thread ownership
 - policy-scoped memory
 - synced allowed tools
@@ -341,7 +336,7 @@ The intended model is:
 Texty's core data model is built around:
 
 - account
-- executor
+- integration
 - end user
 - thread
 - message

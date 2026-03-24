@@ -89,53 +89,48 @@ An account owns billing and connected apps.
 
 For MVP, the important simplification is:
 
-- one account can own many executors
-- one executor gets one runtime token
+- one account can own many integrations
+- one integration gets one runtime token
 - that token can be shared by the team working on that app
-- end users do not get executor tokens
+- end users do not get integration tokens
 
 ## Identity Model
 
-### `executor_id`
+### `integration_id`
 
-`executor_id` identifies the external execution system.
-
-Current note:
-
-- the wire format in the current MVP still uses `provider_id`
-- the product framing is moving toward `executor`
+`integration_id` identifies the configured Texty integration.
 
 Examples:
 
-- `executor_a`
-- `executor_b`
+- `integration_a`
+- `integration_b`
 
 Its purpose is to:
 
-- route execution to the correct executor
+- route execution through the correct integration
 - namespace tools
-- separate configuration and sync state per executor
-- support multiple executors inside one Texty deployment
+- separate configuration and sync state per integration
+- support multiple integrations inside one Texty account
 
 ### `user_id`
 
-`user_id` identifies the human within the executor context.
+`user_id` identifies the human within the integration context.
 
 Examples:
 
 - `chris_123`
 - `sam_42`
 
-`user_id` is executor-relative unless a higher-level shared identity is introduced later.
+`user_id` is integration-relative unless a higher-level shared identity is introduced later.
 
 That means this is valid:
 
-- `executor_id = executor_a`
+- `integration_id = integration_a`
 - `user_id = chris_123`
 
 and this is also valid:
 
-- `executor_id = executor_b`
+- `integration_id = integration_b`
 - `user_id = chris_123`
 
 Those may or may not refer to the same human in real life. Texty should not assume they are shared unless explicitly configured.
@@ -190,7 +185,7 @@ It should contain:
 
 Recommended key:
 
-- `(executor_id, user_id)`
+- `(integration_id, user_id)`
 
 ### 3. Global memory
 
@@ -204,9 +199,9 @@ It should contain:
 - work facts
 - thread summary index
 
-This should not automatically be global across all providers.
+This should not automatically be global across all integrations.
 
-### 4. Tool access / provider sync state
+### 4. Tool access / integration sync state
 
 This is the user-specific executor data that Texty needs in order to reason over tools.
 
@@ -321,12 +316,12 @@ Use only:
 
 Use this when:
 
-- the provider wants stateless or near-stateless behavior
+- the integration wants stateless or near-stateless behavior
 - loaded shared memory would be harmful to the task
 
 Example:
 
-- a provider running isolated build or planning sessions
+- an integration running isolated build or planning sessions
 
 Important:
 
@@ -354,16 +349,16 @@ But it does not allow:
 
 ### `provider_user`
 
-Shared memory is retrieved across all threads for one `(provider_id, user_id)` pair.
+Shared memory is retrieved across all threads for one `(integration_id, user_id)` pair.
 
 Use this when:
 
-- the provider wants durable personal continuity
-- memory should stay inside that provider boundary
+- the integration wants durable personal continuity
+- memory should stay inside that integration boundary
 
 Example:
 
-- a provider remembering a user’s family, preferences, and recurring operational context across all of that provider’s conversations
+- an integration remembering a user’s family, preferences, and recurring operational context across all of that integration’s conversations
 
 ### `custom_scope`
 
@@ -371,8 +366,8 @@ Shared memory is retrieved using an explicit `memory_scope_id`.
 
 Use this when:
 
-- multiple providers should intentionally share memory
-- or a provider wants several users/identities to share the same memory scope intentionally
+- multiple integrations should intentionally share memory
+- or an integration wants several users/identities to share the same memory scope intentionally
 
 Example:
 
@@ -385,29 +380,29 @@ It should be explicit and never assumed.
 
 Texty does not rely on its own durable shared-memory source for retrieval.
 
-Instead, the provider supplies retrieved context for the turn.
+Instead, the integration supplies retrieved context for the turn.
 
 Texty may use that context for reasoning, but it should not automatically persist it as its own long-term memory unless policy explicitly allows it.
 
 Use this when:
 
-- the provider has its own RAG system
-- the user wants provider-managed retrieval
+- the integration has its own RAG system
+- the user wants integration-managed retrieval
 - Texty should remain stateless with respect to long-term memory
 
 Example:
 
-- a provider sends retrieved project facts for the current turn from its own vector store
+- an integration sends retrieved project facts for the current turn from its own vector store
 
 ## How Retrieval Policy Should Be Applied
 
-Each executor/user pair should have a memory configuration record.
+Each integration/user pair should have a memory configuration record.
 
 Example:
 
 ```json
 {
-  "provider_id": "provider_b",
+  "integration_id": "integration_b",
   "user_id": "user_123",
   "memory_policy": {
     "mode": "none"
@@ -419,7 +414,7 @@ Or:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "memory_policy": {
     "mode": "provider_user"
@@ -431,7 +426,7 @@ Or:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "memory_policy": {
     "mode": "custom_scope",
@@ -444,7 +439,7 @@ Or:
 
 ```json
 {
-  "provider_id": "provider_b",
+  "integration_id": "integration_b",
   "user_id": "user_123",
   "memory_policy": {
     "mode": "external",
@@ -475,7 +470,7 @@ Texty should:
 Texty should:
 
 - read/write thread memory
-- read/write provider-scoped global memory
+- read/write integration-scoped global memory
 
 ### If mode is `custom_scope`
 
@@ -496,8 +491,8 @@ Texty should:
 
 Start with these defaults:
 
-- Provider A: `none` or `thread`
-- Provider B: `provider_user`
+- Integration A: `none` or `thread`
+- Integration B: `provider_user`
 
 Only use `custom_scope` when there is a deliberate reason to share memory across systems.
 
@@ -507,12 +502,12 @@ Only use `external` when the provider truly wants to own retrieval itself.
 
 This model avoids three common mistakes:
 
-### 1. Assuming all providers want the same memory retrieval behavior
+### 1. Assuming all integrations want the same memory retrieval behavior
 
 They do not.
 
-Some providers benefit from shared retrieval.
-Some providers are harmed by it.
+Some integrations benefit from shared retrieval.
+Some integrations are harmed by it.
 
 ### 2. Assuming all user identities should share memory
 

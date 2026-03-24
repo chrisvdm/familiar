@@ -55,7 +55,7 @@ The MVP should prove that Texty can:
 
 Each conversation turn must carry:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - `channel.type`
 - `channel.id`
@@ -63,8 +63,8 @@ Each conversation turn must carry:
 
 Rules:
 
-- provider authenticates with an API token
-- user is the human within that provider
+- integration authenticates with an API token
+- user is the human within that integration
 - channel is a linked identity for that user
 - thread is the conversation record
 
@@ -131,23 +131,24 @@ For MVP, the runtime only needs to implement:
 
 Required endpoints:
 
-- `POST /api/v1/providers/:provider_id/users/:user_id/tools/sync`
+- `POST /api/v1/integrations/:integration_id/users/:user_id/tools/sync`
 - `POST /api/v1/conversation/input`
+- `POST /api/v1/webhooks/executor`
 - `POST /api/v1/threads`
-- `GET /api/v1/providers/:provider_id/users/:user_id/threads`
+- `GET /api/v1/integrations/:integration_id/users/:user_id/threads`
 - `PATCH /api/v1/threads/:thread_id`
 - `DELETE /api/v1/threads/:thread_id`
 
 Optional but useful for debug:
 
-- `GET /api/v1/providers/:provider_id/users/:user_id/memory`
+- `GET /api/v1/integrations/:integration_id/users/:user_id/memory`
 - `GET /api/v1/threads/:thread_id/memory`
 
 ## MVP Security Requirements
 
 Minimum security for MVP:
 
-- provider API-token authentication
+- integration API-token authentication
 - provider/user ownership checks
 - thread ownership checks
 - private-thread retrieval and capture enforcement

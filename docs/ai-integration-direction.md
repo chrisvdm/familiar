@@ -82,7 +82,7 @@ Use the same naming style everywhere.
 
 For example:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - `thread_id`
 - `tool_name`

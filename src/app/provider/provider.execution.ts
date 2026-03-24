@@ -135,7 +135,7 @@ export const executeProviderToolRequest = async ({
       },
       body: JSON.stringify({
         execution_id: crypto.randomUUID(),
-        provider_id: providerId,
+        integration_id: providerId,
         user_id: userId,
         thread_id: threadId,
         tool_name: toolName,
@@ -224,7 +224,7 @@ export const sendProviderChannelMessage = async ({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      provider_id: providerId,
+      integration_id: providerId,
       user_id: userId,
       thread_id: threadId,
       channel,

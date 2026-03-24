@@ -1526,7 +1526,7 @@ export const syncProviderTools = async (
   requestId?: string,
 ) => {
   const context = await loadOrCreateProviderUserContext({
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
   });
 
@@ -1548,7 +1548,7 @@ export const syncProviderTools = async (
   logProviderAudit({
     event: "provider.tools.synced",
     requestId,
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
     status: "ok",
     metadata: {
@@ -1557,7 +1557,7 @@ export const syncProviderTools = async (
   });
 
   return {
-    provider_id: input.provider_id,
+    integration_id: input.integration_id,
     user_id: input.user_id,
     synced_tools: nextContext.allowedTools.length,
     status: "ok",
@@ -1873,7 +1873,7 @@ export const handleProviderConversationInput = async ({
   const model = input.model?.trim() || DEFAULT_MODEL;
   const timeZone = getRequestTimeZone(input.timezone);
   let context = await loadOrCreateProviderUserContext({
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
   });
   const content = input.input.text.trim();
@@ -1888,7 +1888,7 @@ export const handleProviderConversationInput = async ({
   logProviderAudit({
     event: "provider.conversation.received",
     requestId,
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
     threadId: input.thread_id,
     channelType: input.channel.type,
@@ -1968,7 +1968,7 @@ export const handleProviderConversationInput = async ({
     if (shortcutInvocation.remainder) {
       const execution = await executeProviderTool({
         providerConfig,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         threadId,
         toolName: shortcutInvocation.tool.toolName,
@@ -1989,7 +1989,7 @@ export const handleProviderConversationInput = async ({
       logProviderAudit({
         event: "provider.tool.executed",
         requestId,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         threadId,
         status: execution.state === "failed" ? "error" : "ok",
@@ -2021,7 +2021,7 @@ export const handleProviderConversationInput = async ({
     } else {
       const execution = await executeProviderTool({
         providerConfig,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         threadId,
         toolName: shortcutTool.toolName,
@@ -2043,7 +2043,7 @@ export const handleProviderConversationInput = async ({
       logProviderAudit({
         event: "provider.tool.executed",
         requestId,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         threadId,
         status: execution.state === "failed" ? "error" : "ok",
@@ -2069,7 +2069,7 @@ export const handleProviderConversationInput = async ({
       if (pendingReply === "confirm") {
         const execution = await executeProviderTool({
           providerConfig,
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId,
           toolName: currentState.pendingToolConfirmation.toolName,
@@ -2096,7 +2096,7 @@ export const handleProviderConversationInput = async ({
           if (followOnDecision?.action === "tool_call") {
             const followOnExecution = await executeProviderTool({
               providerConfig,
-              providerId: input.provider_id,
+              providerId: input.integration_id,
               userId: input.user_id,
               threadId,
               toolName: followOnDecision.tool_name,
@@ -2114,7 +2114,7 @@ export const handleProviderConversationInput = async ({
         logProviderAudit({
           event: "provider.tool.executed",
           requestId,
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId,
           status: execution.state === "failed" ? "error" : "ok",
@@ -2159,7 +2159,7 @@ export const handleProviderConversationInput = async ({
       } else {
         const execution = await executeProviderTool({
           providerConfig,
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId,
           toolName: currentState.pendingToolConfirmation.toolName,
@@ -2175,7 +2175,7 @@ export const handleProviderConversationInput = async ({
         logProviderAudit({
           event: "provider.tool.executed",
           requestId,
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId,
           status: execution.state === "failed" ? "error" : "ok",
@@ -2259,7 +2259,7 @@ export const handleProviderConversationInput = async ({
       } else {
         const execution = await executeProviderTool({
           providerConfig,
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId,
           toolName: decision.tool_name,
@@ -2275,7 +2275,7 @@ export const handleProviderConversationInput = async ({
         logProviderAudit({
           event: "provider.tool.executed",
           requestId,
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId,
           status: execution.state === "failed" ? "error" : "ok",
@@ -2330,7 +2330,7 @@ export const handleProviderConversationInput = async ({
   logProviderAudit({
     event: "provider.conversation.completed",
     requestId,
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
     threadId,
     channelType: input.channel.type,
@@ -2343,7 +2343,7 @@ export const handleProviderConversationInput = async ({
   });
 
   return {
-    provider_id: input.provider_id,
+    integration_id: input.integration_id,
     user_id: input.user_id,
     thread_id: threadId,
     response: {
@@ -2377,7 +2377,7 @@ export const handleProviderExecutorResult = async ({
   }
 
   const context = await loadOrCreateProviderUserContext({
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
   });
   const thread = context.threads.find((entry) => entry.id === input.thread_id);
@@ -2438,7 +2438,7 @@ export const handleProviderExecutorResult = async ({
     try {
       const delivered = await sendProviderChannelMessage({
         providerConfig,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         threadId: input.thread_id,
         channel,
@@ -2460,7 +2460,7 @@ export const handleProviderExecutorResult = async ({
   logProviderAudit({
     event: "provider.executor_result.received",
     requestId,
-    providerId: input.provider_id,
+    providerId: input.integration_id,
     userId: input.user_id,
     threadId: input.thread_id,
     channelType: channel?.type,
@@ -2474,7 +2474,7 @@ export const handleProviderExecutorResult = async ({
   });
 
   return {
-    provider_id: input.provider_id,
+    integration_id: input.integration_id,
     user_id: input.user_id,
     thread_id: input.thread_id,
     status: "ok",

@@ -72,12 +72,12 @@ export const createHandleExecutorResultEndpoint = (
     try {
       const input = await deps.readJson<ProviderExecutorResultInput>(request);
       await deps.loadOrCreateProviderUserContext({
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
       });
       const auth = deps.authenticateProviderRequest({
         request,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         requestId,
       });
 

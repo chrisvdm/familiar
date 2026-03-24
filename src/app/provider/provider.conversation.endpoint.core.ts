@@ -119,7 +119,7 @@ export const createHandleConversationInputEndpoint = (
       const idempotencyKey = deps.getIdempotencyHeader(request);
       const auth = deps.authenticateProviderRequest({
         request,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         requestId,
       });
 
@@ -134,7 +134,7 @@ export const createHandleConversationInputEndpoint = (
 
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
         });
         const storageKey = deps.buildIdempotencyKey({
@@ -173,7 +173,7 @@ export const createHandleConversationInputEndpoint = (
         });
         const nextContext = deps.storeIdempotencyReplay({
           context: await deps.loadOrCreateProviderUserContext({
-            providerId: input.provider_id,
+            providerId: input.integration_id,
             userId: input.user_id,
           }),
           storageKey,

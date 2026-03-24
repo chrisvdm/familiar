@@ -9,11 +9,11 @@ That shift changes the security requirements substantially.
 Today, the app mostly protects one browser session from another.
 The end goal is to protect:
 
-- one executor from another
+- one integration from another
 - one user from another
 - one thread from another
 - private conversations from shared memory
-- provider execution boundaries from abuse or impersonation
+- executor execution boundaries from abuse or impersonation
 
 This document explains:
 
@@ -68,11 +68,11 @@ What this does not mean:
 
 ## Target Authentication Model
 
-In the target architecture, Texty should authenticate the executor system and scope every request to the represented end user.
+In the target architecture, Texty should authenticate the integration and scope every request to the represented end user.
 
 The target request identity should always be built from:
 
-- `executor_id`
+- `integration_id`
 - `user_id`
 
 That gives Texty a stable way to decide:
@@ -90,13 +90,13 @@ An account owns billing and connected apps.
 
 For MVP, account administration should stay minimal:
 
-- an account can create executors
-- each executor gets one shared runtime token
-- the team working on that app shares the executor token through normal secret management
+- an account can create integrations
+- each integration gets one shared runtime token
+- the team working on that app shares the integration token through normal secret management
 
-### Executor
+### Integration
 
-An executor is an external system that connects to Texty.
+An integration is the configured system identity that connects to Texty.
 
 Examples:
 
@@ -104,19 +104,23 @@ Examples:
 - an app-building system
 - a messaging integration backend
 
-An executor is not a person.
-It is the system making authenticated requests to Texty.
+An integration is not a person.
+It is the system identity making authenticated requests to Texty.
+
+### Executor
+
+An executor is the code or service the integration exposes for real work once Texty has selected a tool.
 
 ### End User
 
-An end user is the human represented inside that executor.
+An end user is the human represented inside that integration.
 
-The executor tells Texty which user the request belongs to.
+The integration tells Texty which user the request belongs to.
 
 That means:
 
-- executors need their own authentication
-- providers need a trusted way to assert `user_id`
+- integrations need their own authentication
+- integrations need a trusted way to assert `user_id`
 
 ### Thread
 
@@ -346,10 +350,10 @@ So the right way to describe the current project is:
 
 The next concrete steps should be:
 
-1. Introduce explicit provider authentication for future API routes.
-2. Move thread and memory ownership from browser session to `(provider_id, user_id)`.
+1. Introduce explicit integration authentication for future API routes.
+2. Move thread and memory ownership from browser session to `(integration_id, user_id)`.
 3. Enforce private-thread behavior at storage and retrieval level.
-4. Define a provider request-signing model.
+4. Define an integration request-signing model.
 5. Add rate limiting to conversation and tool-sync endpoints.
 6. Define retention, deletion, and export behavior.
 7. Add an audit log for security-relevant operations.

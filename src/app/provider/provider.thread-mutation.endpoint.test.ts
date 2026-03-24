@@ -17,7 +17,7 @@ const createRequest = ({
 }: {
   method: "PATCH" | "DELETE";
   body: {
-    provider_id: string;
+    integration_id: string;
     user_id: string;
     title?: string;
   };
@@ -35,7 +35,7 @@ const createRequest = ({
   });
 
 const createInput = () => ({
-  provider_id: "provider_a",
+  integration_id: "provider_a",
   user_id: "user_123",
   title: "Renamed thread",
 });
@@ -126,7 +126,7 @@ test("thread mutation endpoint deletes with idempotent replay", async () => {
     request: createRequest({
       method: "DELETE",
       body: {
-        provider_id: "provider_a",
+        integration_id: "provider_a",
         user_id: "user_123",
       },
       idempotencyKey: "idem_123",

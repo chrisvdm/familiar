@@ -13,7 +13,7 @@ import type { ProviderConfig } from "./provider.types";
 
 const providerEnv = env as typeof env & {
   TEXTY_EXECUTOR_CONFIG?: string;
-  TEXTY_PROVIDER_CONFIG?: string;
+  TEXTY_INTEGRATION_CONFIG?: string;
 };
 
 let cachedRawConfig: string | undefined;
@@ -47,8 +47,8 @@ const getProviderConfigSource = () => {
   }
 
   return {
-    rawConfig: providerEnv.TEXTY_PROVIDER_CONFIG,
-    configLabel: "TEXTY_PROVIDER_CONFIG",
+    rawConfig: providerEnv.TEXTY_INTEGRATION_CONFIG,
+    configLabel: "TEXTY_INTEGRATION_CONFIG",
   };
 };
 

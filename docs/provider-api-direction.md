@@ -76,9 +76,9 @@ Yes.
 
 An integration is the external system identity Texty uses for auth, ownership, and tool sync. One integration may serve many end users.
 
-### Purpose of `provider_id`
+### Purpose of `integration_id`
 
-`provider_id` identifies the external integration in the current wire format.
+`integration_id` identifies the external integration.
 
 Its purpose is to:
 
@@ -89,8 +89,8 @@ Its purpose is to:
 
 Examples:
 
-- `provider_a`
-- `provider_b`
+- `integration_a`
+- `integration_b`
 
 ### Who is the user?
 
@@ -106,12 +106,12 @@ The user is the person.
 
 So a valid identity tuple is:
 
-- `provider_id = provider_a`
+- `integration_id = integration_a`
 - `user_id = chris_123`
 
 This means:
 
-- Provider A is the integration
+- Integration A is the integration
 - Chris is the end user
 
 ## Memory Policy
@@ -147,11 +147,11 @@ This should happen:
 
 Example request:
 
-`POST /api/v1/providers/:provider_id/users/:user_id/tools/sync`
+`POST /api/v1/integrations/:integration_id/users/:user_id/tools/sync`
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "tools": [
     {
@@ -184,7 +184,7 @@ Example request:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "input": {

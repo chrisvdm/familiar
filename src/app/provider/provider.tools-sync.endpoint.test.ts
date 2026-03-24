@@ -22,7 +22,7 @@ const createRequest = ({
   body: ProviderToolSyncInput;
   idempotencyKey?: string;
 }) =>
-  new Request("https://example.com/api/v1/providers/provider_a/users/user_123/tools/sync", {
+  new Request("https://example.com/api/v1/integrations/provider_a/users/user_123/tools/sync", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -34,7 +34,7 @@ const createRequest = ({
   });
 
 const createInput = (): ProviderToolSyncInput => ({
-  provider_id: "provider_a",
+  integration_id: "provider_a",
   user_id: "user_123",
   tools: [
     {
@@ -67,7 +67,7 @@ test("tools sync endpoint includes request tracing on success", async () => {
   const response = await endpoint({
     request: createRequest({ body: createInput() }),
     params: {
-      providerId: "provider_a",
+      integrationId: "provider_a",
       userId: "user_123",
     },
   });
@@ -84,7 +84,7 @@ test("tools sync endpoint includes request tracing on success", async () => {
 test("tools sync endpoint replays idempotent responses", async () => {
   const storageKey = buildIdempotencyKey({
     method: "POST",
-    path: "/api/v1/providers/provider_a/users/user_123/tools/sync",
+    path: "/api/v1/integrations/provider_a/users/user_123/tools/sync",
     idempotencyKey: "idem_123",
   });
   const context = createReplayContext({
@@ -130,7 +130,7 @@ test("tools sync endpoint replays idempotent responses", async () => {
       idempotencyKey: "idem_123",
     }),
     params: {
-      providerId: "provider_a",
+      integrationId: "provider_a",
       userId: "user_123",
     },
   });
@@ -168,7 +168,7 @@ test("tools sync endpoint rejects provider and user mismatches", async () => {
       },
     }),
     params: {
-      providerId: "provider_a",
+      integrationId: "provider_a",
       userId: "user_123",
     },
   });
@@ -177,7 +177,7 @@ test("tools sync endpoint rejects provider and user mismatches", async () => {
   assert.deepEqual(await response.json(), {
     error: {
       code: "forbidden",
-      message: "Provider or user mismatch.",
+      message: "Integration or user mismatch.",
       details: null,
     },
     request_id: "req_123",
@@ -213,7 +213,7 @@ test("tools sync endpoint returns a traced 429 for rate-limited requests", async
   const response = await endpoint({
     request: createRequest({ body: createInput() }),
     params: {
-      providerId: "provider_a",
+      integrationId: "provider_a",
       userId: "user_123",
     },
   });

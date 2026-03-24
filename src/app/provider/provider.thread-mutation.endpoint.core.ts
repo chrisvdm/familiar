@@ -14,7 +14,7 @@ type AuthResult =
     };
 
 type ThreadMutationInput = {
-  provider_id: string;
+  integration_id: string;
   user_id: string;
   title?: string;
 };
@@ -126,7 +126,7 @@ export const createHandleThreadMutationEndpoint = (
       const idempotencyKey = deps.getIdempotencyHeader(request);
       const auth = deps.authenticateProviderRequest({
         request,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         requestId,
       });
 
@@ -157,7 +157,7 @@ export const createHandleThreadMutationEndpoint = (
       const context =
         idempotencyKey && storageKey && requestHash
           ? await deps.loadOrCreateProviderUserContext({
-              providerId: input.provider_id,
+              providerId: input.integration_id,
               userId: input.user_id,
             })
           : null;
@@ -185,7 +185,7 @@ export const createHandleThreadMutationEndpoint = (
 
       if (request.method === "PATCH") {
         const result = await deps.renameProviderThread({
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           threadId: params.threadId,
           title: input.title ?? "",
@@ -196,7 +196,7 @@ export const createHandleThreadMutationEndpoint = (
           await deps.saveProviderUserContext(
             deps.storeIdempotencyReplay({
               context: await deps.loadOrCreateProviderUserContext({
-                providerId: input.provider_id,
+                providerId: input.integration_id,
                 userId: input.user_id,
               }),
               storageKey,
@@ -214,7 +214,7 @@ export const createHandleThreadMutationEndpoint = (
       }
 
       const result = await deps.deleteProviderThread({
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         threadId: params.threadId,
         requestId,
@@ -224,7 +224,7 @@ export const createHandleThreadMutationEndpoint = (
         await deps.saveProviderUserContext(
           deps.storeIdempotencyReplay({
             context: await deps.loadOrCreateProviderUserContext({
-              providerId: input.provider_id,
+              providerId: input.integration_id,
               userId: input.user_id,
             }),
             storageKey,

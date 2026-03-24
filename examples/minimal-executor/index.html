@@ -398,7 +398,7 @@
       const textEl = document.getElementById("text");
       const tokenEl = document.getElementById("token");
       const textyBaseUrlEl = document.getElementById("textyBaseUrl");
-      const providerIdEl = document.getElementById("providerId");
+      const integrationIdEl = document.getElementById("providerId");
       const userIdEl = document.getElementById("userId");
       const chatLogEl = document.getElementById("chatLog");
       const todoListEl = document.getElementById("todoList");
@@ -411,7 +411,7 @@
       });
 
       const getDemoIdentityKey = () =>
-        (providerIdEl.value || "demo_executor") + "::" + (userIdEl.value || "demo_user");
+        (integrationIdEl.value || "demo_executor") + "::" + (userIdEl.value || "demo_user");
 
       const getStoredTodos = () => {
         const identityKey = getDemoIdentityKey();
@@ -561,21 +561,21 @@
           text: userText,
           user_id: userIdEl.value,
           texty_base_url: textyBaseUrlEl.value,
-          provider_id: providerIdEl.value
+          integration_id: integrationIdEl.value
         };
 
         renderJson(payloadEl, {
           demo_identity: {
-            executor_id: providerIdEl.value,
+            integration_id: integrationIdEl.value,
             user_id: userIdEl.value
           },
           sync_request: {
-            url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/providers/" + providerIdEl.value + "/users/" + userIdEl.value + "/tools/sync"
+            url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/integrations/" + integrationIdEl.value + "/users/" + userIdEl.value + "/tools/sync"
           },
           input_request: {
             url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/input",
             body: {
-              provider_id: providerIdEl.value,
+              integration_id: integrationIdEl.value,
               user_id: userIdEl.value,
               input: {
                 kind: "text",

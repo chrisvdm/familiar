@@ -27,7 +27,7 @@ const createCompletionRequest = ({
   });
 
 const createInput = (): ProviderExecutorResultInput => ({
-  provider_id: "provider_a",
+  integration_id: "provider_a",
   user_id: "user_123",
   thread_id: "thread_123",
   result: {

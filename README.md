@@ -191,11 +191,11 @@ Use this endpoint to tell Texty which tools are available for a specific user.
 In practice, this payload should usually come from your `texty.json` file.
 
 ```shell
-curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/tools/sync \
+curl -X POST http://localhost:5173/api/v1/integrations/integration_a/users/user_123/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
+    "integration_id": "integration_a",
     "user_id": "user_123",
     "tools": [
       {
@@ -218,7 +218,7 @@ curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/to
 
 Field guide:
 
-- `provider_id`
+- `integration_id`
   - the current wire-format integration id
   - this must match the token making the request
 - `user_id`
@@ -240,7 +240,7 @@ Field guide:
 
 Plain English example:
 
-- `provider_id = "provider_a"` means “this integration is called provider_a”
+- `integration_id = "integration_a"` means “this integration is called integration_a”
 - `user_id = "user_123"` means “these tools are available for this user”
 - `tool_name = "spreadsheet.update_row"` means “this tool updates a spreadsheet row”
 
@@ -259,7 +259,7 @@ curl -X POST http://localhost:5173/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
+    "integration_id": "integration_a",
     "user_id": "user_123",
     "input": {
       "kind": "text",
@@ -274,7 +274,7 @@ curl -X POST http://localhost:5173/api/v1/input \
 
 Field guide:
 
-- `provider_id`
+- `integration_id`
   - the current wire-format integration id
   - tells Texty which tool set this conversation belongs to
 - `user_id`
@@ -312,7 +312,7 @@ When Texty calls a tool target, the important part of the payload is the validat
 
 The target may also receive metadata such as:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - `thread_id`
 - `tool_name`
@@ -344,7 +344,7 @@ Plain English example:
 Use this endpoint to fetch the threads Texty knows about for a user.
 
 ```shell
-curl http://localhost:5173/api/v1/providers/provider_a/users/user_123/threads \
+curl http://localhost:5173/api/v1/integrations/integration_a/users/user_123/threads \
   -H "Authorization: Bearer dev-token"
 ```
 
@@ -415,7 +415,7 @@ When a tool returns `accepted` or `in_progress`, the intended follow-up path is 
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "result": {

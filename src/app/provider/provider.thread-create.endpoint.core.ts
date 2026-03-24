@@ -14,7 +14,7 @@ type AuthResult =
     };
 
 type ThreadCreateInput = {
-  provider_id: string;
+  integration_id: string;
   user_id: string;
   title?: string;
   is_private?: boolean;
@@ -121,7 +121,7 @@ export const createHandleThreadCreateEndpoint = (
       const idempotencyKey = deps.getIdempotencyHeader(request);
       const auth = deps.authenticateProviderRequest({
         request,
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         requestId,
       });
 
@@ -136,7 +136,7 @@ export const createHandleThreadCreateEndpoint = (
 
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
         });
         const storageKey = deps.buildIdempotencyKey({
@@ -169,7 +169,7 @@ export const createHandleThreadCreateEndpoint = (
         }
 
         const result = await deps.createProviderThread({
-          providerId: input.provider_id,
+          providerId: input.integration_id,
           userId: input.user_id,
           title: input.title,
           isPrivate: input.is_private,
@@ -178,7 +178,7 @@ export const createHandleThreadCreateEndpoint = (
         });
         const nextContext = deps.storeIdempotencyReplay({
           context: await deps.loadOrCreateProviderUserContext({
-            providerId: input.provider_id,
+            providerId: input.integration_id,
             userId: input.user_id,
           }),
           storageKey,
@@ -195,7 +195,7 @@ export const createHandleThreadCreateEndpoint = (
       }
 
       const result = await deps.createProviderThread({
-        providerId: input.provider_id,
+        providerId: input.integration_id,
         userId: input.user_id,
         title: input.title,
         isPrivate: input.is_private,

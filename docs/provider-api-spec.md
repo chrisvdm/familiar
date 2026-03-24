@@ -61,7 +61,7 @@ Texty should never accept unauthenticated requests for:
 
 Every request is scoped to:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - channel context
 
@@ -69,12 +69,11 @@ And where applicable:
 
 - `thread_id`
 
-Texty must verify that the authenticated integration is allowed to act for the `provider_id` in the request.
+Texty must verify that the authenticated integration is allowed to act for the `integration_id` in the request.
 
 Current naming note:
 
-- the current wire format still uses `provider_id`
-- in product language, this is the integration id
+- the public wire format uses `integration_id`
 
 ## Common Headers
 
@@ -112,7 +111,7 @@ Error responses should use a consistent shape:
 
 ### 1. Sync allowed tools
 
-`POST /api/v1/providers/:provider_id/users/:user_id/tools/sync`
+`POST /api/v1/integrations/:integration_id/users/:user_id/tools/sync`
 
 Purpose:
 
@@ -122,7 +121,7 @@ Request:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "tools": [
     {
@@ -150,7 +149,7 @@ Success response:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "synced_tools": 1,
   "status": "ok"
@@ -187,7 +186,7 @@ Request:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "input": {
@@ -230,7 +229,7 @@ Success response:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "messages": [
@@ -315,7 +314,7 @@ Request:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "title": "Planning notes",
   "is_private": false,
@@ -339,7 +338,7 @@ Success response:
 
 ### 4. List threads
 
-`GET /api/v1/providers/:provider_id/users/:user_id/threads`
+`GET /api/v1/integrations/:integration_id/users/:user_id/threads`
 
 Purpose:
 
@@ -368,7 +367,7 @@ Request:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "title": "Client planning notes"
 }
@@ -382,7 +381,7 @@ Request body:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123"
 }
 ```
@@ -396,7 +395,7 @@ Behavior:
 
 ### 7. Read shared memory
 
-`GET /api/v1/providers/:provider_id/users/:user_id/memory`
+`GET /api/v1/integrations/:integration_id/users/:user_id/memory`
 
 Purpose:
 
@@ -429,7 +428,7 @@ Request:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "result": {
@@ -441,7 +440,7 @@ Request:
 
 Minimal required fields:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - `thread_id`
 - `result.state`
@@ -466,7 +465,7 @@ Success response:
 
 ```json
 {
-  "provider_id": "provider_a",
+  "integration_id": "integration_a",
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "status": "ok"
@@ -496,7 +495,7 @@ The ideal request body is just the validated tool arguments.
 The target should not need to:
 
 - inspect `tool_name`
-- inspect `provider_id`
+- inspect `integration_id`
 - inspect `thread_id`
 - do another dispatch step
 
@@ -563,7 +562,7 @@ Recommended:
 - tool sync
 - conversation input from webhook-driven channels
 - thread creation if retried by providers
-- thread rename and delete for provider-managed retries
+- thread rename and delete for integration-managed retries
 
 Behavior:
 

@@ -22,7 +22,7 @@ import {
 
 export const providerRoutes = [
   route(
-    "/api/v1/providers/:providerId/users/:userId/tools/sync",
+    "/api/v1/integrations/:integrationId/users/:userId/tools/sync",
     handleToolsSyncEndpoint,
   ),
   route("/api/v1/input", handleConversationInputEndpoint),
@@ -30,7 +30,7 @@ export const providerRoutes = [
   route("/api/v1/webhooks/executor", handleExecutorResultEndpoint),
   route("/api/v1/threads", handleThreadCreateEndpoint),
   route(
-    "/api/v1/providers/:providerId/users/:userId/threads",
+    "/api/v1/integrations/:integrationId/users/:userId/threads",
     async ({ request, params }) => {
       const requestId = getRequestId(request);
 
@@ -45,7 +45,7 @@ export const providerRoutes = [
 
       const auth = authenticateProviderRequest({
         request,
-        providerId: params.providerId,
+        providerId: params.integrationId,
         requestId,
       });
 
@@ -60,7 +60,7 @@ export const providerRoutes = [
 
       try {
         const result = await listProviderThreads({
-          providerId: params.providerId,
+          providerId: params.integrationId,
           userId: params.userId,
         });
         return jsonResponse({
@@ -80,7 +80,7 @@ export const providerRoutes = [
   ),
   route("/api/v1/threads/:threadId", handleThreadMutationEndpoint),
   route(
-    "/api/v1/providers/:providerId/users/:userId/memory",
+    "/api/v1/integrations/:integrationId/users/:userId/memory",
     async ({ request, params }) => {
       const requestId = getRequestId(request);
 
@@ -95,7 +95,7 @@ export const providerRoutes = [
 
       const auth = authenticateProviderRequest({
         request,
-        providerId: params.providerId,
+        providerId: params.integrationId,
         requestId,
       });
 
@@ -110,7 +110,7 @@ export const providerRoutes = [
 
       try {
         const result = await getProviderMemory({
-          providerId: params.providerId,
+          providerId: params.integrationId,
           userId: params.userId,
         });
         return jsonResponse({
@@ -142,11 +142,11 @@ export const providerRoutes = [
 
     try {
       const url = new URL(request.url);
-      const providerId = url.searchParams.get("provider_id")?.trim();
+      const providerId = url.searchParams.get("integration_id")?.trim();
       const userId = url.searchParams.get("user_id")?.trim();
 
       if (!providerId || !userId) {
-        throw new Error("provider_id and user_id are required.");
+        throw new Error("integration_id and user_id are required.");
       }
 
       const auth = authenticateProviderRequest({

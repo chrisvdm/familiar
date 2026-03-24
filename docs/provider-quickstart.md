@@ -19,8 +19,7 @@ Core terms:
 
 Current note:
 
-- the current wire format still uses `provider_id`
-- in product language, this is the integration id
+- the public wire format uses `integration_id`
 - Texty chooses the tool before it calls your code
 
 That external system does not need to be a large product. It can be:
@@ -47,12 +46,12 @@ That is enough for a first integration.
 In local development, add connection config to `.dev.vars`:
 
 ```shell
-TEXTY_EXECUTOR_CONFIG='{"provider_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
+TEXTY_EXECUTOR_CONFIG='{"integration_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
 ```
 
 Meaning:
 
-- `provider_a` is the current wire-format integration id
+- `integration_a` is the integration id
 - `dev-token` is the bearer token used for this integration
 - `baseUrl` is where Texty will call your code
 
@@ -61,11 +60,11 @@ Meaning:
 Tell Texty which tools a given user is allowed to use.
 
 ```shell
-curl -X POST http://localhost:5173/api/v1/providers/provider_a/users/user_123/tools/sync \
+curl -X POST http://localhost:5173/api/v1/integrations/integration_a/users/user_123/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
+    "integration_id": "integration_a",
     "user_id": "user_123",
     "tools": [
       {
@@ -97,7 +96,7 @@ curl -X POST http://localhost:5173/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
+    "integration_id": "integration_a",
     "user_id": "user_123",
     "input": {
       "kind": "text",
@@ -176,7 +175,7 @@ curl -X POST http://localhost:5173/api/v1/webhooks/executor \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "provider_id": "provider_a",
+    "integration_id": "integration_a",
     "user_id": "user_123",
     "thread_id": "thread_abc",
     "result": {
@@ -188,7 +187,7 @@ curl -X POST http://localhost:5173/api/v1/webhooks/executor \
 
 Keep this payload minimal unless you need more tracing:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - `thread_id`
 - `result.state`
@@ -252,7 +251,7 @@ If you are connecting something simple, think of it like this:
 
 Every request should include:
 
-- `provider_id`
+- `integration_id`
 - `user_id`
 - `channel.type`
 - `channel.id`

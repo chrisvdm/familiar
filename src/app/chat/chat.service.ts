@@ -194,7 +194,7 @@ const sendThreadMessage = async ({
       token: "",
     },
     input: {
-      provider_id: providerId,
+      integration_id: providerId,
       user_id: userId,
       thread_id: targetThreadId,
       input: {

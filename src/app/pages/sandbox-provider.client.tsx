@@ -6,7 +6,7 @@ import styles from "./sandbox-provider.module.css";
 
 const DEFAULT_TOOLS = JSON.stringify(
   {
-    provider_id: "provider_a",
+    integration_id: "integration_a",
     user_id: "user_123",
     tools: [
       {
@@ -38,7 +38,7 @@ const asRecord = (value: unknown) =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 
 export const SandboxProviderClient = () => {
-  const [providerId, setProviderId] = useState("provider_a");
+  const [integrationId, setIntegrationId] = useState("integration_a");
   const [token, setToken] = useState("");
   const [userId, setUserId] = useState("user_123");
   const [channelType, setChannelType] = useState("web");
@@ -96,9 +96,9 @@ export const SandboxProviderClient = () => {
   return (
     <section className={styles.shell}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Provider Sandbox</h1>
+        <h1 className={styles.title}>Integration Sandbox</h1>
         <p className={styles.intro}>
-          Exercise the real provider API routes directly from the browser.
+          Exercise the real integration API routes directly from the browser.
         </p>
       </header>
 
@@ -106,8 +106,11 @@ export const SandboxProviderClient = () => {
         <section className={styles.panel}>
           <h2 className={styles.panelTitle}>Identity</h2>
           <label className={styles.field}>
-            <span>Provider ID</span>
-            <input value={providerId} onChange={(e) => setProviderId(e.target.value)} />
+            <span>Integration ID</span>
+            <input
+              value={integrationId}
+              onChange={(e) => setIntegrationId(e.target.value)}
+            />
           </label>
           <label className={styles.field}>
             <span>API Token</span>
@@ -166,7 +169,7 @@ export const SandboxProviderClient = () => {
                   url: "/api/v1/conversation/input",
                   method: "POST",
                   body: {
-                    provider_id: providerId,
+                    integration_id: integrationId,
                     user_id: userId,
                     ...(threadId ? { thread_id: threadId } : {}),
                     input: {
@@ -194,7 +197,7 @@ export const SandboxProviderClient = () => {
                   url: "/api/v1/threads",
                   method: "POST",
                   body: {
-                    provider_id: providerId,
+                    integration_id: integrationId,
                     user_id: userId,
                     title: "Sandbox thread",
                     is_private: false,
@@ -213,7 +216,7 @@ export const SandboxProviderClient = () => {
               disabled={isPending}
               onClick={() =>
                 request({
-                  url: `/api/v1/providers/${providerId}/users/${userId}/threads`,
+                  url: `/api/v1/integrations/${integrationId}/users/${userId}/threads`,
                   method: "GET",
                 })
               }
@@ -225,7 +228,7 @@ export const SandboxProviderClient = () => {
               disabled={isPending}
               onClick={() =>
                 request({
-                  url: `/api/v1/providers/${providerId}/users/${userId}/memory`,
+                  url: `/api/v1/integrations/${integrationId}/users/${userId}/memory`,
                   method: "GET",
                 })
               }
@@ -237,8 +240,8 @@ export const SandboxProviderClient = () => {
               disabled={isPending || !threadId}
               onClick={() =>
                 request({
-                  url: `/api/v1/threads/${threadId}/memory?provider_id=${encodeURIComponent(
-                    providerId,
+                  url: `/api/v1/threads/${threadId}/memory?integration_id=${encodeURIComponent(
+                    integrationId,
                   )}&user_id=${encodeURIComponent(userId)}`,
                   method: "GET",
                 })
@@ -264,7 +267,7 @@ export const SandboxProviderClient = () => {
             disabled={isPending}
             onClick={() =>
               request({
-                url: `/api/v1/providers/${providerId}/users/${userId}/tools/sync`,
+                url: `/api/v1/integrations/${integrationId}/users/${userId}/tools/sync`,
                 method: "POST",
                 body: JSON.parse(toolPayload),
               })

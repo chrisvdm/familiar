@@ -69,7 +69,7 @@ export type ProviderChannelInput = {
 };
 
 export type ProviderConversationInput = {
-  provider_id: string;
+  integration_id: string;
   user_id: string;
   thread_id?: string;
   input: {
@@ -85,7 +85,7 @@ export type ProviderConversationInput = {
 };
 
 export type ProviderExecutorResultInput = {
-  provider_id: string;
+  integration_id: string;
   user_id: string;
   thread_id: string;
   channel?: ProviderChannelInput;
@@ -99,7 +99,7 @@ export type ProviderExecutorResultInput = {
 };
 
 export type ProviderToolSyncInput = {
-  provider_id: string;
+  integration_id: string;
   user_id: string;
   tools: Array<{
     tool_name: string;

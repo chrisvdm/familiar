@@ -15,7 +15,7 @@ const createRequest = ({
   idempotencyKey,
 }: {
   body: {
-    provider_id: string;
+    integration_id: string;
     user_id: string;
     title?: string;
     is_private?: boolean;
@@ -38,7 +38,7 @@ const createRequest = ({
   });
 
 const createInput = () => ({
-  provider_id: "provider_a",
+  integration_id: "provider_a",
   user_id: "user_123",
   title: "Work thread",
   is_private: false,

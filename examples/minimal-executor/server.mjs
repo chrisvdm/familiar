@@ -12,7 +12,7 @@ import {
 const port = Number(process.env.PORT || 8787);
 const expectedToken = (process.env.TEXTY_EXECUTOR_TOKEN || "dev-token").trim();
 const textyBaseUrl = (process.env.TEXTY_BASE_URL || "http://localhost:5173").trim();
-const providerId = (process.env.TEXTY_PROVIDER_ID || "demo_executor").trim();
+const integrationId = (process.env.TEXTY_INTEGRATION_ID || "demo_executor").trim();
 const defaultUserId = (process.env.TEXTY_USER_ID || "demo_user").trim();
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = dirname(currentFile);
@@ -24,20 +24,20 @@ const renderHomePage = () =>
     .replaceAll("__PORT__", String(port))
     .replaceAll("__TOKEN__", expectedToken)
     .replaceAll("__TEXTY_BASE_URL__", textyBaseUrl)
-    .replaceAll("__PROVIDER_ID__", providerId)
+    .replaceAll("__PROVIDER_ID__", integrationId)
     .replaceAll("__USER_ID__", defaultUserId)
     .replaceAll("__PLAYGROUND_PATH__", "/playground/texty")
     .replaceAll("__PLAYGROUND_MODE__", "proxy")
     .replaceAll("__NONCE__", "");
 
 const buildSyncBody = (userId) => ({
-  provider_id: providerId,
+  integration_id: integrationId,
   user_id: userId,
   tools: toolDefinitions,
 });
 
 const buildInputBody = (userId, text) => ({
-  provider_id: providerId,
+  integration_id: integrationId,
   user_id: userId,
   input: {
     kind: "text",
@@ -98,7 +98,7 @@ const sendExecutorResultToTexty = async ({ payload, result }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          provider_id: providerId,
+          integration_id: integrationId,
           user_id: String(payload.user_id || defaultUserId).trim(),
           thread_id: String(payload.thread_id || "").trim(),
           channel:
@@ -127,7 +127,7 @@ const sendExecutorResultToTexty = async ({ payload, result }) => {
 
 const syncTodoToolWithTexty = async ({ token, userId }) => {
   const response = await fetch(
-    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/providers/${providerId}/users/${userId}/tools/sync`,
+    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/integrations/${integrationId}/users/${userId}/tools/sync`,
     {
       method: "POST",
       headers: {
@@ -225,7 +225,7 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, {
         ok: true,
         demo_identity: {
-          executor_id: providerId,
+          integration_id: integrationId,
           user_id: userId,
         },
         assistant_reply: extractAssistantReply(textyResult.body),
