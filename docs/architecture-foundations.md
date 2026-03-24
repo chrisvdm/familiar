@@ -212,6 +212,11 @@ It should contain:
 - policies
 - executor configuration metadata
 
+Long-term note:
+
+- the canonical tool registry should live at the integration level
+- user scope should control tool access, not duplicate the canonical tool definition itself
+
 ## Current Implementation vs Intended Implementation
 
 ### Current implementation

@@ -7,6 +7,7 @@ const docModules = import.meta.glob("../docs-content/*.md", {
 const DOC_ORDER = [
   "intro",
   "quickstart",
+  "api-reference",
   "concepts",
   "integrations",
   "executors",
@@ -80,6 +81,9 @@ export const getDocBySlug = (slug?: string) => {
 
   return docs.find((entry) => entry.slug === normalizedSlug) ?? defaultDoc;
 };
+
+export const getRenderableDocContent = (content: string) =>
+  content.replace(/^#\s+.+\n+/, "");
 
 export const getNextDoc = (slug?: string) => {
   const activeDoc = getDocBySlug(slug);

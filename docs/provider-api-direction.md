@@ -133,17 +133,21 @@ The full policy model is described in `docs/architecture-foundations.md`.
 
 ## Recommended Contract
 
-### 1. Tool sync
+### 1. Tool registry and access
 
-Integrations should sync the allowed tools for a given user into familiar.
+The long-term direction is for _familiar_ to own a per-integration tool registry as the source of truth.
 
-The preferred source of that sync payload is a manifest file named `familiar.json`.
+That registry should define the canonical tool entries for the integration.
 
-This should happen:
+Programmatic updates should then populate or update that registry.
 
-- on initial connection/setup
-- when the user gains or loses access to tools
-- when tool schemas change materially
+The current `tools/sync` endpoint is best understood as an MVP bulk-upsert path, not the final conceptual model.
+
+During the current phase, it still makes sense to use it:
+
+- on initial integration setup
+- when a tool definition changes materially
+- while the hosted registry surface is still being refined
 
 Example request:
 
@@ -225,9 +229,14 @@ Example request from familiar to the target:
 }
 ```
 
-The important rule is that `arguments` must already match the synced `input_schema`.
+The important rule is that `arguments` must already match the declared argument schema.
 The target may receive metadata fields such as `tool_name`, `user_id`, and `thread_id`, but it should not need to re-run intent detection or argument extraction.
 familiar has already chosen the tool and already knows where it lives.
+
+Default note:
+
+- the current wrapped payload shape is a default, not the only possible future execution shape
+- a tool may eventually define a custom executor payload format while still using the same transport boundary
 
 Example response:
 

@@ -20,6 +20,7 @@ export type AllowedTool = {
   toolName: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  executorPayload?: unknown;
   policy: Record<string, unknown>;
   status: "active" | "disabled";
 };
@@ -105,6 +106,7 @@ export type ProviderToolSyncInput = {
     tool_name: string;
     description: string;
     input_schema: Record<string, unknown>;
+    executor_payload?: unknown;
     policy?: Record<string, unknown>;
     status?: "active" | "disabled";
   }>;

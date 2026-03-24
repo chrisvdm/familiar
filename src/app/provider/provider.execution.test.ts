@@ -180,6 +180,66 @@ test("executeProviderToolRequest returns normalized success payloads", async () 
   );
 });
 
+test("executeProviderToolRequest supports integration-defined executor payload templates", async () => {
+  let capturedBody = "";
+
+  await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example/root/",
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {
+      row_id: "42",
+    },
+    requestId: "req_123",
+    channel: {
+      type: "whatsapp",
+      id: "user_555",
+    },
+    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    rawInputText: "buy milk and eggs",
+    shortcutMode: true,
+    executorPayloadTemplate: {
+      operation: "$tool_name",
+      params: "$arguments",
+      meta: {
+        user: "$user_id",
+        request: "$request_id",
+        callback: "$executor_result_webhook_url",
+      },
+    },
+    fetchImpl: async (_input, init) => {
+      capturedBody = String(init?.body);
+
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          state: "completed",
+          result: {
+            summary: "Updated row 42.",
+          },
+        }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.match(capturedBody, /"operation":"spreadsheet.update_row"/);
+  assert.match(capturedBody, /"params":\{"row_id":"42"\}/);
+  assert.match(capturedBody, /"user":"user_123"/);
+  assert.match(capturedBody, /"request":"req_123"/);
+  assert.match(
+    capturedBody,
+    /"callback":"https:\/\/texty.example\/api\/v1\/webhooks\/executor"/,
+  );
+  assert.doesNotMatch(capturedBody, /"tool_name":"spreadsheet.update_row"/);
+  assert.doesNotMatch(capturedBody, /"arguments":\{"row_id":"42"\}/);
+});
+
 test("sendProviderChannelMessage posts a text message payload", async () => {
   let capturedRequestUrl = "";
   let capturedBody = "";

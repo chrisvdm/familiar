@@ -82,6 +82,9 @@ POST {integration.baseUrl}/tools/execute
 
 The executor receives structured tool input rather than raw user text.
 
+> [!NOTE]
+> The current default executor request body is wrapped and includes fields like `tool_name`, `arguments`, and `context`. If a tool defines `executor_payload`, _familiar_ can send a different JSON body shape instead.
+
 ### Example execution payload
 
 ```json

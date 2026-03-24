@@ -1334,6 +1334,7 @@ const executeProviderTool = async ({
   threadId,
   toolName,
   args,
+  executorPayloadTemplate,
   channel,
   rawInputText,
   shortcutMode,
@@ -1345,6 +1346,7 @@ const executeProviderTool = async ({
   threadId: string;
   toolName: string;
   args: Record<string, unknown>;
+  executorPayloadTemplate?: unknown;
   channel?: ProviderChannelInput;
   rawInputText?: string;
   shortcutMode?: boolean;
@@ -1367,6 +1369,7 @@ const executeProviderTool = async ({
     resultWebhookUrl,
     rawInputText,
     shortcutMode,
+    executorPayloadTemplate,
   });
 };
 
@@ -1538,6 +1541,7 @@ export const syncProviderTools = async (
       toolName: tool.tool_name,
       description: tool.description,
       inputSchema: tool.input_schema,
+      executorPayload: tool.executor_payload,
       policy: tool.policy ?? {},
       status: tool.status ?? "active",
     })),
@@ -2036,6 +2040,7 @@ export const handleProviderConversationInput = async ({
           tool: shortcutTool,
           content,
         }),
+        executorPayloadTemplate: shortcutTool.executorPayload,
         channel: input.channel,
         rawInputText: content,
         shortcutMode: true,
@@ -2082,6 +2087,7 @@ export const handleProviderConversationInput = async ({
           threadId,
           toolName: currentState.pendingToolConfirmation.toolName,
           args: currentState.pendingToolConfirmation.arguments,
+          executorPayloadTemplate: pendingTool?.executorPayload,
           channel: input.channel,
           requestId,
         });
@@ -2110,6 +2116,7 @@ export const handleProviderConversationInput = async ({
               threadId,
               toolName: followOnDecision.tool_name,
               args: followOnDecision.arguments,
+              executorPayloadTemplate: pendingTool.executorPayload,
               channel: input.channel,
               requestId,
             });
@@ -2275,6 +2282,7 @@ export const handleProviderConversationInput = async ({
           threadId,
           toolName: decision.tool_name,
           args: normalizedArguments,
+          executorPayloadTemplate: tool?.executorPayload,
           channel: input.channel,
           requestId,
         });

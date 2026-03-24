@@ -39,6 +39,74 @@ const VALID_EXECUTION_STATES = new Set<ProviderExecutionState>([
 
 const EXECUTOR_REQUEST_TIMEOUT_MS = 15_000;
 
+const EXECUTOR_PAYLOAD_TOKENS = {
+  "$execution_id": "execution_id",
+  "$integration_id": "integration_id",
+  "$user_id": "user_id",
+  "$thread_id": "thread_id",
+  "$tool_name": "tool_name",
+  "$arguments": "arguments",
+  "$context": "context",
+  "$request_id": "request_id",
+  "$channel": "channel",
+  "$raw_input_text": "raw_input_text",
+  "$shortcut_mode": "shortcut_mode",
+  "$executor_result_webhook_url": "executor_result_webhook_url",
+} as const;
+
+type ExecutorPayloadContext = {
+  execution_id: string;
+  integration_id: string;
+  user_id: string;
+  thread_id: string;
+  tool_name: string;
+  arguments: Record<string, unknown>;
+  context: {
+    request_id: string;
+    thread_id: string;
+    channel?: ProviderChannelInput;
+    executor_result_webhook_url?: string;
+    raw_input_text?: string;
+    shortcut_mode?: boolean;
+  };
+  request_id: string;
+  channel?: ProviderChannelInput;
+  raw_input_text?: string;
+  shortcut_mode?: boolean;
+  executor_result_webhook_url?: string;
+};
+
+const resolveExecutorPayloadTemplate = (
+  value: unknown,
+  context: ExecutorPayloadContext,
+): unknown => {
+  if (typeof value === "string") {
+    const tokenKey =
+      EXECUTOR_PAYLOAD_TOKENS[value as keyof typeof EXECUTOR_PAYLOAD_TOKENS];
+
+    if (tokenKey) {
+      return context[tokenKey];
+    }
+
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => resolveExecutorPayloadTemplate(entry, context));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        resolveExecutorPayloadTemplate(entry, context),
+      ]),
+    );
+  }
+
+  return value;
+};
+
 export const buildExecutorToolUrl = (baseUrl: string) =>
   `${baseUrl.replace(/\/$/, "")}/tools/execute`;
 
@@ -106,6 +174,7 @@ export const executeProviderToolRequest = async ({
   resultWebhookUrl,
   rawInputText,
   shortcutMode = false,
+  executorPayloadTemplate,
   fetchImpl = fetch,
   timeoutMs = EXECUTOR_REQUEST_TIMEOUT_MS,
 }: {
@@ -120,6 +189,7 @@ export const executeProviderToolRequest = async ({
   resultWebhookUrl?: string | null;
   rawInputText?: string;
   shortcutMode?: boolean;
+  executorPayloadTemplate?: unknown;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }) => {
@@ -144,6 +214,40 @@ export const executeProviderToolRequest = async ({
 
   const controller = new AbortController();
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+  const requestIdValue = requestId ?? crypto.randomUUID();
+  const requestContext = {
+    request_id: requestIdValue,
+    thread_id: threadId,
+    channel,
+    executor_result_webhook_url: resultWebhookUrl ?? undefined,
+    raw_input_text: rawInputText ?? undefined,
+    shortcut_mode: shortcutMode || undefined,
+  };
+  const requestBody =
+    executorPayloadTemplate !== undefined
+      ? resolveExecutorPayloadTemplate(executorPayloadTemplate, {
+          execution_id: executionId,
+          integration_id: providerId,
+          user_id: userId,
+          thread_id: threadId,
+          tool_name: toolName,
+          arguments: args,
+          context: requestContext,
+          request_id: requestIdValue,
+          channel,
+          raw_input_text: rawInputText ?? undefined,
+          shortcut_mode: shortcutMode || undefined,
+          executor_result_webhook_url: resultWebhookUrl ?? undefined,
+        })
+      : {
+          execution_id: executionId,
+          integration_id: providerId,
+          user_id: userId,
+          thread_id: threadId,
+          tool_name: toolName,
+          arguments: args,
+          context: requestContext,
+        };
 
   try {
     const response = await fetchImpl(buildExecutorToolUrl(providerConfig.baseUrl), {
@@ -152,22 +256,7 @@ export const executeProviderToolRequest = async ({
         Authorization: `Bearer ${providerConfig.token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        execution_id: executionId,
-        integration_id: providerId,
-        user_id: userId,
-        thread_id: threadId,
-        tool_name: toolName,
-        arguments: args,
-        context: {
-          request_id: requestId ?? crypto.randomUUID(),
-          thread_id: threadId,
-          channel,
-          executor_result_webhook_url: resultWebhookUrl ?? undefined,
-          raw_input_text: rawInputText ?? undefined,
-          shortcut_mode: shortcutMode || undefined,
-        },
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
 

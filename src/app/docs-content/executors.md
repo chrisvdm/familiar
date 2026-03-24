@@ -27,7 +27,21 @@ By the time the executor receives a request:
 
 That means the executor does not need to repeat routing or conversational extraction.
 
-### Example execution request
+## Payload shape
+
+The executor payload does not need to be one rigid global format.
+
+By default, _familiar_ sends a wrapped payload with fields such as:
+
+- `tool_name`
+- `arguments`
+- `user_id`
+- `thread_id`
+- `context`
+
+But an integration can also define a tool-level `executor_payload` template and have _familiar_ send that custom JSON shape instead.
+
+### Default execution request
 
 ```json
 {
@@ -47,6 +61,25 @@ That means the executor does not need to repeat routing or conversational extrac
   }
 }
 ```
+
+### Custom execution request
+
+For a tool that defines `executor_payload`, _familiar_ can instead send something like:
+
+```json
+{
+  "operation": "spreadsheet.update_row",
+  "params": {
+    "sheet": "Sales Leads",
+    "row_id": "42"
+  },
+  "meta": {
+    "user": "user_123"
+  }
+}
+```
+
+That means the transport stays the same, but the body can match what the integration actually wants.
 
 ## Blocking or async
 

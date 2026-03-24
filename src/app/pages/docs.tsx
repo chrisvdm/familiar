@@ -1,4 +1,8 @@
-import { getDocBySlug, getNextDoc } from "../docs/content";
+import {
+  getDocBySlug,
+  getNextDoc,
+  getRenderableDocContent,
+} from "../docs/content";
 import { renderMarkdown } from "../docs/markdown";
 
 export const DocsPage = ({
@@ -17,7 +21,9 @@ export const DocsPage = ({
             <em>familiar</em> docs
           </p>
           <h1 className="docs-title">{activeDoc.label}</h1>
-          <div className="docs-content">{renderMarkdown(activeDoc.content)}</div>
+          <div className="docs-content">
+            {renderMarkdown(getRenderableDocContent(activeDoc.content))}
+          </div>
           {nextDoc ? (
             <footer className="docs-footer">
               <p className="landing-section-label">Next</p>
