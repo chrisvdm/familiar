@@ -648,7 +648,7 @@ export const ChatClient = ({
     <section className={styles.shell}>
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
-          <span className={styles.brand}>texty.</span>
+          <span className={styles.brand}>familiar.</span>
           <button
             type="button"
             className={styles.newThreadButton}

@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document defines how Texty should think about developer experience for connected systems.
+This document defines how familiar should think about developer experience for connected systems.
 
 The important shift is this:
 
-Texty is not only for human developers.
+familiar is not only for human developers.
 
-Texty should also be easy for AI-built systems to connect to.
+familiar should also be easy for AI-built systems to connect to.
 
 That means the integration surface should be simple enough that:
 
@@ -18,7 +18,7 @@ That means the integration surface should be simple enough that:
 
 ## New Framing
 
-Texty is a conversation layer for executable systems.
+familiar is a conversation layer for executable systems.
 
 A connected system can be:
 
@@ -27,7 +27,7 @@ A connected system can be:
 - a small script
 - an AI-generated service
 
-Texty should make those systems usable through conversation without requiring each one to rebuild:
+familiar should make those systems usable through conversation without requiring each one to rebuild:
 
 - threads
 - memory
@@ -55,15 +55,15 @@ A new integration should have one clear first success path:
 
 1. configure a connection
 2. define tools in `texty.json`
-3. sync that manifest into Texty
+3. sync that manifest into familiar
 4. send conversation input
-5. let Texty trigger the correct target with schema-valid arguments
+5. let familiar trigger the correct target with schema-valid arguments
 
 Everything else should be optional or advanced.
 
 ### 2. Small, stable JSON contracts
 
-Texty should prefer:
+familiar should prefer:
 
 - flat request shapes
 - flat response shapes
@@ -95,7 +95,7 @@ Do not mix:
 
 ### 4. Minimal required concepts
 
-The basic integration should not require understanding the whole Texty architecture.
+The basic integration should not require understanding the whole familiar architecture.
 
 A connected system should be able to succeed with only:
 
@@ -107,7 +107,7 @@ A connected system should be able to succeed with only:
 
 ### 5. Clear, actionable errors
 
-When something is wrong, Texty should say exactly what the caller needs to fix.
+When something is wrong, familiar should say exactly what the caller needs to fix.
 
 Good:
 
@@ -123,7 +123,7 @@ Bad:
 
 ### 6. Deterministic behavior beats hidden magic
 
-Texty can infer thread continuity and choose tools, but the rules need to be documented clearly.
+familiar can infer thread continuity and choose tools, but the rules need to be documented clearly.
 
 AI integrations work better when the system has:
 
@@ -168,19 +168,19 @@ Tool sync should stay easy to understand:
 
 - here is the `texty.json` manifest for this user
 - here are the tools this user can use
-- here is the schema Texty must satisfy before executing them
+- here is the schema familiar must satisfy before executing them
 
 It should not become a complicated patch or partial-sync protocol unless there is a strong reason.
 
-### Keep schema ownership in Texty
+### Keep schema ownership in familiar
 
-If a tool declares an input schema, Texty should treat that schema as the execution contract.
+If a tool declares an input schema, familiar should treat that schema as the execution contract.
 
 That means:
 
-- Texty chooses the tool
-- Texty extracts the arguments
-- Texty asks follow-up questions for missing required fields
+- familiar chooses the tool
+- familiar extracts the arguments
+- familiar asks follow-up questions for missing required fields
 - the executor receives already-structured arguments
 
 The executor should not need to reinterpret the user's natural-language request.
@@ -192,7 +192,7 @@ Thread create, rename, and delete should exist, but they should not be the first
 The basic path should be:
 
 - send conversation input
-- let Texty resolve or infer the thread
+- let familiar resolve or infer the thread
 
 Explicit thread management is useful, but it is not the core of the first integration experience.
 
@@ -261,7 +261,7 @@ Some connected systems may only expose one capability.
 
 It may be worth adding a smaller path for that case later.
 
-### 4. Should Texty expose a self-describing schema endpoint?
+### 4. Should familiar expose a self-describing schema endpoint?
 
 AI systems often work better when they can inspect one canonical schema source.
 
@@ -277,4 +277,4 @@ When making API decisions, prefer the option that:
 - makes examples shorter
 - makes failures easier to recover from
 
-If two designs are equally powerful, the simpler one is better for Texty.
+If two designs are equally powerful, the simpler one is better for familiar.

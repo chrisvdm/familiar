@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Minimal Texty Executor</title>
+    <title>Minimal familiar Executor</title>
     <style>
       :root {
         color-scheme: light;
@@ -294,9 +294,9 @@
   <body>
     <main>
       <section class="hero">
-        <h1>Minimal Texty Executor</h1>
+        <h1>Minimal familiar Executor</h1>
         <p>
-          This demo shows Texty driving a real external tool. Instead of hiding
+          This demo shows familiar driving a real external tool. Instead of hiding
           the effect inside API JSON, the example adds todos to a live sidebar
           so you can immediately see how the conversation changes state.
         </p>
@@ -309,7 +309,7 @@
 
       <section class="layout">
         <div class="panel">
-          <h2>Talk To Texty</h2>
+          <h2>Talk To familiar</h2>
           <p class="muted">
             Try messages like “add buy dog food to my todo list” or “remember to
             call mom tomorrow”.
@@ -337,7 +337,7 @@
                 <input id="userId" name="userId" value="__USER_ID__" />
               </label>
               <label>
-                Texty base URL
+                familiar base URL
                 <input id="textyBaseUrl" name="textyBaseUrl" value="__TEXTY_BASE_URL__" />
               </label>
               <label>
@@ -346,12 +346,12 @@
               </label>
             </div>
 
-            <button id="throughTexty" type="submit">Send Through Texty</button>
+            <button id="throughTexty" type="submit">Send Through familiar</button>
           </form>
 
           <div class="helper" style="margin-top: 14px;">
-            The page always syncs the tool and sends your message through Texty.
-            If Texty decides a tool should run, the external executor updates the
+            The page always syncs the tool and sends your message through familiar.
+            If familiar decides a tool should run, the external executor updates the
             todo list shown on the right.
           </div>
 
@@ -359,7 +359,7 @@
             <h2>Conversation</h2>
             <div id="chatLog" class="chat-log">
               <div class="bubble assistant">
-                <span class="bubble-label">Texty</span>
+                <span class="bubble-label">familiar</span>
                 Say something that should become a todo item and watch the list on the right update.
               </div>
             </div>
@@ -385,7 +385,7 @@
           </div>
 
           <div id="todoList" class="todo-list">
-            <div class="todo-empty">No todos yet. Ask Texty to add one.</div>
+            <div class="todo-empty">No todos yet. Ask familiar to add one.</div>
           </div>
         </div>
       </section>
@@ -483,7 +483,7 @@
         if (!Array.isArray(todos) || todos.length === 0) {
           const empty = document.createElement("div");
           empty.className = "todo-empty";
-          empty.textContent = "No todos yet. Ask Texty to add one.";
+          empty.textContent = "No todos yet. Ask familiar to add one.";
           todoListEl.appendChild(empty);
           return;
         }
@@ -614,7 +614,7 @@
             storeTodos(mergedTodos);
 
             appendBubble({
-              label: "Texty",
+              label: "familiar",
               role: "assistant",
               content: assistantReply
             });
@@ -645,7 +645,7 @@
           });
         } finally {
           submitButtonEl.disabled = false;
-          submitButtonEl.textContent = "Send Through Texty";
+          submitButtonEl.textContent = "Send Through familiar";
         }
       });
     </script>

@@ -2,16 +2,16 @@
 
 ## Purpose
 
-This document shows the smallest useful way to connect code to Texty.
+This document shows the smallest useful way to connect code to familiar.
 
 Core terms:
 
 - `account`
-  - the owner that pays for and manages Texty
+  - the owner that pays for and manages familiar
 - `integration`
-  - the configured Texty connection for one app, bot, or deployment
+  - the configured familiar connection for one app, bot, or deployment
 - `executor`
-  - the script, service, or workflow runner Texty triggers to do real work
+  - the script, service, or workflow runner familiar triggers to do real work
 - `user_id`
   - the end user identity within an integration
 - `channel`
@@ -20,7 +20,7 @@ Core terms:
 Current note:
 
 - the public wire format uses `integration_id`
-- Texty chooses the tool before it calls your code
+- familiar chooses the tool before it calls your code
 
 That external system does not need to be a large product. It can be:
 
@@ -29,15 +29,15 @@ That external system does not need to be a large product. It can be:
 - a workflow runner
 - an AI-generated executable system
 
-Texty handles the conversation. Your code handles the work.
+familiar handles the conversation. Your code handles the work.
 
 ## What You Need
 
-To connect something to Texty, you need three things:
+To connect something to familiar, you need three things:
 
 1. An integration id
 2. A shared API token
-3. A URL Texty can call when work should run
+3. A URL familiar can call when work should run
 
 That is enough for a first integration.
 
@@ -53,11 +53,11 @@ Meaning:
 
 - `integration_a` is the integration id
 - `dev-token` is the bearer token used for this integration
-- `baseUrl` is where Texty will call your code
+- `baseUrl` is where familiar will call your code
 
 ## Step 2: Sync Allowed Tools
 
-Tell Texty which tools a given user is allowed to use.
+Tell familiar which tools a given user is allowed to use.
 
 ```shell
 curl -X POST http://localhost:5173/api/v1/integrations/integration_a/users/user_123/tools/sync \
@@ -85,11 +85,11 @@ curl -X POST http://localhost:5173/api/v1/integrations/integration_a/users/user_
   }'
 ```
 
-This gives Texty permission to reason over that tool for that integration/user pair.
+This gives familiar permission to reason over that tool for that integration/user pair.
 
 ## Step 3: Send Conversation Input
 
-Send a normal message into Texty.
+Send a normal message into familiar.
 
 ```shell
 curl -X POST http://localhost:5173/api/v1/input \
@@ -109,7 +109,7 @@ curl -X POST http://localhost:5173/api/v1/input \
   }'
 ```
 
-Texty will then:
+familiar will then:
 
 1. load the thread and memory context
 2. decide whether to answer directly, ask a follow-up, or call a tool
@@ -118,19 +118,19 @@ Texty will then:
 
 Important input rule:
 
-- Texty only receives normalized text here
+- familiar only receives normalized text here
 - if your product supports voice notes or speech input, transcribe or otherwise normalize that upstream before calling `/api/v1/input`
 - large transcription blocks are fine as long as they arrive as plain `input.text`
 
 ## Step 4: Expose `/tools/execute`
 
-If Texty decides that a tool should run, it will call:
+If familiar decides that a tool should run, it will call:
 
 ```text
 POST {target_url}
 ```
 
-Example request sent by Texty:
+Example request sent by familiar:
 
 ```json
 {
@@ -146,7 +146,7 @@ Your system should execute the work and return a structured result.
 
 Important:
 
-- Texty has already chosen the tool
+- familiar has already chosen the tool
 - your target does not need to decide which tool to run again
 - ideally, the request body is only the tool arguments
 - the current runtime still includes extra wrapper fields in the payload today
@@ -154,7 +154,7 @@ Important:
 - shortcut-forced tool mode may also include `context.raw_input_text`
 - async executors may receive `context.executor_result_webhook_url` and can call it later when work finishes
 
-### Step 5: Send an async result back to Texty
+### Step 5: Send an async result back to familiar
 
 If your executor launches work and returns `accepted` or `in_progress`, keep the first response short and user-facing, for example:
 
@@ -168,12 +168,12 @@ If your executor launches work and returns `accepted` or `in_progress`, keep the
 }
 ```
 
-Texty will return that execution state in the conversation response and, when available, include:
+familiar will return that execution state in the conversation response and, when available, include:
 
 - `execution.state`
 - `execution.execution_id`
 
-When the task actually finishes, call Texty back:
+When the task actually finishes, call familiar back:
 
 ```shell
 curl -X POST http://localhost:5173/api/v1/webhooks/executor \
@@ -202,10 +202,10 @@ Keep this payload minimal unless you need more tracing:
 
 Retry note:
 
-- if you send `Idempotency-Key`, Texty will use it for replay protection
-- if you do not send one, Texty falls back to `result.execution_id` when present
+- if you send `Idempotency-Key`, familiar will use it for replay protection
+- if you do not send one, familiar falls back to `result.execution_id` when present
 
-That is enough for Texty to append the async executor result into the thread and notify the user through its normal conversation flow.
+That is enough for familiar to append the async executor result into the thread and notify the user through its normal conversation flow.
 
 Example successful response:
 
@@ -252,12 +252,12 @@ Example failure response:
 
 If you are connecting something simple, think of it like this:
 
-- Texty listens to the user
-- Texty decides what the user wants
-- Texty picks the tool
-- Texty calls your code when work should happen
+- familiar listens to the user
+- familiar decides what the user wants
+- familiar picks the tool
+- familiar calls your code when work should happen
 - your code performs the action
-- Texty explains the result back to the user
+- familiar explains the result back to the user
 
 ## Channel Identity
 
@@ -268,7 +268,7 @@ Every request should include:
 - `channel.type`
 - `channel.id`
 
-This matters because Texty uses channel context to maintain recent thread continuity.
+This matters because familiar uses channel context to maintain recent thread continuity.
 
 Optional channel metadata:
 
@@ -316,4 +316,4 @@ Once connected, your system does not need to build:
 - channel continuity
 - user-facing replies
 
-Texty handles those parts. Your system only needs to expose useful work at a URL Texty can trigger.
+familiar handles those parts. Your system only needs to expose useful work at a URL familiar can trigger.

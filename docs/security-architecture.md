@@ -1,8 +1,8 @@
-# Texty Security Architecture
+# familiar Security Architecture
 
 ## Why This Document Exists
 
-Texty is moving from a browser-session prototype toward a multi-tenant conversation service.
+familiar is moving from a browser-session prototype toward a multi-tenant conversation service.
 
 That shift changes the security requirements substantially.
 
@@ -19,11 +19,11 @@ This document explains:
 
 - how security works today
 - what the target security model is
-- what controls are required before Texty should be treated as a real external service
+- what controls are required before familiar should be treated as a real external service
 
 ## Security Position Today
 
-Today, Texty is a browser-session application.
+Today, familiar is a browser-session application.
 
 The current runtime uses:
 
@@ -39,7 +39,7 @@ This is acceptable for a prototype, but it is not yet a production-ready authent
 
 ## Current Authentication Model
 
-Today, Texty identifies a client by browser session.
+Today, familiar identifies a client by browser session.
 
 The current pieces are:
 
@@ -68,14 +68,14 @@ What this does not mean:
 
 ## Target Authentication Model
 
-In the target architecture, Texty should authenticate the integration and scope every request to the represented end user.
+In the target architecture, familiar should authenticate the integration and scope every request to the represented end user.
 
 The target request identity should always be built from:
 
 - `integration_id`
 - `user_id`
 
-That gives Texty a stable way to decide:
+That gives familiar a stable way to decide:
 
 - who is calling
 - which user the request belongs to
@@ -96,7 +96,7 @@ For MVP, account administration should stay minimal:
 
 ### Integration
 
-An integration is the configured system identity that connects to Texty.
+An integration is the configured system identity that connects to familiar.
 
 Examples:
 
@@ -105,17 +105,17 @@ Examples:
 - a messaging integration backend
 
 An integration is not a person.
-It is the system identity making authenticated requests to Texty.
+It is the system identity making authenticated requests to familiar.
 
 ### Executor
 
-An executor is the code or service the integration exposes for real work once Texty has selected a tool.
+An executor is the code or service the integration exposes for real work once familiar has selected a tool.
 
 ### End User
 
 An end user is the human represented inside that integration.
 
-The integration tells Texty which user the request belongs to.
+The integration tells familiar which user the request belongs to.
 
 That means:
 
@@ -139,11 +139,11 @@ This needs to be a storage and retrieval rule, not just a user-interface label.
 
 ## Required Target Controls
 
-Before Texty should be treated as a real service, these controls are necessary.
+Before familiar should be treated as a real service, these controls are necessary.
 
 ### 1. Executor Authentication
 
-Every executor must authenticate to Texty.
+Every executor must authenticate to familiar.
 
 Acceptable options:
 
@@ -151,7 +151,7 @@ Acceptable options:
 - service credentials
 - OAuth-style machine authentication
 
-Texty should reject:
+familiar should reject:
 
 - unauthenticated executor requests
 - expired credentials
@@ -159,7 +159,7 @@ Texty should reject:
 
 ### 2. Tenant Isolation
 
-Texty must isolate data by executor and user.
+familiar must isolate data by executor and user.
 
 At minimum, one executor must not be able to:
 
@@ -174,9 +174,9 @@ This is the primary tenancy boundary.
 
 Within an executor, requests must be scoped to the correct user.
 
-Texty should not trust arbitrary `user_id` values without an authenticated executor context.
+familiar should not trust arbitrary `user_id` values without an authenticated executor context.
 
-The executor may define the user identity, but Texty must enforce:
+The executor may define the user identity, but familiar must enforce:
 
 - all reads are scoped to that executor/user pair
 - all writes are scoped to that executor/user pair
@@ -203,7 +203,7 @@ If private mode only affects the UI, it is not secure enough.
 
 ### 6. Webhook Verification
 
-If Texty accepts direct inbound traffic from external channels such as messaging or email systems, every inbound webhook must be verified.
+If familiar accepts direct inbound traffic from external channels such as messaging or email systems, every inbound webhook must be verified.
 
 That should include:
 
@@ -232,7 +232,7 @@ Rate limiting should exist at least at:
 
 ### 8. Audit Logging
 
-Texty should maintain an audit trail for security-relevant events.
+familiar should maintain an audit trail for security-relevant events.
 
 At minimum:
 
@@ -275,7 +275,7 @@ They should not live in:
 
 ### 10. Data Lifecycle Controls
 
-Texty needs documented rules for:
+familiar needs documented rules for:
 
 - retention
 - deletion
@@ -283,7 +283,7 @@ Texty needs documented rules for:
 - redaction
 - recovery behavior
 
-This is especially important because Texty stores:
+This is especially important because familiar stores:
 
 - conversation transcripts
 - user memory
@@ -292,7 +292,7 @@ This is especially important because Texty stores:
 
 ## Memory Security Rules
 
-Texty's memory model creates its own security requirements.
+familiar's memory model creates its own security requirements.
 
 ### Default Capture Rule
 
@@ -311,7 +311,7 @@ That means security must distinguish between:
 - memory being stored
 - memory being retrievable for a given request
 
-Texty must enforce both.
+familiar must enforce both.
 
 It is not enough to store a policy in documentation.
 The runtime has to check it during:
@@ -370,6 +370,6 @@ The next concrete steps should be:
 
 ## Short Version
 
-Today, Texty authenticates a browser session.
+Today, familiar authenticates a browser session.
 
-In the target architecture, Texty must authenticate providers, authorize user-scoped access, isolate tenants, enforce private-thread memory rules, verify external webhooks, and maintain an auditable record of security-sensitive actions.
+In the target architecture, familiar must authenticate providers, authorize user-scoped access, isolate tenants, enforce private-thread memory rules, verify external webhooks, and maintain an auditable record of security-sensitive actions.

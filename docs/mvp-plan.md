@@ -1,8 +1,8 @@
-# Texty MVP Plan
+# familiar MVP Plan
 
 ## Purpose
 
-This document defines the first implementation pass for Texty as a provider-aware conversation service.
+This document defines the first implementation pass for familiar as a provider-aware conversation service.
 
 It is intentionally narrower than the full long-term architecture.
 
@@ -16,7 +16,7 @@ The goal is to ship the first slice that proves:
 
 ## MVP Goals
 
-The MVP should prove that Texty can:
+The MVP should prove that familiar can:
 
 1. authenticate a provider with an API token
 2. accept a provider/user/channel conversation turn
@@ -111,7 +111,7 @@ The others can remain documented but unimplemented if needed.
 
 The first pass should support sync execution only.
 
-That means Texty calls a provider tool and waits for an immediate structured result.
+That means familiar calls a provider tool and waits for an immediate structured result.
 
 Planned future execution states should still be documented now:
 
@@ -193,8 +193,8 @@ The MVP is successful when:
 - a provider can authenticate
 - a provider can sync tools for a user
 - a provider can send a message for a user and channel
-- Texty can continue the right thread or create a new one
-- Texty can retrieve the right memory according to policy
-- Texty can call a provider tool synchronously
+- familiar can continue the right thread or create a new one
+- familiar can retrieve the right memory according to policy
+- familiar can call a provider tool synchronously
 - private threads remain isolated from shared memory
 - the existing web UI can operate through the same core path

@@ -4,12 +4,12 @@ This example is a dedicated async webhook demo.
 
 It shows one narrow flow:
 
-1. the user sends a chat message into Texty
-2. Texty routes it to `countdown.start`
+1. the user sends a chat message into familiar
+2. familiar routes it to `countdown.start`
 3. the executor immediately returns `accepted`
 4. a 10 second timer runs inside the executor
 5. when the timer finishes, the executor calls `POST /api/v1/webhooks/executor`
-6. Texty appends the result into the thread and delivers it through `POST /channels/messages`
+6. familiar appends the result into the thread and delivers it through `POST /channels/messages`
 
 ## Files
 
@@ -18,7 +18,7 @@ It shows one narrow flow:
 - `executor.mjs`
   - countdown state and tool execution logic
 - `server.mjs`
-  - local transport server, Texty sync/input proxy, webhook callback sender, and channel delivery receiver
+  - local transport server, familiar sync/input proxy, webhook callback sender, and channel delivery receiver
 - `index.html`
   - local UI for testing the async flow
 

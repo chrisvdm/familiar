@@ -1,8 +1,8 @@
-# Texty Data Model
+# familiar Data Model
 
 ## Why This Document Exists
 
-Texty's architecture depends on a small set of core entities.
+familiar's architecture depends on a small set of core entities.
 
 Those entities appear across:
 
@@ -16,7 +16,7 @@ This document defines them in plain language so the rest of the system can use t
 
 ## Core Rule
 
-Texty should keep a clear distinction between:
+familiar should keep a clear distinction between:
 
 - who is talking
 - which conversation they are in
@@ -37,15 +37,15 @@ For MVP:
 
 ### Integration
 
-An integration is a configured Texty connection for one app, instance, or deployment.
+An integration is a configured familiar connection for one app, instance, or deployment.
 
 It is not a person.
 
 It represents the system that:
 
-- authenticates to Texty
-- syncs tools into Texty
-- receives tool execution requests from Texty
+- authenticates to familiar
+- syncs tools into familiar
+- receives tool execution requests from familiar
 
 Key fields:
 
@@ -84,7 +84,7 @@ Important rule:
 
 ### Integration User Context
 
-This is the user-level Texty record for one integration/user pair.
+This is the user-level familiar record for one integration/user pair.
 
 It should store:
 
@@ -118,11 +118,11 @@ Important rule:
 
 A thread belongs to one integration/user pair.
 
-It may also carry channel metadata so Texty can resolve likely continuation when no `thread_id` is supplied.
+It may also carry channel metadata so familiar can resolve likely continuation when no `thread_id` is supplied.
 
 ### Channel Identity
 
-A channel identity is the record of how the same user reaches Texty through a specific surface.
+A channel identity is the record of how the same user reaches familiar through a specific surface.
 
 Examples:
 
@@ -145,7 +145,7 @@ A channel is not a separate user.
 
 It is a linked identity or surface for the same integration/user pair.
 
-Its purpose is to help Texty decide which thread is most likely to continue naturally when no explicit `thread_id` is provided.
+Its purpose is to help familiar decide which thread is most likely to continue naturally when no explicit `thread_id` is provided.
 
 ### Message
 
@@ -202,7 +202,7 @@ Global memory should be scoped by policy, not assumed to be universal.
 
 ### Memory Policy
 
-Memory policy controls what Texty may retrieve and use.
+Memory policy controls what familiar may retrieve and use.
 
 It should be attached to the integration/user context.
 
@@ -238,7 +238,7 @@ Key fields:
 
 ### Allowed Tool
 
-An allowed tool is one tool that Texty may consider for a specific integration/user pair.
+An allowed tool is one tool that familiar may consider for a specific integration/user pair.
 
 It should contain:
 
@@ -249,7 +249,7 @@ It should contain:
 - `policy`
 - `status`
 
-This is the object Texty reasons over during a tool-capable conversation.
+This is the object familiar reasons over during a tool-capable conversation.
 
 ### Tool Policy
 
@@ -265,7 +265,7 @@ Possible rules include:
 
 ### Tool Execution Request
 
-This is the structured request Texty sends to an executor.
+This is the structured request familiar sends to an executor.
 
 It should contain:
 
@@ -333,7 +333,7 @@ The intended model is:
 
 ## Short Version
 
-Texty's core data model is built around:
+familiar's core data model is built around:
 
 - account
 - integration

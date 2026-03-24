@@ -1,46 +1,46 @@
-# Texty Project Brief
+# familiar Project Brief
 
 ## Purpose
 
-Texty is a focused conversational AI interface built with RedwoodSDK and the OpenRouter API.
+familiar is a focused conversational AI interface built with RedwoodSDK and the OpenRouter API.
 
-The end goal is for Texty to be a reusable hosted conversation layer that owns memory, threads, and interaction flow, while delegating business-side effects to external tool-execution systems.
+The end goal is for familiar to be a reusable hosted conversation layer that owns memory, threads, and interaction flow, while delegating business-side effects to external tool-execution systems.
 
 In the target architecture:
 
-- Texty owns conversation
+- familiar owns conversation
 - executors own execution
 
-Texty should be usable by multiple executor systems, not just one product.
+familiar should be usable by multiple executor systems, not just one product.
 
 Examples:
 
 - an automation backend
 - an app-building backend
 
-This means Texty is being designed as a general-purpose conversational front end for tools and workflows, not as a single-purpose browser chat app.
+This means familiar is being designed as a general-purpose conversational front end for tools and workflows, not as a single-purpose browser chat app.
 
 ## Hosted Model
 
-Texty should run as a hosted service.
+familiar should run as a hosted service.
 
 The simple MVP identity model is:
 
 - `account`
   - owns billing and connected apps
 - `integration`
-  - one configured Texty connection for one app or deployment
+  - one configured familiar connection for one app or deployment
 - `executor`
-  - the code or service the integration triggers when Texty decides real work should happen
+  - the code or service the integration triggers when familiar decides real work should happen
 - `end_user`
-  - the person talking through Texty
+  - the person talking through familiar
 
 For MVP, the runtime token is scoped per integration/app.
 It is not per teammate and not per end user.
 
 ## Target Product
 
-In its intended final shape, Texty should:
+In its intended final shape, familiar should:
 
 - receive user input from web chat, messaging apps, or other interfaces
 - normalize text, voice-note transcripts, and other input into one conversation flow
@@ -50,7 +50,7 @@ In its intended final shape, Texty should:
 - decide when to answer directly and when to invoke executor-owned tools
 - return the final user-facing response
 
-Texty should not own integration-specific business logic.
+familiar should not own integration-specific business logic.
 It should orchestrate conversation around that logic.
 
 ## Current Product Shape
@@ -73,7 +73,7 @@ It should orchestrate conversation around that logic.
 - A pending assistant placeholder appears while the response is in flight.
 - The viewport scrolls to the start of the pending assistant reply.
 - Chat history survives refreshes within the same browser session.
-- The interface uses a small `texty` wordmark and avoids landing-page style chrome.
+- The interface uses a small `familiar` wordmark and avoids landing-page style chrome.
 
 ## Current Technical Approach
 
@@ -114,9 +114,9 @@ So the repo should currently be understood as:
 
 ## Planned Executor Model
 
-Texty is intended to become executor-agnostic.
+familiar is intended to become executor-agnostic.
 
-- Texty should own:
+- familiar should own:
   - conversation history
   - thread management
   - user memory
@@ -133,11 +133,11 @@ Texty is intended to become executor-agnostic.
 
 The expected integration model is:
 
-1. An executor syncs a user-specific allowed toolset into Texty.
-2. Texty reasons over those allowed tools during a conversation.
-3. Texty invokes the executor when a tool should run.
+1. An executor syncs a user-specific allowed toolset into familiar.
+2. familiar reasons over those allowed tools during a conversation.
+3. familiar invokes the executor when a tool should run.
 4. The executor executes deterministically and returns a structured result.
-5. Texty turns that result into the user-facing reply and stores the conversation.
+5. familiar turns that result into the user-facing reply and stores the conversation.
 
 Examples of executors:
 

@@ -1,12 +1,12 @@
-# Texty Tool Target Direction
+# familiar Tool Target Direction
 
 ## Summary
 
-Texty is moving toward a simpler tool-target architecture.
+familiar is moving toward a simpler tool-target architecture.
 
-Texty should act as the conversational interface and memory layer. External systems should expose tools and perform side effects. Texty should then decide when to answer directly, when to clarify, and when to call a tool target.
+familiar should act as the conversational interface and memory layer. External systems should expose tools and perform side effects. familiar should then decide when to answer directly, when to clarify, and when to call a tool target.
 
-This allows Texty to be reused by multiple execution systems such as:
+This allows familiar to be reused by multiple execution systems such as:
 
 - internal execution systems
 - third-party tool runtimes
@@ -17,21 +17,21 @@ Identity, storage, and memory-policy semantics are defined in `docs/architecture
 
 ## End Goal In Plain Language
 
-Texty should be the system a user talks to.
+familiar should be the system a user talks to.
 
 Connected tools should be the things that actually do things.
 
 So when a user asks for something:
 
-1. Texty understands the request
-2. Texty uses memory and thread context
-3. Texty decides whether a tool should run
+1. familiar understands the request
+2. familiar uses memory and thread context
+3. familiar decides whether a tool should run
 4. the target executes the work
-5. Texty explains the result back to the user
+5. familiar explains the result back to the user
 
 ## Product Split
 
-### Texty owns
+### familiar owns
 
 - user-facing conversation
 - chat history and threads
@@ -54,16 +54,16 @@ So when a user asks for something:
 
 ## Important Execution Rule
 
-Texty chooses the tool.
+familiar chooses the tool.
 
-The target Texty calls does not need to decide which tool to run again.
+The target familiar calls does not need to decide which tool to run again.
 
 That means the simplest model is:
 
-- Texty stores the tool id
-- Texty stores where that tool lives
-- Texty decides when the tool is relevant
-- Texty extracts schema-valid arguments and sends them to the correct target
+- familiar stores the tool id
+- familiar stores where that tool lives
+- familiar decides when the tool is relevant
+- familiar extracts schema-valid arguments and sends them to the correct target
 - the target just performs the work and returns the result
 
 This is intentionally simpler than a second dispatch layer.
@@ -74,7 +74,7 @@ This is intentionally simpler than a second dispatch layer.
 
 Yes.
 
-An integration is the external system identity Texty uses for auth, ownership, and tool sync. One integration may serve many end users.
+An integration is the external system identity familiar uses for auth, ownership, and tool sync. One integration may serve many end users.
 
 ### Purpose of `integration_id`
 
@@ -84,7 +84,7 @@ Its purpose is to:
 
 - route to the correct group of tools
 - namespace tools so names do not collide
-- support multiple integrations for the same Texty deployment
+- support multiple integrations for the same familiar deployment
 - separate permissions and sync state by integration
 
 Examples:
@@ -118,7 +118,7 @@ This means:
 
 Connected systems should not be forced into one memory-retrieval model.
 
-Texty should capture memory from normal conversations by default, unless the thread is explicitly private.
+familiar should capture memory from normal conversations by default, unless the thread is explicitly private.
 
 After that, connected systems should be able to choose how much of that captured memory they want to retrieve and use.
 
@@ -135,7 +135,7 @@ The full policy model is described in `docs/architecture-foundations.md`.
 
 ### 1. Tool sync
 
-Integrations should sync the allowed tools for a given user into Texty.
+Integrations should sync the allowed tools for a given user into familiar.
 
 The preferred source of that sync payload is a manifest file named `texty.json`.
 
@@ -176,7 +176,7 @@ Example request:
 
 ### 2. Conversation input
 
-Clients should talk to Texty through a single main input endpoint.
+Clients should talk to familiar through a single main input endpoint.
 
 Example request:
 
@@ -196,7 +196,7 @@ Example request:
 }
 ```
 
-Texty should then:
+familiar should then:
 
 1. load memory and thread context
 2. reason over the user's allowed tools
@@ -204,9 +204,9 @@ Texty should then:
 
 ### 3. Tool execution
 
-When a tool should run, Texty should call the target that owns it.
+When a tool should run, familiar should call the target that owns it.
 
-Example request from Texty to the target:
+Example request from familiar to the target:
 
 `POST {target_url}`
 
@@ -227,7 +227,7 @@ Example request from Texty to the target:
 
 The important rule is that `arguments` must already match the synced `input_schema`.
 The target may receive metadata fields such as `tool_name`, `user_id`, and `thread_id`, but it should not need to re-run intent detection or argument extraction.
-Texty has already chosen the tool and already knows where it lives.
+familiar has already chosen the tool and already knows where it lives.
 
 Example response:
 
@@ -247,9 +247,9 @@ Example response:
 
 For efficiency and reduced LLM cost, the preferred direction is:
 
-- Texty performs the single conversational reasoning step
+- familiar performs the single conversational reasoning step
 - targets execute deterministically
-- targets should not do a second AI routing pass for requests coming from Texty unless there is a very strong reason
+- targets should not do a second AI routing pass for requests coming from familiar unless there is a very strong reason
 
 That means:
 

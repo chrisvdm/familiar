@@ -1,8 +1,8 @@
-# Texty Conversation Lifecycle
+# familiar Conversation Lifecycle
 
 ## Why This Document Exists
 
-Texty is meant to be the system that manages a conversation from start to finish.
+familiar is meant to be the system that manages a conversation from start to finish.
 
 That means a single user message can lead to different outcomes:
 
@@ -16,11 +16,11 @@ This document describes that lifecycle clearly so the system behavior is underst
 
 ## One-Sentence Summary
 
-Texty receives input, resolves the right conversation context, decides what kind of response is needed, performs the required work, and stores the result.
+familiar receives input, resolves the right conversation context, decides what kind of response is needed, performs the required work, and stores the result.
 
 ## Core Inputs
 
-Texty should be able to accept input from:
+familiar should be able to accept input from:
 
 - web chat
 - messaging channels
@@ -51,7 +51,7 @@ Every turn should move through the same broad stages.
 
 ### 1. Receive input
 
-Texty receives:
+familiar receives:
 
 - authenticated provider context
 - user context
@@ -61,7 +61,7 @@ Texty receives:
 
 ### 2. Normalize input
 
-Texty converts the incoming payload into one internal format.
+familiar converts the incoming payload into one internal format.
 
 Examples:
 
@@ -71,7 +71,7 @@ Examples:
 
 ### 3. Resolve identity and thread
 
-Texty determines:
+familiar determines:
 
 - which provider is making the request
 - which user the request belongs to
@@ -89,7 +89,7 @@ This means channel continuity is local to the channel, while memory continuity m
 
 ### 4. Load conversation context
 
-Texty loads:
+familiar loads:
 
 - recent thread messages
 - thread-local memory
@@ -105,7 +105,7 @@ If the thread is private:
 
 ### 5. Classify the turn
 
-Texty decides what kind of turn this is.
+familiar decides what kind of turn this is.
 
 At minimum:
 
@@ -118,7 +118,7 @@ This is the core decision point.
 
 ### 6. Produce the next action
 
-Depending on the classification, Texty does one of the following:
+Depending on the classification, familiar does one of the following:
 
 - execute a deterministic command
 - answer directly
@@ -127,7 +127,7 @@ Depending on the classification, Texty does one of the following:
 
 ### 7. Persist transcript and memory
 
-After the turn completes, Texty stores:
+After the turn completes, familiar stores:
 
 - the user message
 - the assistant reply or command notice
@@ -136,7 +136,7 @@ After the turn completes, Texty stores:
 
 ### 8. Return the user-facing result
 
-Texty returns:
+familiar returns:
 
 - the message(s) to display
 - the active thread id
@@ -147,19 +147,19 @@ Texty returns:
 
 ### Direct answer
 
-This path is used when Texty can respond without calling an external tool.
+This path is used when familiar can respond without calling an external tool.
 
 Flow:
 
 1. user sends a message
-2. Texty loads thread and memory context
-3. Texty answers directly
-4. Texty stores the exchange
+2. familiar loads thread and memory context
+3. familiar answers directly
+4. familiar stores the exchange
 
 Example:
 
 - user: `What do you remember about my travel plans?`
-- Texty answers from stored context
+- familiar answers from stored context
 
 ### Clarification
 
@@ -168,14 +168,14 @@ This path is used when the request is understandable but incomplete.
 Flow:
 
 1. user sends a message
-2. Texty identifies missing information
-3. Texty asks a follow-up question
-4. Texty stores that follow-up as part of the thread
+2. familiar identifies missing information
+3. familiar asks a follow-up question
+4. familiar stores that follow-up as part of the thread
 
 Example:
 
 - user: `Update the project sheet`
-- Texty: `Which sheet do you mean?`
+- familiar: `Which sheet do you mean?`
 
 ### Tool call
 
@@ -184,13 +184,13 @@ This path is used when the user is asking for work to be done by an external sys
 Flow:
 
 1. user sends a request
-2. Texty loads context and allowed tools
-3. Texty decides which tool should run
-4. Texty extracts arguments
-5. Texty calls the provider
+2. familiar loads context and allowed tools
+3. familiar decides which tool should run
+4. familiar extracts arguments
+5. familiar calls the provider
 6. the provider returns a structured result
-7. Texty explains that result back to the user
-8. Texty stores the exchange
+7. familiar explains that result back to the user
+8. familiar stores the exchange
 
 ### Command
 
@@ -223,15 +223,15 @@ So a private thread is still a real conversation thread, but it is isolated from
 
 ## External Context Lifecycle
 
-Some providers may want Texty to use external context instead of Texty-managed long-term memory.
+Some providers may want familiar to use external context instead of familiar-managed long-term memory.
 
 In that case, the lifecycle changes slightly:
 
 1. provider sends external retrieved context with the request
-2. Texty uses that context for the current turn
-3. Texty does not automatically treat that external context as Texty-owned durable memory
+2. familiar uses that context for the current turn
+3. familiar does not automatically treat that external context as familiar-owned durable memory
 
-This keeps external retrieval and Texty-managed memory separate.
+This keeps external retrieval and familiar-managed memory separate.
 
 ## Memory Behavior in the Lifecycle
 
@@ -245,7 +245,7 @@ Private threads are the exception.
 
 ### Memory usage
 
-Texty may retrieve:
+familiar may retrieve:
 
 - thread-local memory
 - shared memory
@@ -255,7 +255,7 @@ Which of those are allowed depends on policy.
 
 ## Channel-Linked Identity
 
-Texty should treat channels as linked identities for one provider/user pair, not as separate users.
+familiar should treat channels as linked identities for one provider/user pair, not as separate users.
 
 That means:
 
@@ -263,7 +263,7 @@ That means:
 - the channel identifies where the user is speaking from
 - the thread identifies which conversation is being continued
 
-So one user may talk to Texty through:
+So one user may talk to familiar through:
 
 - web chat
 - email
@@ -271,7 +271,7 @@ So one user may talk to Texty through:
 
 But those channels may still maintain different recent-thread continuity.
 
-This lets Texty support both:
+This lets familiar support both:
 
 - shared memory for the same person
 - separate conversation flow per channel
@@ -280,7 +280,7 @@ This lets Texty support both:
 
 ### Current state
 
-Today, Texty's runtime still depends heavily on browser-session state and web-driven flows.
+Today, familiar's runtime still depends heavily on browser-session state and web-driven flows.
 
 It already has:
 
@@ -291,13 +291,13 @@ It already has:
 
 ### Intended state
 
-Texty should expose the same lifecycle through a provider-facing API, independent of the web interface.
+familiar should expose the same lifecycle through a provider-facing API, independent of the web interface.
 
 The web client should become only one front end for this lifecycle, not the place where the lifecycle logic lives.
 
 ## Short Version
 
-Every conversation turn in Texty should:
+Every conversation turn in familiar should:
 
 1. identify the provider, user, and thread
 2. load the right context

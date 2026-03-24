@@ -323,7 +323,7 @@ export const SandboxMessengerClient = ({
           <h1 className={styles.title}>Messenger Simulator</h1>
           <p className={styles.copy}>
             This route mimics a WhatsApp-style phone conversation while still using
-            the same Texty threads, memory, and models underneath.
+            the same familiar threads, memory, and models underneath.
           </p>
           <div className={styles.controls}>
             <button
@@ -373,7 +373,7 @@ export const SandboxMessengerClient = ({
               </button>
               <div className={styles.avatar}>T</div>
               <div className={styles.chatMeta}>
-                <strong className={styles.chatTitle}>Texty</strong>
+                <strong className={styles.chatTitle}>familiar</strong>
                 <span className={styles.chatSubtitle}>
                   {activeThread?.isTemporary ? "Private conversation" : "Online"}
                 </span>

@@ -16,7 +16,7 @@ export const Home = ({
   }).then((providerState) => (
     <main className={styles.page}>
       <header className={styles.topbar}>
-        <span className={styles.wordmark}>texty</span>
+        <span className={styles.wordmark}>familiar</span>
       </header>
       <ChatClient
         activeThreadId={providerState.activeThreadId}

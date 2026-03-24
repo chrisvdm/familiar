@@ -21,7 +21,7 @@ export const DebugClient = ({
   return (
     <main className={styles.page}>
       <header className={styles.topbar}>
-        <span className={styles.wordmark}>texty</span>
+        <span className={styles.wordmark}>familiar</span>
         <a href="/" className={styles.backLink}>
           Back to chat
         </a>

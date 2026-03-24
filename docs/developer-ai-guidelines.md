@@ -1,4 +1,4 @@
-# Texty Developer AI Guidelines
+# familiar Developer AI Guidelines
 
 ## Purpose
 
@@ -16,7 +16,7 @@ Update it when the team adopts a new standing convention, documentation rule, or
 
 ## Product Rules
 
-- Keep Texty focused on a strong core chat experience.
+- Keep familiar focused on a strong core chat experience.
 - Prefer minimal branding and tool-like UI over marketing-heavy page structure.
 - Add major features like RAG, summaries, auth, or multi-device memory only when there is a clear need.
 - Preserve the current expectation that refresh persistence works within a browser session.
@@ -38,7 +38,7 @@ Update it when the team adopts a new standing convention, documentation rule, or
 
 ## Current Conventions
 
-- App name is `Texty`.
+- App name is `familiar`.
 - Visible branding should stay minimal unless the product direction changes.
 - Task worklogs are the running implementation log.
 - The project brief is the stable high-level summary.

@@ -1,10 +1,10 @@
 # Minimal Executor
 
-This is the smallest useful example of an executor that can connect to Texty.
+This is the smallest useful example of an executor that can connect to familiar.
 
 This folder answers the practical question:
 
-- "What do I actually build if I want Texty to call my code?"
+- "What do I actually build if I want familiar to call my code?"
 
 It does one thing:
 
@@ -17,7 +17,7 @@ The sync contract for this example lives in:
 
 - `texty.json`
 
-That file is the source of truth for what Texty should extract and send.
+That file is the source of truth for what familiar should extract and send.
 
 The example is now split into two parts:
 
@@ -35,17 +35,17 @@ It makes the side effect obvious without forcing someone to read raw response JS
 The flow is:
 
 1. the browser sends a normal user message
-2. the example syncs `texty.json` with Texty
-3. the example sends the message to Texty
-4. Texty decides whether to reply normally, ask a follow-up, or call the tool
-5. if the tool runs, Texty sends schema-valid arguments to the external executor
+2. the example syncs `texty.json` with familiar
+3. the example sends the message to familiar
+4. familiar decides whether to reply normally, ask a follow-up, or call the tool
+5. if the tool runs, familiar sends schema-valid arguments to the external executor
 6. the external executor updates the todo list
 7. the browser shows both the assistant reply and the visible todo state
 
 So the person trying the demo can immediately see:
 
 - what they said
-- how Texty responded
+- how familiar responded
 - whether a tool ran
 - what changed in external state
 
@@ -57,12 +57,12 @@ So the person trying the demo can immediately see:
 - `executor.mjs`
   - the executor implementation itself
   - imports the synced tool definitions from `texty.json`
-  - exports the function that handles a Texty tool call
+  - exports the function that handles a familiar tool call
 - `index.html`
   - the local browser UI shown at `http://localhost:8787`
 - `texty.json`
   - the sync manifest
-  - the source of truth for the tool schema Texty must satisfy
+  - the source of truth for the tool schema familiar must satisfy
 
 ## Clean Executor Shape
 
@@ -76,9 +76,9 @@ The main exported function is:
 executeToolCall({ payload, defaultUserId })
 ```
 
-Where `payload` is the request Texty sends to `POST /tools/execute`.
+Where `payload` is the request familiar sends to `POST /tools/execute`.
 
-Texty normally sends arguments that already match the schema from `texty.json`.
+familiar normally sends arguments that already match the schema from `texty.json`.
 For this demo, that usually means `todos.add` receives:
 
 ```json
@@ -105,7 +105,7 @@ The current example also accepts two newer runtime helpers:
 - `payload.context.raw_input_text`
   - used when the user forces a tool shortcut such as `@[todos.add]`
 - `payload.context.executor_result_webhook_url`
-  - used when the executor returns `accepted` or `in_progress` and wants to notify Texty later with the final async result
+  - used when the executor returns `accepted` or `in_progress` and wants to notify familiar later with the final async result
 
 ## Run It
 
@@ -136,16 +136,16 @@ If you open that address in your browser, you will see:
 - a todo list sidebar
 - optional debug JSON
 
-## Local Texty Config
+## Local familiar Config
 
-Point local Texty at this executor:
+Point local familiar at this executor:
 
 ```shell
 TEXTY_EXECUTOR_CONFIG='{"demo_executor":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
 ```
 
 You do not need to manually create `demo_executor` or `demo_user` first.
-Texty creates the demo provider-user context on first sync or input.
+familiar creates the demo provider-user context on first sync or input.
 
 ## Sync The Tool
 
@@ -200,14 +200,14 @@ curl -X POST http://localhost:5173/api/v1/input \
   }'
 ```
 
-Texty should decide to call `todos.add`, extract `todo_items`, and the executor should return a completed result with the updated todo list.
+familiar should decide to call `todos.add`, extract `todo_items`, and the executor should return a completed result with the updated todo list.
 
 You can also make an explicit tool call that pins a tool for the thread:
 
 - `@[todos.add] buy milk and eggs`
 - `@[todos.add] book the dog groomer for Friday`
 
-In that pinned state, Texty bypasses its normal extraction step and passes the following text straight through to the tool payload until explicit exit or another pinned tool call.
+In that pinned state, familiar bypasses its normal extraction step and passes the following text straight through to the tool payload until explicit exit or another pinned tool call.
 
 ## Browser Demo
 
@@ -234,17 +234,17 @@ The last one should usually stay ordinary conversation.
 
 After you send a message:
 
-1. Texty receives the user input.
-2. Texty decides whether a tool should run.
-3. If needed, Texty sends `POST /tools/execute` to your local executor.
-4. Texty sends your executor validated arguments that match the schema in `texty.json`.
+1. familiar receives the user input.
+2. familiar decides whether a tool should run.
+3. If needed, familiar sends `POST /tools/execute` to your local executor.
+4. familiar sends your executor validated arguments that match the schema in `texty.json`.
 5. Your executor updates the todo list and returns structured JSON.
-6. Texty turns that result into the assistant reply.
+6. familiar turns that result into the assistant reply.
 7. The browser shows the updated todo list state.
 
 That is the basic integration loop.
 
-If your executor returns `accepted` or `in_progress`, Texty also includes an executor-result webhook URL in the execution payload. The example server uses that URL to POST back to Texty at `/api/v1/webhooks/executor` with the later result, and Texty then delivers that thread message to `POST /channels/messages`.
+If your executor returns `accepted` or `in_progress`, familiar also includes an executor-result webhook URL in the execution payload. The example server uses that URL to POST back to familiar at `/api/v1/webhooks/executor` with the later result, and familiar then delivers that thread message to `POST /channels/messages`.
 
 For retries, the safest pattern is:
 

@@ -1,8 +1,8 @@
-# Texty Architecture Foundations
+# familiar Architecture Foundations
 
 ## Why This Document Exists
 
-Texty is no longer just a browser chat app.
+familiar is no longer just a browser chat app.
 
 It is becoming a reusable conversational service that can sit in front of multiple execution systems such as:
 
@@ -25,18 +25,18 @@ Core entity definitions are defined in `docs/data-model.md`.
 
 ## One-Sentence Goal
 
-Texty should become a reusable conversational control layer that sits in front of many different execution systems.
+familiar should become a reusable conversational control layer that sits in front of many different execution systems.
 
 That means:
 
-- Texty manages the conversation
+- familiar manages the conversation
 - executors perform the work
 
 ## Core Roles
 
-### Texty
+### familiar
 
-Texty is the conversation layer.
+familiar is the conversation layer.
 
 It should own:
 
@@ -50,11 +50,11 @@ It should own:
 - command handling
 - tool orchestration
 
-Texty should not own provider-specific business workflows.
+familiar should not own provider-specific business workflows.
 
 ### Executor
 
-An executor is an external system that exposes capabilities to Texty.
+An executor is an external system that exposes capabilities to familiar.
 
 Examples:
 
@@ -71,7 +71,7 @@ An executor should own:
 
 ### End User
 
-The end user is the human using the executor through Texty.
+The end user is the human using the executor through familiar.
 
 Examples:
 
@@ -98,7 +98,7 @@ For MVP, the important simplification is:
 
 ### `integration_id`
 
-`integration_id` identifies the configured Texty integration.
+`integration_id` identifies the configured familiar integration.
 
 Examples:
 
@@ -110,7 +110,7 @@ Its purpose is to:
 - route execution through the correct integration
 - namespace tools
 - separate configuration and sync state per integration
-- support multiple integrations inside one Texty account
+- support multiple integrations inside one familiar account
 
 ### `user_id`
 
@@ -133,7 +133,7 @@ and this is also valid:
 - `integration_id = integration_b`
 - `user_id = chris_123`
 
-Those may or may not refer to the same human in real life. Texty should not assume they are shared unless explicitly configured.
+Those may or may not refer to the same human in real life. familiar should not assume they are shared unless explicitly configured.
 
 ### One executor can have many users
 
@@ -154,7 +154,7 @@ Each user may have:
 
 ## Storage Model
 
-Texty should eventually store data around four main entities.
+familiar should eventually store data around four main entities.
 
 ### 1. Thread
 
@@ -173,7 +173,7 @@ Recommended key:
 
 ### 2. Executor user context
 
-This is the user-level record used by Texty for one executor/user pair.
+This is the user-level record used by familiar for one executor/user pair.
 
 It should contain:
 
@@ -203,7 +203,7 @@ This should not automatically be global across all integrations.
 
 ### 4. Tool access / integration sync state
 
-This is the user-specific executor data that Texty needs in order to reason over tools.
+This is the user-specific executor data that familiar needs in order to reason over tools.
 
 It should contain:
 
@@ -216,7 +216,7 @@ It should contain:
 
 ### Current implementation
 
-Today, Texty is still browser-session scoped.
+Today, familiar is still browser-session scoped.
 
 That means:
 
@@ -239,7 +239,7 @@ That is the direction this document defines.
 
 Memory behavior must be configurable, but capture and retrieval should be treated as different things.
 
-Texty should use this default rule:
+familiar should use this default rule:
 
 - all non-private conversations are captured into memory
 - private threads are the exception
@@ -250,11 +250,11 @@ This is important because different executors want different retrieval behavior:
 
 - one provider may want no shared-memory retrieval
 - another may want strong long-term continuity
-- some users may want their own external RAG instead of Texty-managed retrieval
+- some users may want their own external RAG instead of familiar-managed retrieval
 
-So Texty should not force one memory-retrieval model on every provider.
+So familiar should not force one memory-retrieval model on every provider.
 
-Texty should:
+familiar should:
 
 - capture memory by default
 - allow private threads to opt out of shared memory capture
@@ -262,7 +262,7 @@ Texty should:
 
 ## Memory Capture Rule
 
-Texty should capture memory from all non-private conversations.
+familiar should capture memory from all non-private conversations.
 
 That means:
 
@@ -300,7 +300,7 @@ So:
 - another provider may choose to use only thread memory
 - another provider may send its own external retrieved context
 
-This means Texty can preserve useful user context without forcing every provider to depend on it.
+This means familiar can preserve useful user context without forcing every provider to depend on it.
 
 ## Recommended Retrieval Modes
 
@@ -378,17 +378,17 @@ It should be explicit and never assumed.
 
 ### `external`
 
-Texty does not rely on its own durable shared-memory source for retrieval.
+familiar does not rely on its own durable shared-memory source for retrieval.
 
 Instead, the integration supplies retrieved context for the turn.
 
-Texty may use that context for reasoning, but it should not automatically persist it as its own long-term memory unless policy explicitly allows it.
+familiar may use that context for reasoning, but it should not automatically persist it as its own long-term memory unless policy explicitly allows it.
 
 Use this when:
 
 - the integration has its own RAG system
 - the user wants integration-managed retrieval
-- Texty should remain stateless with respect to long-term memory
+- familiar should remain stateless with respect to long-term memory
 
 Example:
 
@@ -452,7 +452,7 @@ Or:
 
 ### If mode is `none`
 
-Texty should:
+familiar should:
 
 - not read durable shared memory for response generation
 - still follow the default capture rule unless the thread is private
@@ -460,32 +460,32 @@ Texty should:
 
 ### If mode is `thread`
 
-Texty should:
+familiar should:
 
 - read/write thread memory
 - not retrieve shared global user memory
 
 ### If mode is `provider_user`
 
-Texty should:
+familiar should:
 
 - read/write thread memory
 - read/write integration-scoped global memory
 
 ### If mode is `custom_scope`
 
-Texty should:
+familiar should:
 
 - read/write thread memory
 - read/write memory under the explicit `memory_scope_id`
 
 ### If mode is `external`
 
-Texty should:
+familiar should:
 
 - accept retrieved context from the provider
 - use it in the prompt for the current turn
-- avoid treating it as Texty-owned long-term memory unless explicitly configured to persist it
+- avoid treating it as familiar-owned long-term memory unless explicitly configured to persist it
 
 ## Default Recommendation
 
@@ -515,26 +515,26 @@ They should not.
 
 Memory sharing must be explicit.
 
-### 3. Forcing Texty to own all retrieval
+### 3. Forcing familiar to own all retrieval
 
 Sometimes the provider will have a better RAG layer.
-Texty must allow that.
+familiar must allow that.
 
 ## Short Version
 
 The simplest way to explain the rule set is:
 
-- Texty remembers normal conversations by default
+- familiar remembers normal conversations by default
 - private threads are not added to shared memory
 - providers decide how much of that remembered context they want to retrieve and use
-- some providers may ignore Texty memory and use their own RAG instead
+- some providers may ignore familiar memory and use their own RAG instead
 
 ## Recommended Near-Term Implementation Path
 
 1. Move from browser-session global memory to explicit executor/user identity.
 2. Add an executor/user configuration record.
 3. Store `memory_policy` there.
-4. Route Texty memory retrieval and persistence through that policy.
+4. Route familiar memory retrieval and persistence through that policy.
 5. Add `external` context support in the conversation input API.
 
 ## Source of Truth

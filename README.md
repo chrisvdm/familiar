@@ -1,16 +1,16 @@
 <img src="public/logo.png" width="325" align="right" />
 
-# texty
+# familiar
 
 _coming soon..._
 
-Texty is a hosted conversation layer for executable systems.
+familiar is a hosted conversation layer for executable systems.
 
-People talk to Texty. Texty keeps track of threads, context, and memory. When work needs to happen, Texty decides which tool should run, triggers that tool's target, and then explains the result back to the user.
+People talk to familiar. familiar keeps track of threads, context, and memory. When work needs to happen, familiar decides which tool should run, triggers that tool's target, and then explains the result back to the user.
 
 ## Features
 
-- conversation threads managed by Texty
+- conversation threads managed by familiar
 - shared memory across normal conversations
 - private threads that stay out of shared memory
 - channel-aware continuity across web, messaging, email, and other inputs
@@ -19,7 +19,7 @@ People talk to Texty. Texty keeps track of threads, context, and memory. When wo
 
 ## Why It’s Useful
 
-Without Texty, every app or script that wants a conversational interface has to rebuild the same things:
+Without familiar, every app or script that wants a conversational interface has to rebuild the same things:
 
 - conversation history
 - thread handling
@@ -28,11 +28,11 @@ Without Texty, every app or script that wants a conversational interface has to 
 - channel continuity
 - user-facing replies
 
-Texty is meant to own those parts once, so connected systems can focus on doing useful work.
+familiar is meant to own those parts once, so connected systems can focus on doing useful work.
 
 ## Current Status
 
-Texty is currently an MVP in progress.
+familiar is currently an MVP in progress.
 
 The core shape is there, but the product is still being hardened and simplified before it should be treated as a stable hosted service.
 
@@ -48,15 +48,15 @@ POST /api/v1/input
 
 Every message goes through the same first step:
 
-1. A user sends input to Texty.
-2. Texty loads the relevant thread and memory.
-3. Texty decides what kind of response is needed.
+1. A user sends input to familiar.
+2. familiar loads the relevant thread and memory.
+3. familiar decides what kind of response is needed.
 
 There are then three main outcomes:
 
 ### 1. Direct reply
 
-This happens when Texty can answer on its own.
+This happens when familiar can answer on its own.
 
 Example:
 
@@ -77,17 +77,17 @@ This happens when the request is real, but important details are missing.
 Example:
 
 - “Update the spreadsheet”
-- but Texty does not know which spreadsheet or which row
+- but familiar does not know which spreadsheet or which row
 
 Why it matters:
 
 - prevents bad guesses
 - keeps work accurate
-- lets Texty gather what the tool will need before calling it
+- lets familiar gather what the tool will need before calling it
 
 ### 3. Tool handoff
 
-This happens when work needs to be done outside Texty.
+This happens when work needs to be done outside familiar.
 
 Example:
 
@@ -97,13 +97,13 @@ Example:
 
 Why it matters:
 
-- this is how Texty turns conversation into action
-- Texty stays focused on the conversation
+- this is how familiar turns conversation into action
+- familiar stays focused on the conversation
 - the target stays focused on doing the work
 
 ```mermaid
 flowchart LR
-    A["Web chat"] --> T["Texty"]
+    A["Web chat"] --> T["familiar"]
     B["Email"] --> T
     C["Messaging app"] --> T
     D["Voice transcript"] --> T
@@ -115,13 +115,13 @@ flowchart LR
 
 ## Minimum Integration Flow
 
-This is the smallest useful setup path for connecting code to Texty and getting a working request through the system.
+This is the smallest useful setup path for connecting code to familiar and getting a working request through the system.
 
 1. Create a connection and get a token.
 2. Define your tools in `texty.json`.
-3. Sync the tools Texty can use for a user.
-4. Send user input to Texty.
-5. Let Texty call the correct tool target when work should happen.
+3. Sync the tools familiar can use for a user.
+4. Send user input to familiar.
+5. Let familiar call the correct tool target when work should happen.
 
 There is a tiny reference example here:
 
@@ -133,8 +133,8 @@ What that example is for:
 
 - you can copy that folder into your own project
 - run the tiny example server
-- point Texty at it
-- see a full request go from Texty to your tool target and back
+- point familiar at it
+- see a full request go from familiar to your tool target and back
 
 There is also a dedicated async callback example:
 
@@ -153,19 +153,19 @@ And there is a dedicated pinned tool example:
 
 If you are new to this, think of it like this:
 
-- Texty is the thing the user talks to
-- `texty.json` is the contract that tells Texty what tools exist and what arguments they need
-- your code or webhook is the thing that actually does the work once Texty has already extracted those arguments
+- familiar is the thing the user talks to
+- `texty.json` is the contract that tells familiar what tools exist and what arguments they need
+- your code or webhook is the thing that actually does the work once familiar has already extracted those arguments
 - the example folder shows the smallest possible version of that target
 
 Core terms:
 
 - `account`
-  - the owner that pays for and manages Texty
+  - the owner that pays for and manages familiar
 - `integration`
-  - the configured Texty connection for one app, bot, or deployment
+  - the configured familiar connection for one app, bot, or deployment
 - `executor`
-  - the script, service, or workflow runner Texty triggers to do real work
+  - the script, service, or workflow runner familiar triggers to do real work
 - `user_id`
   - the end user identity within an integration
 - `channel`
@@ -177,11 +177,11 @@ Core terms:
 
 It is the source of truth for:
 
-- which tools Texty may use
+- which tools familiar may use
 - what each tool does
-- the exact schema Texty must satisfy before calling the executor
+- the exact schema familiar must satisfy before calling the executor
 
-That means Texty should use the manifest to:
+That means familiar should use the manifest to:
 
 - choose the right tool
 - extract arguments into the declared schema
@@ -199,11 +199,11 @@ Every API request needs this header:
 Authorization: Bearer YOUR_INTEGRATION_TOKEN
 ```
 
-That token identifies which connected system is calling Texty.
+That token identifies which connected system is calling familiar.
 
 ### Sync tools
 
-Use this endpoint to tell Texty which tools are available for a specific user.
+Use this endpoint to tell familiar which tools are available for a specific user.
 
 In practice, this payload should usually come from your `texty.json` file.
 
@@ -239,15 +239,15 @@ Field guide:
   - the current wire-format integration id
   - this must match the token making the request
 - `user_id`
-  - the end user who will be talking to Texty
+  - the end user who will be talking to familiar
   - use a stable id from your own app
 - `tools`
-  - the list of tools Texty is allowed to use for this user
+  - the list of tools familiar is allowed to use for this user
 - `tool_name`
-  - the name Texty will use internally when choosing a tool
+  - the name familiar will use internally when choosing a tool
 - `description`
   - a plain-language explanation of what the tool does
-  - Texty uses this to decide when the tool is relevant
+  - familiar uses this to decide when the tool is relevant
 - `input_schema`
   - the expected shape of the tool arguments
   - keep it simple and explicit
@@ -261,15 +261,15 @@ Plain English example:
 - `user_id = "user_123"` means “these tools are available for this user”
 - `tool_name = "spreadsheet.update_row"` means “this tool updates a spreadsheet row”
 
-What Texty should do with that schema:
+What familiar should do with that schema:
 
-- if the user asks for spreadsheet work, Texty should choose `spreadsheet.update_row`
-- if the schema needs `sheet`, `row_id`, and `values`, Texty should extract those fields
-- if one is missing, Texty should ask for it before calling the executor
+- if the user asks for spreadsheet work, familiar should choose `spreadsheet.update_row`
+- if the schema needs `sheet`, `row_id`, and `values`, familiar should extract those fields
+- if one is missing, familiar should ask for it before calling the executor
 
 ### Send input
 
-Use this endpoint when a user sends a message into Texty.
+Use this endpoint when a user sends a message into familiar.
 
 ```shell
 curl -X POST http://localhost:5173/api/v1/input \
@@ -293,10 +293,10 @@ Field guide:
 
 - `integration_id`
   - the current wire-format integration id
-  - tells Texty which tool set this conversation belongs to
+  - tells familiar which tool set this conversation belongs to
 - `user_id`
-  - the end user speaking through Texty
-  - this is how Texty keeps memory and threads tied to the right person
+  - the end user speaking through familiar
+  - this is how familiar keeps memory and threads tied to the right person
 - `input`
   - the actual thing the user sent
 - `input.kind`
@@ -304,7 +304,7 @@ Field guide:
   - for now, the main value is `text`
 - `input.text`
   - the user’s message
-  - Texty expects normalized text only
+  - familiar expects normalized text only
   - if your system starts from voice or audio, normalize or transcribe it before calling this API
   - large transcription blocks are valid as long as they are still plain text
 - `channel`
@@ -320,12 +320,12 @@ Field guide:
 
 Why `channel` matters:
 
-- Texty shares memory at the user level
+- familiar shares memory at the user level
 - but it can keep different recent thread continuity per channel
 
 ## Execution Contract
 
-When Texty calls a tool target, the important part of the payload is the validated `arguments` object.
+When familiar calls a tool target, the important part of the payload is the validated `arguments` object.
 
 The target may also receive metadata such as:
 
@@ -346,9 +346,9 @@ If `texty.json` says `todos.add` requires:
 }
 ```
 
-then Texty should send exactly that schema-shaped data to the executor once it is ready.
+then familiar should send exactly that schema-shaped data to the executor once it is ready.
 
-If the user forces a tool explicitly in conversation, that still arrives at Texty as ordinary text.
+If the user forces a tool explicitly in conversation, that still arrives at familiar as ordinary text.
 For example, `@[todos.add] call dad and buy milk` is not a separate input type.
 
 Plain English example:
@@ -358,7 +358,7 @@ Plain English example:
 
 ### List threads
 
-Use this endpoint to fetch the threads Texty knows about for a user.
+Use this endpoint to fetch the threads familiar knows about for a user.
 
 ```shell
 curl http://localhost:5173/api/v1/integrations/integration_a/users/user_123/threads \
@@ -375,18 +375,18 @@ This is mostly useful for admin tools, debug screens, or a UI that wants to show
 - normal conversations are captured into memory by default
 - private threads are excluded from shared-memory capture and retrieval
 - OpenRouter is the default routing model for intent and tool choice
-- Texty can optionally use Cloudflare Workers AI for routing if explicitly enabled
+- familiar can optionally use Cloudflare Workers AI for routing if explicitly enabled
 
 Optional routing model setting:
 
 - `TEXTY_USE_WORKERS_AI_ROUTING`
-  - set this to `true` if you want Texty to use Workers AI for routing and extraction
+  - set this to `true` if you want familiar to use Workers AI for routing and extraction
 - `CLOUDFLARE_ROUTING_MODEL`
   - use this to choose the Workers AI model for the first-pass routing and intent step
-  - if unset, Texty uses `@cf/meta/llama-3.1-8b-instruct-fast`
+  - if unset, familiar uses `@cf/meta/llama-3.1-8b-instruct-fast`
 - `CLOUDFLARE_EXTRACTION_MODEL`
   - use this to choose the Workers AI model for schema-shaped argument extraction and follow-up argument updates
-  - if unset, Texty uses `@cf/qwen/qwen3-30b-a3b-fp8`
+  - if unset, familiar uses `@cf/qwen/qwen3-30b-a3b-fp8`
 - `CLOUDFLARE_DECISION_MODEL`
   - legacy fallback that applies to both steps if the stage-specific Cloudflare variables are unset
 - `OPENROUTER_ROUTING_MODEL`
@@ -396,7 +396,7 @@ Optional routing model setting:
 - `OPENROUTER_DECISION_MODEL`
   - legacy fallback that applies to both steps if the stage-specific OpenRouter variables are unset
 
-Recommended Workers AI split for Texty:
+Recommended Workers AI split for familiar:
 
 - routing: `@cf/meta/llama-3.1-8b-instruct-fast`
 - extraction: `@cf/qwen/qwen3-30b-a3b-fp8`
@@ -428,7 +428,7 @@ Meaning:
 - `failed`
   - the tool could not complete the work
 
-When a tool returns `accepted` or `in_progress`, the intended follow-up path is a minimal executor callback to Texty at `POST /api/v1/webhooks/executor`:
+When a tool returns `accepted` or `in_progress`, the intended follow-up path is a minimal executor callback to familiar at `POST /api/v1/webhooks/executor`:
 
 ```json
 {
@@ -443,9 +443,9 @@ When a tool returns `accepted` or `in_progress`, the intended follow-up path is 
 }
 ```
 
-This is an async executor result callback, not Texty-owned task management.
-Texty should append that result to the thread and handle notifying the user from there, rather than having the executor message the user channel directly.
-If the executor retries that callback, Texty can dedupe via `Idempotency-Key` or, if no header is provided, via `result.execution_id`.
+This is an async executor result callback, not familiar-owned task management.
+familiar should append that result to the thread and handle notifying the user from there, rather than having the executor message the user channel directly.
+If the executor retries that callback, familiar can dedupe via `Idempotency-Key` or, if no header is provided, via `result.execution_id`.
 
 ## Scripts
 

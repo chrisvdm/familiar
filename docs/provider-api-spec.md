@@ -1,19 +1,19 @@
-# Texty Tool Target API Specification
+# familiar Tool Target API Specification
 
 ## Why This Document Exists
 
 The tool-target direction document explains the architecture.
 
-This document explains the actual contract Texty should expose to connected systems.
+This document explains the actual contract familiar should expose to connected systems.
 
 Terminology used in this document:
 
 - `account`
-  - the owner that pays for and manages Texty
+  - the owner that pays for and manages familiar
 - `integration`
-  - the configured Texty connection for one app, bot, product, or deployment
+  - the configured familiar connection for one app, bot, product, or deployment
 - `executor`
-  - the code or service the integration uses when Texty triggers real work
+  - the code or service the integration uses when familiar triggers real work
 - `user_id`
   - the end user identity within that integration
 - `channel`
@@ -38,7 +38,7 @@ If you want the simplest path to connect an external script or service first, re
 
 ## Authentication Model
 
-Every connected-system request to Texty should be authenticated.
+Every connected-system request to familiar should be authenticated.
 
 Recommended default:
 
@@ -50,7 +50,7 @@ That token should identify:
 - the environment
 - the allowed API scope
 
-Texty should never accept unauthenticated requests for:
+familiar should never accept unauthenticated requests for:
 
 - tool sync
 - conversation input
@@ -69,7 +69,7 @@ And where applicable:
 
 - `thread_id`
 
-Texty must verify that the authenticated integration is allowed to act for the `integration_id` in the request.
+familiar must verify that the authenticated integration is allowed to act for the `integration_id` in the request.
 
 Current naming note:
 
@@ -93,7 +93,7 @@ Every successful and error response should also include:
 - `request_id` in the JSON body
 - `X-Request-Id` in the response headers
 
-If the caller provides `X-Request-Id`, Texty should reuse it. Otherwise Texty should generate one.
+If the caller provides `X-Request-Id`, familiar should reuse it. Otherwise familiar should generate one.
 
 Error responses should use a consistent shape:
 
@@ -115,7 +115,7 @@ Error responses should use a consistent shape:
 
 Purpose:
 
-- tell Texty which tools this integration/user pair is allowed to use
+- tell familiar which tools this integration/user pair is allowed to use
 
 Request:
 
@@ -174,11 +174,11 @@ Status codes:
 
 Purpose:
 
-- send one normalized conversation turn into Texty
+- send one normalized conversation turn into familiar
 
 Input note:
 
-- Texty should receive normalized text input only
+- familiar should receive normalized text input only
 - if the original user input was voice, audio, or another modality, that should be converted into text before calling this endpoint
 - long transcription blocks are valid input as long as they are sent as `input.kind = "text"` and `input.text`
 
@@ -208,10 +208,10 @@ Request:
 
 Behavior:
 
-- Texty loads the thread and allowed memory
-- Texty uses the channel context to resolve likely thread continuity if `thread_id` is missing
-- Texty decides whether to answer, clarify, or invoke a tool
-- Texty stores the turn
+- familiar loads the thread and allowed memory
+- familiar uses the channel context to resolve likely thread continuity if `thread_id` is missing
+- familiar decides whether to answer, clarify, or invoke a tool
+- familiar stores the turn
 
 Channel note:
 
@@ -274,7 +274,7 @@ Possible execution states:
 Shortcut note:
 
 - explicit tool shortcuts such as `@[tool-name]` are still just text inside `input.text`
-- Texty does not need a separate voice or shortcut input type on the API surface
+- familiar does not need a separate voice or shortcut input type on the API surface
 
 Rate limiting:
 
@@ -425,7 +425,7 @@ Purpose:
 
 Purpose:
 
-- let an executor send a later result back to Texty for work that was not completed in the initial blocking response
+- let an executor send a later result back to familiar for work that was not completed in the initial blocking response
 - append that later result as a new assistant-style message inside the existing thread
 
 Request:
@@ -458,17 +458,17 @@ Optional fields:
 
 Retry behavior:
 
-- Texty accepts a normal `Idempotency-Key` header on this endpoint
-- if no idempotency header is present, Texty falls back to `result.execution_id` when available
+- familiar accepts a normal `Idempotency-Key` header on this endpoint
+- if no idempotency header is present, familiar falls back to `result.execution_id` when available
 
 Behavior:
 
-- use this when the executor already returned `accepted` or `in_progress` to Texty earlier
+- use this when the executor already returned `accepted` or `in_progress` to familiar earlier
 - the executor decides whether work is blocking or async
-- Texty does not own the executor task lifecycle
-- Texty should treat this callback as a later executor result for that thread
-- Texty should append `result.content` into the thread as the user-facing message
-- Texty may then deliver that new thread message to the linked channel through its normal channel-delivery path
+- familiar does not own the executor task lifecycle
+- familiar should treat this callback as a later executor result for that thread
+- familiar should append `result.content` into the thread as the user-facing message
+- familiar may then deliver that new thread message to the linked channel through its normal channel-delivery path
 
 Success response:
 
@@ -483,7 +483,7 @@ Success response:
 
 ## Tool Execution Contract
 
-When Texty decides a tool should run, it should call the target that owns the tool.
+When familiar decides a tool should run, it should call the target that owns the tool.
 
 Recommended request:
 
@@ -508,7 +508,7 @@ The target should not need to:
 - inspect `thread_id`
 - do another dispatch step
 
-Texty has already chosen the tool and validated the payload before making the call.
+familiar has already chosen the tool and validated the payload before making the call.
 
 Current runtime note:
 
@@ -520,7 +520,7 @@ Current runtime convenience fields may include:
 - `context.raw_input_text`
   - present when the user intentionally forced a tool via text such as `@[tool-name]`
 - `context.executor_result_webhook_url`
-  - present when Texty wants the executor to call back later with an async result
+  - present when familiar wants the executor to call back later with an async result
 
 Target success response:
 
@@ -551,7 +551,7 @@ Target failure response:
 
 ## Error Codes
 
-Recommended Texty error codes:
+Recommended familiar error codes:
 
 - `invalid_request`
 - `unauthenticated`
@@ -575,8 +575,8 @@ Recommended:
 
 Behavior:
 
-- if the same `Idempotency-Key` is retried with the same request body, Texty should replay the original response
-- if the same `Idempotency-Key` is reused with a different request body, Texty should return `409`
+- if the same `Idempotency-Key` is retried with the same request body, familiar should replay the original response
+- if the same `Idempotency-Key` is reused with a different request body, familiar should return `409`
 - replayed responses may include `X-Idempotent-Replay: true`
 
 This avoids duplicate writes when an integration retries after a network failure.
@@ -604,4 +604,4 @@ The live codebase does not yet expose this full integration API.
 
 ### Intended state
 
-This specification is the target contract Texty should converge toward as it moves from browser-session prototype to external service.
+This specification is the target contract familiar should converge toward as it moves from browser-session prototype to external service.

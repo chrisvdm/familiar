@@ -16,7 +16,7 @@ It shows:
 - `executor.mjs`
   - in-memory capture logic for notes and ideas
 - `server.mjs`
-  - local transport server and Texty sync/input proxy
+  - local transport server and familiar sync/input proxy
 - `index.html`
   - browser UI for testing the pinned tool flow
 
@@ -51,4 +51,4 @@ Live demo:
 
 - the tools accept one verbatim `message` string
 - this example is meant to exercise the pinned tool rule, not LLM extraction quality
-- Texty should not silently unpin the tool just because a message looks conversational
+- familiar should not silently unpin the tool just because a message looks conversational
