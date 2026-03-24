@@ -127,6 +127,7 @@ There is a tiny reference example here:
 
 - [`examples/minimal-executor/README.md`](examples/minimal-executor/README.md)
 - [`examples/async-countdown/README.md`](examples/async-countdown/README.md)
+- [`examples/pinned-tool/README.md`](examples/pinned-tool/README.md)
 
 What that example is for:
 
@@ -141,6 +142,14 @@ There is also a dedicated async callback example:
   - starts a fixed 10 second timer
   - returns `accepted` immediately
   - sends the final result back through `POST /api/v1/webhooks/executor`
+
+And there is a dedicated pinned tool example:
+
+- `examples/pinned-tool`
+  - enters a tool with `@[tool-name]`
+  - pins that tool for later messages in the thread
+  - exits only on `that's all for [tool-name]`
+  - switches immediately when another `@[tool-name]` is invoked
 
 If you are new to this, think of it like this:
 

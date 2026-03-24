@@ -202,12 +202,12 @@ curl -X POST http://localhost:5173/api/v1/input \
 
 Texty should decide to call `todos.add`, extract `todo_items`, and the executor should return a completed result with the updated todo list.
 
-You can also force direct shortcut mode:
+You can also make an explicit tool call that pins a tool for the thread:
 
 - `@[todos.add] buy milk and eggs`
 - `@[todos.add] book the dog groomer for Friday`
 
-In that mode, Texty bypasses its normal extraction step and passes the following text straight through to the tool payload.
+In that pinned state, Texty bypasses its normal extraction step and passes the following text straight through to the tool payload until explicit exit or another pinned tool call.
 
 ## Browser Demo
 
@@ -216,6 +216,10 @@ Once the server is running, open:
 ```text
 http://localhost:8787
 ```
+
+Live demo:
+
+- [https://texty.chrsvdmrw.workers.dev/sandbox/demo-executor](https://texty.chrsvdmrw.workers.dev/sandbox/demo-executor)
 
 Try messages like:
 

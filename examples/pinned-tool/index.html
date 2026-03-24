@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pinned Tool Example</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(187, 230, 255, 0.35), transparent 32%),
+          linear-gradient(180deg, #f4f1ea 0%, #edf5f9 100%);
+        color: #18232b;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; padding: 24px 16px 40px; }
+      main { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
+      .hero, .panel {
+        background: rgba(255, 255, 255, 0.87);
+        border: 1px solid rgba(27, 41, 50, 0.12);
+        border-radius: 22px;
+        box-shadow: 0 18px 40px rgba(33, 51, 61, 0.08);
+        backdrop-filter: blur(10px);
+      }
+      .hero { padding: 22px; }
+      .panel { padding: 18px; }
+      .layout { display: grid; gap: 16px; }
+      @media (min-width: 980px) {
+        .layout { grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr); }
+      }
+      h1, h2, p { margin: 0; }
+      h1 { font-size: 30px; margin-bottom: 10px; }
+      h2 { font-size: 17px; margin-bottom: 10px; }
+      p { color: #52616a; line-height: 1.55; }
+      .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      .tag {
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: #eef5f8;
+        border: 1px solid #d4e3ea;
+        color: #215778;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      form, .stack { display: grid; gap: 14px; }
+      .field-grid { display: grid; gap: 12px; }
+      @media (min-width: 720px) {
+        .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
+      input, textarea, button { font: inherit; }
+      input, textarea {
+        width: 100%;
+        border: 1px solid #c9d2d8;
+        border-radius: 14px;
+        padding: 11px 13px;
+        background: rgba(255, 255, 255, 0.96);
+        color: #18232b;
+      }
+      textarea { min-height: 128px; resize: vertical; }
+      button {
+        border: 0;
+        border-radius: 14px;
+        padding: 13px 16px;
+        background: linear-gradient(135deg, #165a73 0%, #277998 100%);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(22, 90, 115, 0.24);
+      }
+      button:disabled { opacity: 0.65; cursor: wait; }
+      .examples { display: flex; flex-wrap: wrap; gap: 8px; }
+      .examples button {
+        background: #fff;
+        color: #165a73;
+        border: 1px solid #bcd9e4;
+        box-shadow: none;
+        padding: 9px 12px;
+      }
+      .log, .json {
+        border-radius: 16px;
+        padding: 14px;
+        background: #f5f7f8;
+        border: 1px solid #dbe2e6;
+      }
+      .chat-log { display: grid; gap: 12px; min-height: 220px; }
+      .bubble { border-radius: 18px; padding: 14px 15px; line-height: 1.55; }
+      .bubble.user { background: #eaf3f8; margin-left: auto; max-width: 90%; }
+      .bubble.assistant { background: #fbf7ef; border: 1px solid #eadfca; max-width: 92%; }
+      .label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #66757d;
+      }
+      .streams { display: grid; gap: 12px; }
+      .stream {
+        border-radius: 16px;
+        padding: 14px;
+        background: linear-gradient(135deg, #fffaf1 0%, #fff 100%);
+        border: 1px solid #e7dbc8;
+      }
+      .stream h3 { margin: 0 0 10px; font-size: 15px; }
+      .entry { padding: 10px 0; border-top: 1px solid #ece3d4; }
+      .entry:first-of-type { border-top: 0; padding-top: 0; }
+      .empty { color: #627179; }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Pinned Tool Example</h1>
+        <p>
+          This example is for the `@[tool-name]` flow. It shows how Texty pins a
+          tool for the thread, passes later text straight through to the selected
+          tool, exits only on <code>that's all for [tool-name]</code>, and switches
+          immediately when another tool is invoked.
+        </p>
+        <div class="tags">
+          <span class="tag">pinned tool</span>
+          <span class="tag">verbatim capture</span>
+          <span class="tag">explicit exit</span>
+        </div>
+      </section>
+
+      <section class="layout">
+        <section class="panel">
+          <h2>Try It</h2>
+          <form id="playground-form">
+            <div class="field-grid">
+              <label>
+                Executor token
+                <input id="token" value="__TOKEN__" />
+              </label>
+              <label>
+                Texty base URL
+                <input id="textyBaseUrl" value="__TEXTY_BASE_URL__" />
+              </label>
+              <label>
+                Integration ID
+                <input id="integrationId" value="__INTEGRATION_ID__" readonly />
+              </label>
+              <label>
+                User ID
+                <input id="userId" value="__USER_ID__" />
+              </label>
+            </div>
+
+            <label>
+              Chat message
+              <textarea id="text">@[notes.capture] Capture these meeting notes verbatim</textarea>
+            </label>
+
+            <div class="examples">
+              <button type="button" data-example="@[notes.capture] Capture these meeting notes verbatim">
+                Enter notes tool
+              </button>
+              <button type="button" data-example="We need to move the launch to next Tuesday and confirm the staging checklist">
+                Continue notes
+              </button>
+              <button type="button" data-example="that's all for notes.capture">
+                Exit notes
+              </button>
+              <button type="button" data-example="@[ideas.capture] We should package this as a premium onboarding offer">
+                Switch to ideas
+              </button>
+            </div>
+
+            <button id="submitButton" type="submit">Send to Texty</button>
+          </form>
+        </section>
+
+        <section class="stack">
+          <section class="panel">
+            <h2>Conversation</h2>
+            <div id="chatLog" class="chat-log">
+              <div class="empty">No conversation yet.</div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Captured Streams</h2>
+            <div class="streams">
+              <div class="stream">
+                <h3>Notes</h3>
+                <div id="notesStream" class="empty">No notes captured yet.</div>
+              </div>
+              <div class="stream">
+                <h3>Ideas</h3>
+                <div id="ideasStream" class="empty">No ideas captured yet.</div>
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="panel">
+        <h2>Observed Payload</h2>
+        <div class="json"><pre id="payloadView">// request and response payloads appear here</pre></div>
+      </section>
+    </main>
+
+    <script nonce="__NONCE__">
+      const form = document.getElementById("playground-form");
+      const submitButton = document.getElementById("submitButton");
+      const tokenEl = document.getElementById("token");
+      const textyBaseUrlEl = document.getElementById("textyBaseUrl");
+      const integrationIdEl = document.getElementById("integrationId");
+      const userIdEl = document.getElementById("userId");
+      const textEl = document.getElementById("text");
+      const chatLogEl = document.getElementById("chatLog");
+      const notesStreamEl = document.getElementById("notesStream");
+      const ideasStreamEl = document.getElementById("ideasStream");
+      const payloadViewEl = document.getElementById("payloadView");
+
+      const renderJson = (element, value) => {
+        element.textContent = JSON.stringify(value, null, 2);
+      };
+
+      const renderConversation = ({ user, assistant }) => {
+        chatLogEl.innerHTML = "";
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "bubble user";
+        userBubble.innerHTML = `<span class="label">User</span>${user}`;
+        chatLogEl.appendChild(userBubble);
+
+        const assistantBubble = document.createElement("div");
+        assistantBubble.className = "bubble assistant";
+        assistantBubble.innerHTML = `<span class="label">Assistant</span>${assistant || ""}`;
+        chatLogEl.appendChild(assistantBubble);
+      };
+
+      const renderEntries = (element, entries, emptyLabel) => {
+        element.innerHTML = "";
+
+        if (!Array.isArray(entries) || entries.length === 0) {
+          element.className = "empty";
+          element.textContent = emptyLabel;
+          return;
+        }
+
+        element.className = "";
+
+        entries.forEach((entry) => {
+          const row = document.createElement("div");
+          row.className = "entry";
+          row.innerHTML = `<strong>${entry.text}</strong><div>${entry.created_at}</div>`;
+          element.appendChild(row);
+        });
+      };
+
+      document.querySelectorAll("[data-example]").forEach((button) => {
+        button.addEventListener("click", () => {
+          textEl.value = button.getAttribute("data-example") || "";
+          textEl.focus();
+        });
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const userText = textEl.value.trim();
+
+        if (!userText) {
+          return;
+        }
+
+        submitButton.disabled = true;
+
+        try {
+          const response = await fetch("__PLAYGROUND_PATH__", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              token: tokenEl.value,
+              text: userText,
+              user_id: userIdEl.value,
+              texty_base_url: textyBaseUrlEl.value,
+              integration_id: integrationIdEl.value,
+            }),
+          });
+
+          const payload = await response.json();
+          renderJson(payloadViewEl, payload);
+          renderConversation(payload.transcript || { user: userText, assistant: "" });
+          renderEntries(notesStreamEl, payload.captured?.notes, "No notes captured yet.");
+          renderEntries(ideasStreamEl, payload.captured?.ideas, "No ideas captured yet.");
+        } catch (error) {
+          renderJson(payloadViewEl, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -6,7 +6,9 @@ import {
 } from "./provider.auth-core";
 import { logProviderAudit } from "./provider.audit";
 import {
+  BUILT_IN_COUNTDOWN_PROVIDER_ID,
   BUILT_IN_DEMO_PROVIDER_ID,
+  BUILT_IN_PINNED_TOOL_PROVIDER_ID,
   BUILT_IN_DEMO_TOKEN,
 } from "./provider.demo";
 import type { ProviderConfig } from "./provider.types";
@@ -34,6 +36,14 @@ const withBuiltInProviders = ({
     [BUILT_IN_DEMO_PROVIDER_ID]: {
       token: BUILT_IN_DEMO_TOKEN,
       baseUrl: `${origin}/sandbox/demo-executor`,
+    },
+    [BUILT_IN_COUNTDOWN_PROVIDER_ID]: {
+      token: BUILT_IN_DEMO_TOKEN,
+      baseUrl: `${origin}/sandbox/async-countdown`,
+    },
+    [BUILT_IN_PINNED_TOOL_PROVIDER_ID]: {
+      token: BUILT_IN_DEMO_TOKEN,
+      baseUrl: `${origin}/sandbox/pinned-tool`,
     },
   };
 };

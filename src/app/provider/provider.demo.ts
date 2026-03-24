@@ -2,6 +2,10 @@ export const BUILT_IN_DEMO_PROVIDER_ID = "demo_executor";
 export const BUILT_IN_DEMO_TOKEN = "dev-token";
 export const BUILT_IN_DEMO_USER_ID = "demo_user";
 export const BUILT_IN_DEMO_CHANNEL_ID = "minimal-executor-playground";
+export const BUILT_IN_COUNTDOWN_PROVIDER_ID = "demo_countdown";
+export const BUILT_IN_COUNTDOWN_CHANNEL_ID = "async-countdown-playground";
+export const BUILT_IN_PINNED_TOOL_PROVIDER_ID = "demo_pinned_tool";
+export const BUILT_IN_PINNED_TOOL_CHANNEL_ID = "pinned-tool-playground";
 
 const todoStore = new Map<
   string,

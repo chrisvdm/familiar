@@ -1,0 +1,35 @@
+{
+  "integration_id": "demo_held_tool",
+  "base_url": "http://localhost:8791",
+  "token_env": "TEXTY_EXECUTOR_TOKEN",
+  "tools": [
+    {
+      "tool_name": "notes.capture",
+      "description": "Capture verbatim text into the shared notes stream. Use this when the user wants to dictate notes or capture a long block of text.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The exact text to capture as a note."
+          }
+        },
+        "required": ["message"]
+      }
+    },
+    {
+      "tool_name": "ideas.capture",
+      "description": "Capture verbatim text into the ideas stream. Use this when the user wants to dictate ideas or brainstorm fragments.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The exact text to capture as an idea."
+          }
+        },
+        "required": ["message"]
+      }
+    }
+  ]
+}

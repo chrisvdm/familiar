@@ -2002,7 +2002,7 @@ export const handleProviderConversationInput = async ({
         },
       });
     } else {
-      assistantContent = `Holding tool context for ${shortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's all for ${shortcutInvocation.tool.toolName}" to stop.`;
+      assistantContent = `Pinned tool: ${shortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's all for ${shortcutInvocation.tool.toolName}" to stop.`;
       action = "direct_reply";
     }
   } else if (currentState.activeToolShortcut) {
@@ -2016,12 +2016,12 @@ export const handleProviderConversationInput = async ({
         toolName: currentState.activeToolShortcut.toolName,
       })
     ) {
-      assistantContent = `Stopped holding tool context for ${currentState.activeToolShortcut.toolName}.`;
+      assistantContent = `Unpinned tool: ${currentState.activeToolShortcut.toolName}.`;
       action = "direct_reply";
       activeToolShortcut = null;
     } else if (!shortcutTool) {
       assistantContent =
-        "That held tool is no longer available. Choose another tool or continue normally.";
+        "That pinned tool is no longer available. Choose another tool or continue normally.";
       action = "clarification";
       executionState = "needs_clarification";
       activeToolShortcut = null;

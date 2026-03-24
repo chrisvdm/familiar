@@ -38,6 +38,12 @@ Then open:
 
 - `http://localhost:8790`
 
+Live demo:
+
+- [https://texty.chrsvdmrw.workers.dev/sandbox/async-countdown](https://texty.chrsvdmrw.workers.dev/sandbox/async-countdown)
+
+This example is about async executor callbacks, not pinned tool behavior.
+
 Use a message like:
 
 - `Start a 10 second countdown for me`
