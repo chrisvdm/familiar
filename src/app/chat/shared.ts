@@ -16,6 +16,11 @@ export type PendingToolConfirmation = {
   question?: string;
 };
 
+export type ActiveToolShortcut = {
+  toolName: string;
+  createdAt: string;
+};
+
 export type MemoryFact = {
   key: string;
   value: string;
@@ -66,6 +71,7 @@ export type ChatSessionState = {
   messages: ChatMessage[];
   memory: ThreadMemory;
   pendingToolConfirmation: PendingToolConfirmation | null;
+  activeToolShortcut: ActiveToolShortcut | null;
 };
 
 export type ChatThreadSummary = {
@@ -633,6 +639,15 @@ export const normalizeChatSessionState = (
               : undefined,
         }
       : null,
+  activeToolShortcut:
+    state.activeToolShortcut &&
+    typeof state.activeToolShortcut.toolName === "string"
+      ? {
+          toolName: state.activeToolShortcut.toolName,
+          createdAt:
+            state.activeToolShortcut.createdAt ?? new Date().toISOString(),
+        }
+      : null,
 });
 
 export const createAssistantMessage = (content: string): ChatMessage => ({
@@ -653,6 +668,7 @@ export const createInitialChatState = (): ChatSessionState => ({
   messages: [],
   memory: createEmptyThreadMemory(),
   pendingToolConfirmation: null,
+  activeToolShortcut: null,
 });
 
 export const createThreadSummary = (

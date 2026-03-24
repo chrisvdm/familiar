@@ -22,6 +22,7 @@ const createTestContext = (): ProviderUserContext => ({
   threads: [],
   allowedTools: [],
   channels: {},
+  threadChannels: {},
   requestLog: {
     conversationInputTimestamps: [],
     toolSyncTimestamps: [],

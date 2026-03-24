@@ -274,6 +274,9 @@ Field guide:
   - for now, the main value is `text`
 - `input.text`
   - the user’s message
+  - Texty expects normalized text only
+  - if your system starts from voice or audio, normalize or transcribe it before calling this API
+  - large transcription blocks are valid as long as they are still plain text
 - `channel`
   - where the message came from
 - `channel.type`
@@ -311,6 +314,9 @@ If `texty.json` says `todos.add` requires:
 ```
 
 then Texty should send exactly that schema-shaped data to the executor once it is ready.
+
+If the user forces a tool explicitly in conversation, that still arrives at Texty as ordinary text.
+For example, `@[todos.add] call dad and buy milk` is not a separate input type.
 
 Plain English example:
 
@@ -388,6 +394,23 @@ Meaning:
   - the work is actively running
 - `failed`
   - the tool could not complete the work
+
+When a tool returns `accepted` or `in_progress`, the intended follow-up path is a minimal executor callback to Texty:
+
+```json
+{
+  "provider_id": "provider_a",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "result": {
+    "state": "completed",
+    "content": "Your import finished successfully."
+  }
+}
+```
+
+This is an async executor result callback, not Texty-owned task management.
+Texty should append that result to the thread and handle notifying the user from there, rather than having the executor message the user channel directly.
 
 ## Scripts
 

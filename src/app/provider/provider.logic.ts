@@ -1,6 +1,10 @@
 import { createEmptyGlobalMemory, type GlobalMemory } from "../chat/shared.ts";
 
-import type { MemoryPolicy, ProviderExecutionState } from "./provider.types";
+import type {
+  AllowedTool,
+  MemoryPolicy,
+  ProviderExecutionState,
+} from "./provider.types";
 
 export const CONVERSATION_RATE_LIMIT_WINDOW_MS = 60_000;
 export const CONVERSATION_RATE_LIMIT_MAX_REQUESTS = 30;
@@ -149,6 +153,123 @@ export const extractToolStringValue = ({
   }
 
   return null;
+};
+
+const TOOL_SHORTCUT_PATTERN = /^@\[(.+?)\](?:\s+([\s\S]*))?$/;
+const TOOL_SHORTCUT_EXIT_PATTERN =
+  /^(?:that'?s enough|thats enough|enough|done|stop|cancel|exit tool|stop tool|leave tool mode)$/i;
+
+export const parseToolShortcutInvocation = ({
+  content,
+  tools,
+}: {
+  content: string;
+  tools: AllowedTool[];
+}) => {
+  const match = content.trim().match(TOOL_SHORTCUT_PATTERN);
+
+  if (!match) {
+    return null;
+  }
+
+  const requestedToolName = match[1]?.trim();
+
+  if (!requestedToolName) {
+    return null;
+  }
+
+  const tool = tools.find(
+    (entry) =>
+      entry.status === "active" &&
+      entry.toolName.toLowerCase() === requestedToolName.toLowerCase(),
+  );
+
+  if (!tool) {
+    return null;
+  }
+
+  const remainder = match[2]?.trim() || "";
+
+  return {
+    tool,
+    remainder,
+  };
+};
+
+export const isToolShortcutExitInput = (content: string) =>
+  TOOL_SHORTCUT_EXIT_PATTERN.test(content.trim());
+
+const getToolSchemaProperties = (tool: AllowedTool) => {
+  const properties = tool.inputSchema?.properties;
+
+  if (!properties || typeof properties !== "object") {
+    return {};
+  }
+
+  return properties as Record<string, unknown>;
+};
+
+export const buildShortcutToolArguments = ({
+  tool,
+  content,
+}: {
+  tool: AllowedTool;
+  content: string;
+}) => {
+  const properties = getToolSchemaProperties(tool);
+  const propertyEntries = Object.entries(properties).filter(([, value]) =>
+    Boolean(value && typeof value === "object"),
+  );
+  const preferredStringFields = ["text", "input", "message", "content", "prompt"];
+  const preferredArrayFields = ["texts", "messages", "lines", "todo_items"];
+
+  const stringField = preferredStringFields.find((fieldName) => {
+    const property = properties[fieldName] as { type?: unknown } | undefined;
+    return property?.type === "string";
+  });
+
+  if (stringField) {
+    return {
+      [stringField]: content,
+    };
+  }
+
+  const singleStringField = propertyEntries.find(([, value]) => {
+    const property = value as { type?: unknown };
+    return property.type === "string";
+  });
+
+  if (singleStringField && propertyEntries.length === 1) {
+    return {
+      [singleStringField[0]]: content,
+    };
+  }
+
+  const arrayField = preferredArrayFields.find((fieldName) => {
+    const property = properties[fieldName] as
+      | { type?: unknown; items?: { type?: unknown } }
+      | undefined;
+    return property?.type === "array" && property.items?.type === "string";
+  });
+
+  if (arrayField) {
+    return {
+      [arrayField]: [content],
+    };
+  }
+
+  const singleStringArrayField = propertyEntries.find(([, value]) => {
+    const property = value as { type?: unknown; items?: { type?: unknown } };
+    return property.type === "array" && property.items?.type === "string";
+  });
+
+  if (singleStringArrayField && propertyEntries.length === 1) {
+    return {
+      [singleStringArrayField[0]]: [content],
+    };
+  }
+
+  return {};
 };
 
 const TODO_ITEM_VERB_PATTERN =

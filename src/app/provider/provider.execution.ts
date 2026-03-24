@@ -2,7 +2,11 @@ import {
   BUILT_IN_DEMO_PROVIDER_ID,
   executeBuiltInDemoTool,
 } from "./provider.demo.ts";
-import type { ProviderConfig, ProviderExecutionState } from "./provider.types";
+import type {
+  ProviderChannelInput,
+  ProviderConfig,
+  ProviderExecutionState,
+} from "./provider.types";
 
 type ProviderToolExecutionResponse = {
   ok: boolean;
@@ -30,6 +34,9 @@ const EXECUTOR_REQUEST_TIMEOUT_MS = 15_000;
 
 export const buildExecutorToolUrl = (baseUrl: string) =>
   `${baseUrl.replace(/\/$/, "")}/tools/execute`;
+
+export const buildProviderChannelMessageUrl = (baseUrl: string) =>
+  `${baseUrl.replace(/\/$/, "")}/channels/messages`;
 
 export const normalizeProviderToolExecution = ({
   responseOk,
@@ -83,6 +90,10 @@ export const executeProviderToolRequest = async ({
   toolName,
   args,
   requestId,
+  channel,
+  completionWebhookUrl,
+  rawInputText,
+  shortcutMode = false,
   fetchImpl = fetch,
   timeoutMs = EXECUTOR_REQUEST_TIMEOUT_MS,
 }: {
@@ -93,6 +104,10 @@ export const executeProviderToolRequest = async ({
   toolName: string;
   args: Record<string, unknown>;
   requestId?: string;
+  channel?: ProviderChannelInput;
+  completionWebhookUrl?: string | null;
+  rawInputText?: string;
+  shortcutMode?: boolean;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }) => {
@@ -128,6 +143,10 @@ export const executeProviderToolRequest = async ({
         context: {
           request_id: requestId ?? crypto.randomUUID(),
           thread_id: threadId,
+          channel,
+          completion_webhook_url: completionWebhookUrl ?? undefined,
+          raw_input_text: rawInputText ?? undefined,
+          shortcut_mode: shortcutMode || undefined,
         },
       }),
       signal: controller.signal,
@@ -166,4 +185,66 @@ export const executeProviderToolRequest = async ({
   } finally {
     clearTimeout(timeoutHandle);
   }
+};
+
+export const sendProviderChannelMessage = async ({
+  providerConfig,
+  providerId,
+  userId,
+  threadId,
+  channel,
+  content,
+  task,
+  requestId,
+  fetchImpl = fetch,
+}: {
+  providerConfig: ProviderConfig;
+  providerId: string;
+  userId: string;
+  threadId: string;
+  channel: ProviderChannelInput;
+  content: string;
+  task?: {
+    executionId?: string;
+    toolName?: string;
+    state: ProviderExecutionState;
+    data?: Record<string, unknown>;
+  };
+  requestId?: string;
+  fetchImpl?: typeof fetch;
+}) => {
+  if (!providerConfig.baseUrl) {
+    throw new Error("Executor base URL is not configured.");
+  }
+
+  const response = await fetchImpl(buildProviderChannelMessageUrl(providerConfig.baseUrl), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${providerConfig.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      provider_id: providerId,
+      user_id: userId,
+      thread_id: threadId,
+      channel,
+      message: {
+        kind: "text",
+        text: content,
+      },
+      task: task
+        ? {
+            execution_id: task.executionId,
+            tool_name: task.toolName,
+            state: task.state,
+            data: task.data,
+          }
+        : undefined,
+      context: {
+        request_id: requestId ?? crypto.randomUUID(),
+      },
+    }),
+  });
+
+  return response.ok;
 };

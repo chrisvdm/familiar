@@ -27,4 +27,5 @@ test("normalizeChatSessionState preserves pending confirmation arguments with ar
     createdAt: "2026-03-23T12:00:00.000Z",
     question: undefined,
   });
+  assert.equal(state.activeToolShortcut, null);
 });

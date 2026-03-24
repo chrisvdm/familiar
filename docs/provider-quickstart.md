@@ -104,6 +104,12 @@ Texty will then:
 3. store the turn
 4. return the updated result
 
+Important input rule:
+
+- Texty only receives normalized text here
+- if your product supports voice notes or speech input, transcribe or otherwise normalize that upstream before calling `/api/v1/input`
+- large transcription blocks are fine as long as they arrive as plain `input.text`
+
 ## Step 4: Expose `/tools/execute`
 
 If Texty decides that a tool should run, it will call:
@@ -133,6 +139,49 @@ Important:
 - ideally, the request body is only the tool arguments
 - the current runtime still includes extra wrapper fields in the payload today
 - the simplest target just accepts the arguments and performs the action
+- shortcut-forced tool mode may also include `context.raw_input_text`
+- async executors may receive `context.completion_webhook_url` and can call it later when work finishes
+
+### Step 5: Send an async result back to Texty
+
+If your executor launches work and returns `accepted` or `in_progress`, keep the first response short and user-facing, for example:
+
+```json
+{
+  "ok": true,
+  "state": "accepted",
+  "result": {
+    "summary": "Action started."
+  }
+}
+```
+
+When the task actually finishes, call Texty back:
+
+```shell
+curl -X POST http://localhost:5173/api/v1/executor-results \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider_id": "provider_a",
+    "user_id": "user_123",
+    "thread_id": "thread_abc",
+    "result": {
+      "state": "completed",
+      "content": "Your import finished successfully."
+    }
+  }'
+```
+
+Keep this payload minimal unless you need more tracing:
+
+- `provider_id`
+- `user_id`
+- `thread_id`
+- `result.state`
+- `result.content`
+
+That is enough for Texty to append the async executor result into the thread and notify the user through its normal conversation flow.
 
 Example successful response:
 

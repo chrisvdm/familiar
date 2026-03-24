@@ -40,6 +40,7 @@ export type ProviderUserContext = {
   threads: ChatThreadSummary[];
   allowedTools: AllowedTool[];
   channels: Record<string, ChannelIdentity>;
+  threadChannels: Record<string, ProviderChannelInput>;
   requestLog: {
     conversationInputTimestamps: string[];
     toolSyncTimestamps: string[];
@@ -80,6 +81,20 @@ export type ProviderConversationInput = {
   channel: ProviderChannelInput;
   context?: {
     external_memories?: string[];
+  };
+};
+
+export type ProviderTaskCompletionInput = {
+  provider_id: string;
+  user_id: string;
+  thread_id: string;
+  channel?: ProviderChannelInput;
+  task: {
+    execution_id?: string;
+    tool_name?: string;
+    state: ProviderExecutionState;
+    content: string;
+    data?: Record<string, unknown>;
   };
 };
 

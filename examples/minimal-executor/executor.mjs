@@ -22,6 +22,20 @@ const normalizeTodoItems = (value) => {
     );
 };
 
+const getRequestedState = (payload) => {
+  const requestedState = payload.arguments?.mock_state;
+
+  if (
+    requestedState === "accepted" ||
+    requestedState === "in_progress" ||
+    requestedState === "completed"
+  ) {
+    return requestedState;
+  }
+
+  return null;
+};
+
 export const getTodosForUser = (userId) => [...(todoStore.get(userId) ?? [])];
 
 const addTodoForUser = ({ userId, todo }) => {
@@ -52,9 +66,20 @@ export const executeToolCall = ({
   }
 
   const userId = String(payload.user_id || defaultUserId).trim();
+  const requestedState = getRequestedState(payload);
+  const rawInputText =
+    typeof payload.context?.raw_input_text === "string"
+      ? payload.context.raw_input_text.trim()
+      : "";
   const todoItems = normalizeTodoItems(payload.arguments?.todo_items);
+  const effectiveTodoItems =
+    todoItems.length > 0
+      ? todoItems
+      : rawInputText
+        ? [rawInputText]
+        : [];
 
-  if (todoItems.length === 0) {
+  if (effectiveTodoItems.length === 0) {
     return {
       ok: true,
       state: "needs_clarification",
@@ -64,9 +89,22 @@ export const executeToolCall = ({
     };
   }
 
+  if (requestedState && requestedState !== "completed") {
+    return {
+      ok: true,
+      state: requestedState,
+      result: {
+        summary: `Todo request accepted for ${effectiveTodoItems.join(", ")}.`,
+        data: {
+          added_todos: effectiveTodoItems,
+        },
+      },
+    };
+  }
+
   let todos = getTodosForUser(userId);
 
-  for (const todoItem of todoItems) {
+  for (const todoItem of effectiveTodoItems) {
     todos = addTodoForUser({
       userId,
       todo: todoItem,
@@ -78,12 +116,12 @@ export const executeToolCall = ({
     state: "completed",
     result: {
       summary:
-        todoItems.length === 1
-          ? `Added "${todoItems[0]}" to the todo list.`
-          : `Added ${todoItems.length} items to the todo list: ${todoItems.join(", ")}.`,
+        effectiveTodoItems.length === 1
+          ? `Added "${effectiveTodoItems[0]}" to the todo list.`
+          : `Added ${effectiveTodoItems.length} items to the todo list: ${effectiveTodoItems.join(", ")}.`,
       data: {
-        added_todo: todoItems[0],
-        added_todos: todoItems,
+        added_todo: effectiveTodoItems[0],
+        added_todos: effectiveTodoItems,
         todos,
       },
     },

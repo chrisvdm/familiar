@@ -9,6 +9,7 @@ This folder answers the practical question:
 It does one thing:
 
 - exposes `POST /tools/execute`
+- exposes `POST /channels/messages`
 - accepts one tool, `todos.add`
 - updates a visible todo list in the browser demo
 
@@ -77,8 +78,8 @@ executeToolCall({ payload, defaultUserId })
 
 Where `payload` is the request Texty sends to `POST /tools/execute`.
 
-Texty is expected to send arguments that already match the schema from `texty.json`.
-For this demo, that means `todos.add` should receive:
+Texty normally sends arguments that already match the schema from `texty.json`.
+For this demo, that usually means `todos.add` receives:
 
 ```json
 {
@@ -98,6 +99,13 @@ const result = executeToolCall({
 ```
 
 That keeps the executor example readable without mixing business logic into the HTTP handler.
+
+The current example also accepts two newer runtime helpers:
+
+- `payload.context.raw_input_text`
+  - used when the user forces a tool shortcut such as `@[todos.add]`
+- `payload.context.completion_webhook_url`
+  - used when the executor returns `accepted` or `in_progress` and wants to notify Texty later that the task finished
 
 ## Run It
 
@@ -194,6 +202,13 @@ curl -X POST http://localhost:5173/api/v1/input \
 
 Texty should decide to call `todos.add`, extract `todo_items`, and the executor should return a completed result with the updated todo list.
 
+You can also force direct shortcut mode:
+
+- `@[todos.add] buy milk and eggs`
+- `@[todos.add] book the dog groomer for Friday`
+
+In that mode, Texty bypasses its normal extraction step and passes the following text straight through to the tool payload.
+
 ## Browser Demo
 
 Once the server is running, open:
@@ -224,6 +239,8 @@ After you send a message:
 7. The browser shows the updated todo list state.
 
 That is the basic integration loop.
+
+If your executor returns `accepted` or `in_progress`, Texty also includes a completion webhook URL in the execution payload. The example server uses that URL to POST back to Texty when the task is finished, and Texty then delivers the completion to `POST /channels/messages`.
 
 ## How To Adapt It
 

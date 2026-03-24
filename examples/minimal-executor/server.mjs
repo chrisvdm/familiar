@@ -17,6 +17,7 @@ const defaultUserId = (process.env.TEXTY_USER_ID || "demo_user").trim();
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = dirname(currentFile);
 const homePageTemplate = readFileSync(join(currentDir, "index.html"), "utf8");
+const deliveredChannelMessages = [];
 
 const renderHomePage = () =>
   homePageTemplate
@@ -74,6 +75,55 @@ const unauthorized = (response) =>
       message: "Missing or invalid executor token.",
     },
   });
+
+const sendTaskCompletionToTexty = async ({ payload, result }) => {
+  const completionWebhookUrl =
+    typeof payload.context?.completion_webhook_url === "string"
+      ? payload.context.completion_webhook_url.trim()
+      : "";
+
+  if (
+    !completionWebhookUrl ||
+    (result.state !== "accepted" && result.state !== "in_progress")
+  ) {
+    return;
+  }
+
+  setTimeout(async () => {
+    try {
+      await fetch(completionWebhookUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${expectedToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider_id: providerId,
+          user_id: String(payload.user_id || defaultUserId).trim(),
+          thread_id: String(payload.thread_id || "").trim(),
+          channel:
+            payload.context?.channel &&
+            typeof payload.context.channel === "object" &&
+            typeof payload.context.channel.type === "string" &&
+            typeof payload.context.channel.id === "string"
+              ? payload.context.channel
+              : undefined,
+          task: {
+            execution_id: String(payload.execution_id || "").trim() || undefined,
+            tool_name: payload.tool_name,
+            state: "completed",
+            content:
+              result.result?.summary ||
+              "The task completed successfully.",
+            data: result.result?.data,
+          },
+        }),
+      });
+    } catch (error) {
+      console.error("Unable to deliver task completion callback", error);
+    }
+  }, 250);
+};
 
 const syncTodoToolWithTexty = async ({ token, userId }) => {
   const response = await fetch(
@@ -204,6 +254,45 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "POST" && request.url === "/channels/messages") {
+    const authHeader = request.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length).trim()
+      : "";
+
+    if (!token || token !== expectedToken) {
+      unauthorized(response);
+      return;
+    }
+
+    let payload;
+
+    try {
+      payload = await readJsonBody(request);
+    } catch {
+      sendJson(response, 400, {
+        ok: false,
+        error: {
+          code: "invalid_json",
+          message: "Request body must be valid JSON.",
+        },
+      });
+      return;
+    }
+
+    deliveredChannelMessages.push({
+      received_at: new Date().toISOString(),
+      payload,
+    });
+
+    sendJson(response, 200, {
+      ok: true,
+      delivered: true,
+      messages_seen: deliveredChannelMessages.length,
+    });
+    return;
+  }
+
   if (request.method !== "POST" || request.url !== "/tools/execute") {
     sendJson(response, 404, {
       ok: false,
@@ -245,6 +334,11 @@ const server = createServer(async (request, response) => {
   const result = executeToolCall({
     payload,
     defaultUserId,
+  });
+
+  void sendTaskCompletionToTexty({
+    payload,
+    result,
   });
 
   sendJson(response, result.state === "failed" ? 400 : 200, result);

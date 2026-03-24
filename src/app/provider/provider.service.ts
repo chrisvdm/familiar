@@ -22,6 +22,7 @@ import {
   createUserMessage,
   getThreadTitleFromMessages,
   pruneGlobalMemoryByThreadId,
+  type ActiveToolShortcut,
   type ChatMessage,
   type PendingToolConfirmation,
   type ChatSessionState,
@@ -34,13 +35,18 @@ import type {
   ProviderConversationInput,
   ProviderConversationResponseKind,
   ProviderExecutionState,
+  ProviderTaskCompletionInput,
   ProviderToolSyncInput,
   ProviderUserContext,
 } from "./provider.types";
 import { logProviderAudit } from "./provider.audit";
-import { executeProviderToolRequest } from "./provider.execution";
+import {
+  executeProviderToolRequest,
+  sendProviderChannelMessage,
+} from "./provider.execution";
 import {
   applyConversationRateLimit,
+  buildShortcutToolArguments,
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
@@ -50,6 +56,8 @@ import {
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
   interpretPendingToolConfirmation,
+  isToolShortcutExitInput,
+  parseToolShortcutInvocation,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
@@ -449,6 +457,11 @@ const createThreadForContext = async ({
         updatedAt: new Date().toISOString(),
       },
     },
+    threadChannels: updateThreadChannelState({
+      context,
+      channel,
+      threadId,
+    }),
   };
 
   await saveProviderUserContext(nextContext);
@@ -1321,6 +1334,9 @@ const executeProviderTool = async ({
   threadId,
   toolName,
   args,
+  channel,
+  rawInputText,
+  shortcutMode,
   requestId,
 }: {
   providerConfig: ProviderConfig;
@@ -1329,9 +1345,17 @@ const executeProviderTool = async ({
   threadId: string;
   toolName: string;
   args: Record<string, unknown>;
+  channel?: ProviderChannelInput;
+  rawInputText?: string;
+  shortcutMode?: boolean;
   requestId?: string;
-}) =>
-  executeProviderToolRequest({
+}) => {
+  const requestUrl = requestInfo?.request?.url;
+  const completionWebhookUrl = requestUrl
+    ? `${new URL(requestUrl).origin}/api/v1/tasks/complete`
+    : null;
+
+  return executeProviderToolRequest({
     providerConfig,
     providerId,
     userId,
@@ -1339,7 +1363,12 @@ const executeProviderTool = async ({
     toolName,
     args,
     requestId,
+    channel,
+    completionWebhookUrl,
+    rawInputText,
+    shortcutMode,
   });
+};
 
 const updateChannelState = ({
   context,
@@ -1356,6 +1385,22 @@ const updateChannelState = ({
     id: channel.id,
     lastActiveThreadId: threadId,
     updatedAt: new Date().toISOString(),
+  },
+});
+
+const updateThreadChannelState = ({
+  context,
+  channel,
+  threadId,
+}: {
+  context: ProviderUserContext;
+  channel: ProviderChannelInput;
+  threadId: string;
+}) => ({
+  ...context.threadChannels,
+  [threadId]: {
+    type: channel.type,
+    id: channel.id,
   },
 });
 
@@ -1393,10 +1438,12 @@ const appendMessagesToThread = async ({
   threadId,
   messages,
   pendingToolConfirmation,
+  activeToolShortcut,
 }: {
   threadId: string;
   messages: ChatMessage[];
   pendingToolConfirmation?: PendingToolConfirmation | null;
+  activeToolShortcut?: ActiveToolShortcut | null;
 }) => {
   const currentState = await loadChatSession(threadId);
   const nextState = {
@@ -1406,6 +1453,10 @@ const appendMessagesToThread = async ({
       pendingToolConfirmation === undefined
         ? currentState.pendingToolConfirmation
         : pendingToolConfirmation,
+    activeToolShortcut:
+      activeToolShortcut === undefined
+        ? currentState.activeToolShortcut
+        : activeToolShortcut,
   };
 
   await saveChatSession(threadId, nextState);
@@ -1688,6 +1739,11 @@ export const deleteProviderThread = async ({
     ...context,
     threads: context.threads.filter((entry) => entry.id !== threadId),
     globalMemory: pruneGlobalMemoryByThreadId(context.globalMemory, threadId),
+    threadChannels: Object.fromEntries(
+      Object.entries(context.threadChannels ?? {}).filter(
+        ([entryThreadId]) => entryThreadId !== threadId,
+      ),
+    ),
     channels: Object.fromEntries(
       Object.entries(context.channels).map(([key, channel]) => [
         key,
@@ -1893,9 +1949,113 @@ export const handleProviderConversationInput = async ({
     | "command" = "direct_reply";
   let executionState: ProviderExecutionState | undefined;
   let pendingToolConfirmation: PendingToolConfirmation | null = null;
+  let activeToolShortcut: ActiveToolShortcut | null | undefined = undefined;
   let decisionReasoning: string | null = null;
+  const shortcutInvocation = parseToolShortcutInvocation({
+    content,
+    tools: currentContext.allowedTools,
+  });
 
-  if (currentState.pendingToolConfirmation) {
+  if (shortcutInvocation) {
+    activeToolShortcut = {
+      toolName: shortcutInvocation.tool.toolName,
+      createdAt:
+        currentState.activeToolShortcut?.toolName === shortcutInvocation.tool.toolName
+          ? currentState.activeToolShortcut.createdAt
+          : new Date().toISOString(),
+    };
+
+    if (shortcutInvocation.remainder) {
+      const execution = await executeProviderTool({
+        providerConfig,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId,
+        toolName: shortcutInvocation.tool.toolName,
+        args: buildShortcutToolArguments({
+          tool: shortcutInvocation.tool,
+          content: shortcutInvocation.remainder,
+        }),
+        channel: input.channel,
+        rawInputText: shortcutInvocation.remainder,
+        shortcutMode: true,
+        requestId,
+      });
+
+      assistantContent = execution.message;
+      action = "tool_call";
+      executionState = execution.state;
+
+      logProviderAudit({
+        event: "provider.tool.executed",
+        requestId,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId,
+        status: execution.state === "failed" ? "error" : "ok",
+        metadata: {
+          toolName: shortcutInvocation.tool.toolName,
+          executionState: execution.state,
+          viaShortcut: true,
+        },
+      });
+    } else {
+      assistantContent = `Shortcut mode is active for ${shortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's enough" to stop.`;
+      action = "direct_reply";
+    }
+  } else if (currentState.activeToolShortcut) {
+    const shortcutTool = currentContext.allowedTools.find(
+      (tool) => tool.toolName === currentState.activeToolShortcut?.toolName,
+    );
+
+    if (isToolShortcutExitInput(content)) {
+      assistantContent = "Shortcut mode is off.";
+      action = "direct_reply";
+      activeToolShortcut = null;
+    } else if (!shortcutTool) {
+      assistantContent =
+        "That shortcut tool is no longer available. Choose another tool or continue normally.";
+      action = "clarification";
+      executionState = "needs_clarification";
+      activeToolShortcut = null;
+    } else {
+      const execution = await executeProviderTool({
+        providerConfig,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId,
+        toolName: shortcutTool.toolName,
+        args: buildShortcutToolArguments({
+          tool: shortcutTool,
+          content,
+        }),
+        channel: input.channel,
+        rawInputText: content,
+        shortcutMode: true,
+        requestId,
+      });
+
+      assistantContent = execution.message;
+      action = "tool_call";
+      executionState = execution.state;
+      activeToolShortcut = currentState.activeToolShortcut;
+
+      logProviderAudit({
+        event: "provider.tool.executed",
+        requestId,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId,
+        status: execution.state === "failed" ? "error" : "ok",
+        metadata: {
+          toolName: shortcutTool.toolName,
+          executionState: execution.state,
+          viaShortcut: true,
+          continuedShortcut: true,
+        },
+      });
+    }
+  } else if (currentState.pendingToolConfirmation) {
     const pendingTool = currentContext.allowedTools.find(
       (tool) => tool.toolName === currentState.pendingToolConfirmation?.toolName,
     );
@@ -1914,6 +2074,7 @@ export const handleProviderConversationInput = async ({
           threadId,
           toolName: currentState.pendingToolConfirmation.toolName,
           args: currentState.pendingToolConfirmation.arguments,
+          channel: input.channel,
           requestId,
         });
 
@@ -1940,6 +2101,7 @@ export const handleProviderConversationInput = async ({
               threadId,
               toolName: followOnDecision.tool_name,
               args: followOnDecision.arguments,
+              channel: input.channel,
               requestId,
             });
 
@@ -2002,6 +2164,7 @@ export const handleProviderConversationInput = async ({
           threadId,
           toolName: currentState.pendingToolConfirmation.toolName,
           args: updated.arguments,
+          channel: input.channel,
           requestId,
         });
 
@@ -2101,6 +2264,7 @@ export const handleProviderConversationInput = async ({
           threadId,
           toolName: decision.tool_name,
           args: normalizedArguments,
+          channel: input.channel,
           requestId,
         });
 
@@ -2129,6 +2293,7 @@ export const handleProviderConversationInput = async ({
     threadId,
     messages: [createAssistantMessage(assistantContent)],
     pendingToolConfirmation,
+    activeToolShortcut,
   });
 
   const finalContext = await saveProviderUserContext({
@@ -2139,6 +2304,11 @@ export const handleProviderConversationInput = async ({
       buildThreadSummary(thread, withAssistant.messages),
     ),
     channels: updateChannelState({
+      context: currentContext,
+      channel: input.channel,
+      threadId,
+    }),
+    threadChannels: updateThreadChannelState({
       context: currentContext,
       channel: input.channel,
       threadId,
@@ -2188,5 +2358,126 @@ export const handleProviderConversationInput = async ({
         executionState ?? (action === "tool_call" ? "completed" : null),
     },
     model: model || finalContext.selectedModel,
+  };
+};
+
+export const handleProviderTaskCompletion = async ({
+  input,
+  providerConfig,
+  requestId,
+}: {
+  input: ProviderTaskCompletionInput;
+  providerConfig: ProviderConfig;
+  requestId?: string;
+}) => {
+  const content = input.task.content.trim();
+
+  if (!content) {
+    throw new Error("Task completion content is required.");
+  }
+
+  const context = await loadOrCreateProviderUserContext({
+    providerId: input.provider_id,
+    userId: input.user_id,
+  });
+  const thread = context.threads.find((entry) => entry.id === input.thread_id);
+
+  if (!thread) {
+    throw new Error("Thread not found.");
+  }
+
+  const channel =
+    input.channel ??
+    context.threadChannels?.[input.thread_id] ??
+    Object.values(context.channels).find(
+      (entry) => entry.lastActiveThreadId === input.thread_id,
+    );
+
+  const withAssistant = await appendMessagesToThread({
+    threadId: input.thread_id,
+    messages: [createAssistantMessage(content)],
+  });
+
+  const nextContext = await saveProviderUserContext({
+    ...context,
+    threads: updateThreadSummaries(
+      context.threads,
+      buildThreadSummary(thread, withAssistant.messages),
+    ),
+    ...(channel
+      ? {
+          channels: updateChannelState({
+            context,
+            channel,
+            threadId: input.thread_id,
+          }),
+          threadChannels: updateThreadChannelState({
+            context,
+            channel,
+            threadId: input.thread_id,
+          }),
+        }
+      : {}),
+  });
+
+  scheduleBackgroundTask(
+    refreshProviderMemories({
+      threadId: input.thread_id,
+      state: withAssistant,
+      thread:
+        nextContext.threads.find((entry) => entry.id === input.thread_id) ?? thread,
+      context: nextContext,
+      isPrivate: thread.isTemporary,
+      timeZone: null,
+    }).then(() => undefined),
+  );
+
+  let channelDelivery: "sent" | "skipped" | "failed" = "skipped";
+
+  if (channel) {
+    try {
+      const delivered = await sendProviderChannelMessage({
+        providerConfig,
+        providerId: input.provider_id,
+        userId: input.user_id,
+        threadId: input.thread_id,
+        channel,
+        content,
+        task: {
+          executionId: input.task.execution_id,
+          toolName: input.task.tool_name,
+          state: input.task.state,
+          data: input.task.data,
+        },
+        requestId,
+      });
+      channelDelivery = delivered ? "sent" : "failed";
+    } catch {
+      channelDelivery = "failed";
+    }
+  }
+
+  logProviderAudit({
+    event: "provider.task.completed",
+    requestId,
+    providerId: input.provider_id,
+    userId: input.user_id,
+    threadId: input.thread_id,
+    channelType: channel?.type,
+    channelId: channel?.id,
+    status: channelDelivery === "failed" ? "error" : "ok",
+    metadata: {
+      toolName: input.task.tool_name ?? null,
+      executionState: input.task.state,
+      channelDelivery,
+    },
+  });
+
+  return {
+    provider_id: input.provider_id,
+    user_id: input.user_id,
+    thread_id: input.thread_id,
+    status: "ok",
+    channel_delivery: channelDelivery,
   };
 };

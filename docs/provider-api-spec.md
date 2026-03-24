@@ -159,6 +159,12 @@ Purpose:
 
 - send one normalized conversation turn into Texty
 
+Input note:
+
+- Texty should receive normalized text input only
+- if the original user input was voice, audio, or another modality, that should be converted into text before calling this endpoint
+- long transcription blocks are valid input as long as they are sent as `input.kind = "text"` and `input.text`
+
 Request:
 
 ```json
@@ -237,6 +243,11 @@ Possible execution states:
 - `accepted`
 - `in_progress`
 - `failed`
+
+Shortcut note:
+
+- explicit tool shortcuts such as `@[tool-name]` are still just text inside `input.text`
+- Texty does not need a separate voice or shortcut input type on the API surface
 
 Rate limiting:
 
@@ -381,6 +392,63 @@ Purpose:
 
 - inspect thread-local memory for one thread
 
+### 9. Executor result callback
+
+`POST /api/v1/executor-results`
+
+Purpose:
+
+- let an executor send a later result back to Texty for work that was not completed in the initial blocking response
+- append that later result as a new assistant-style message inside the existing thread
+
+Request:
+
+```json
+{
+  "provider_id": "provider_a",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "result": {
+    "state": "completed",
+    "content": "Your import finished successfully."
+  }
+}
+```
+
+Minimal required fields:
+
+- `provider_id`
+- `user_id`
+- `thread_id`
+- `result.state`
+- `result.content`
+
+Optional fields:
+
+- `result.execution_id`
+- `result.tool_name`
+- `result.data`
+
+Behavior:
+
+- use this when the executor already returned `accepted` or `in_progress` to Texty earlier
+- the executor decides whether work is blocking or async
+- Texty does not own the executor task lifecycle
+- Texty should treat this callback as a later executor result for that thread
+- Texty should append `result.content` into the thread as the user-facing message
+- Texty may then deliver that new thread message to the linked channel through its normal channel-delivery path
+
+Success response:
+
+```json
+{
+  "provider_id": "provider_a",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "status": "ok"
+}
+```
+
 ## Tool Execution Contract
 
 When Texty decides a tool should run, it should call the target that owns the tool.
@@ -414,6 +482,13 @@ Current runtime note:
 
 - the current MVP runtime still sends extra wrapper fields today
 - that is a transport detail, not the intended long-term DX
+
+Current runtime convenience fields may include:
+
+- `context.raw_input_text`
+  - present when the user intentionally forced a tool via text such as `@[tool-name]`
+- `context.completion_webhook_url`
+  - present when Texty wants the executor to call back later with an async result
 
 Target success response:
 

@@ -5,6 +5,7 @@ import { createEmptyGlobalMemory } from "../chat/shared.ts";
 
 import {
   applyConversationRateLimit,
+  buildShortcutToolArguments,
   clampDecisionConfidence,
   determineMockExecutionState,
   extractPendingToolConfirmationRemainder,
@@ -13,6 +14,8 @@ import {
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
   interpretPendingToolConfirmation,
+  isToolShortcutExitInput,
+  parseToolShortcutInvocation,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
 } from "./provider.logic.ts";
@@ -198,6 +201,67 @@ test("tool string extraction strips save-note phrasing", () => {
     }),
     "buy dog food",
   );
+});
+
+test("tool shortcut invocation resolves an active tool and keeps the raw remainder", () => {
+  const result = parseToolShortcutInvocation({
+    content: "@[todos.add] buy milk and eggs",
+    tools: [
+      {
+        toolName: "todos.add",
+        description: "Add todo items",
+        inputSchema: {
+          type: "object",
+          properties: {
+            todo_items: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result?.tool.toolName, "todos.add");
+  assert.equal(result?.remainder, "buy milk and eggs");
+});
+
+test("tool shortcut exit phrases are recognized", () => {
+  assert.equal(isToolShortcutExitInput("that's enough"), true);
+  assert.equal(isToolShortcutExitInput("done"), true);
+  assert.equal(isToolShortcutExitInput("keep going"), false);
+});
+
+test("shortcut arguments preserve a verbatim string for array tools", () => {
+  const args = buildShortcutToolArguments({
+    tool: {
+      toolName: "todos.add",
+      description: "Add todo items",
+      inputSchema: {
+        type: "object",
+        properties: {
+          todo_items: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+        },
+      },
+      policy: {},
+      status: "active",
+    },
+    content: "buy milk and eggs",
+  });
+
+  assert.deepEqual(args, {
+    todo_items: ["buy milk and eggs"],
+  });
 });
 
 test("todo item splitting produces multiple items for compound task text", () => {
