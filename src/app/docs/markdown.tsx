@@ -1,5 +1,7 @@
 import React from "react";
 
+import { toAnchorId } from "./content";
+
 const renderInline = (text: string) => {
   const nodes: React.ReactNode[] = [];
   const pattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/g;
@@ -83,19 +85,19 @@ export const renderMarkdown = (source: string) => {
 
       if (level === 1) {
         blocks.push(
-          <h1 key={key} className="docs-heading-1">
+          <h1 key={key} id={toAnchorId(text)} className="docs-heading-1">
             {renderInline(text)}
           </h1>,
         );
       } else if (level === 2) {
         blocks.push(
-          <h2 key={key} className="docs-heading-2">
+          <h2 key={key} id={toAnchorId(text)} className="docs-heading-2">
             {renderInline(text)}
           </h2>,
         );
       } else {
         blocks.push(
-          <h3 key={key} className="docs-heading-3">
+          <h3 key={key} id={toAnchorId(text)} className="docs-heading-3">
             {renderInline(text)}
           </h3>,
         );

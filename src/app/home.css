@@ -108,6 +108,11 @@
   display: grid;
   gap: 6px;
   margin-top: 8px;
+  padding-left: 20px;
+}
+
+.docs-nav-item {
+  color: rgba(28, 31, 87, 0.46);
 }
 
 .docs-nav-link {
@@ -123,6 +128,29 @@
 .docs-nav-link:hover,
 .docs-nav-link-active {
   background: rgba(255, 255, 255, 0.78);
+  color: var(--landing-ink);
+}
+
+.docs-subnav {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 4px;
+  padding-left: 16px;
+}
+
+.docs-subnav-item {
+  color: rgba(28, 31, 87, 0.4);
+}
+
+.docs-subnav-link {
+  color: rgba(28, 31, 87, 0.72);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.docs-subnav-link:hover {
   color: var(--landing-ink);
 }
 

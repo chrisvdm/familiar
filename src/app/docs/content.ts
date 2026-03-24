@@ -4,6 +4,8 @@ const docModules = import.meta.glob("../docs-content/*.md", {
   eager: true,
 }) as Record<string, string>;
 
+const DOC_ORDER = ["intro", "concepts", "integrations", "executors", "webhooks"];
+
 const toSlug = (path: string) =>
   path.split("/").at(-1)?.replace(/\.md$/, "") ?? "";
 
@@ -13,6 +15,33 @@ const toLabel = (slug: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
+export const toAnchorId = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[`'".,/?#!$%^&*;:{}=\-_~()]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
+const getSections = (content: string) =>
+  content
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("## "))
+    .map((line) => {
+      const title = line.replace(/^##\s+/, "").trim();
+
+      return {
+        title,
+        anchor: toAnchorId(title),
+      };
+    });
+
+const getOrderIndex = (slug: string) => {
+  const index = DOC_ORDER.indexOf(slug);
+  return index === -1 ? DOC_ORDER.length : index;
+};
+
 export const docs = Object.entries(docModules)
   .map(([path, content]) => {
     const slug = toSlug(path);
@@ -20,9 +49,18 @@ export const docs = Object.entries(docModules)
       slug,
       label: toLabel(slug),
       content,
+      sections: getSections(content),
     };
   })
-  .sort((left, right) => left.slug.localeCompare(right.slug));
+  .sort((left, right) => {
+    const orderDifference = getOrderIndex(left.slug) - getOrderIndex(right.slug);
+
+    if (orderDifference !== 0) {
+      return orderDifference;
+    }
+
+    return left.slug.localeCompare(right.slug);
+  });
 
 export const defaultDoc = docs[0] ?? null;
 

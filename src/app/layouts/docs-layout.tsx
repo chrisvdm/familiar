@@ -22,20 +22,40 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
         <section className="docs-layout">
           <aside className="docs-sidebar">
             <p className="landing-section-label">Docs</p>
-            <nav className="docs-nav" aria-label="Documentation">
-              {docs.map((entry) => (
-                <a
-                  key={entry.slug}
-                  className={
-                    entry.slug === activeDoc?.slug
-                      ? "docs-nav-link docs-nav-link-active"
-                      : "docs-nav-link"
-                  }
-                  href={`/docs/${entry.slug}`}
-                >
-                  {entry.label}
-                </a>
-              ))}
+            <nav aria-label="Documentation">
+              <ol className="docs-nav">
+                {docs.map((entry) => (
+                  <li key={entry.slug} className="docs-nav-item">
+                    <a
+                      className={
+                        entry.slug === activeDoc?.slug
+                          ? "docs-nav-link docs-nav-link-active"
+                          : "docs-nav-link"
+                      }
+                      href={`/docs/${entry.slug}`}
+                    >
+                      {entry.label}
+                    </a>
+                    {entry.slug === activeDoc?.slug && entry.sections.length > 0 ? (
+                      <ol
+                        className="docs-subnav"
+                        aria-label={`${entry.label} sections`}
+                      >
+                        {entry.sections.map((section) => (
+                          <li key={section.anchor} className="docs-subnav-item">
+                            <a
+                              className="docs-subnav-link"
+                              href={`/docs/${entry.slug}#${section.anchor}`}
+                            >
+                              {section.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
             </nav>
           </aside>
 
