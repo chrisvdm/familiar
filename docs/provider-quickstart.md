@@ -168,6 +168,11 @@ If your executor launches work and returns `accepted` or `in_progress`, keep the
 }
 ```
 
+Texty will return that execution state in the conversation response and, when available, include:
+
+- `execution.state`
+- `execution.execution_id`
+
 When the task actually finishes, call Texty back:
 
 ```shell
@@ -179,6 +184,7 @@ curl -X POST http://localhost:5173/api/v1/webhooks/executor \
     "user_id": "user_123",
     "thread_id": "thread_abc",
     "result": {
+      "execution_id": "exec_123",
       "state": "completed",
       "content": "Your import finished successfully."
     }
@@ -190,8 +196,14 @@ Keep this payload minimal unless you need more tracing:
 - `integration_id`
 - `user_id`
 - `thread_id`
+- `result.execution_id` when you have one
 - `result.state`
 - `result.content`
+
+Retry note:
+
+- if you send `Idempotency-Key`, Texty will use it for replay protection
+- if you do not send one, Texty falls back to `result.execution_id` when present
 
 That is enough for Texty to append the async executor result into the thread and notify the user through its normal conversation flow.
 

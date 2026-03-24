@@ -91,13 +91,21 @@ const extractTask = (inputResponse: Record<string, unknown>) => {
   const response = inputResponse.response as
     | { type?: unknown; task_status?: unknown; reasoning?: unknown }
     | undefined;
+  const execution = inputResponse.execution as
+    | { state?: unknown; execution_id?: unknown }
+    | undefined;
 
   if (!response || typeof response !== "object") {
     return {
       thread_id:
         typeof inputResponse.thread_id === "string" ? inputResponse.thread_id : null,
       action: null,
-      execution_state: null,
+      execution_state:
+        execution && typeof execution.state === "string" ? execution.state : null,
+      execution_id:
+        execution && typeof execution.execution_id === "string"
+          ? execution.execution_id
+          : null,
       reasoning: null,
     };
   }
@@ -107,7 +115,15 @@ const extractTask = (inputResponse: Record<string, unknown>) => {
       typeof inputResponse.thread_id === "string" ? inputResponse.thread_id : null,
     action: typeof response.type === "string" ? response.type : null,
     execution_state:
-      typeof response.task_status === "string" ? response.task_status : null,
+      execution && typeof execution.state === "string"
+        ? execution.state
+        : typeof response.task_status === "string"
+          ? response.task_status
+          : null,
+    execution_id:
+      execution && typeof execution.execution_id === "string"
+        ? execution.execution_id
+        : null,
     reasoning:
       typeof response.reasoning === "string" ? response.reasoning : null,
   };
@@ -204,7 +220,7 @@ export const providerDemoRoutes = [
       return Response.json({
         ok: true,
         demo_identity: {
-          executor_id: DEMO_EXECUTOR_ID,
+          integration_id: DEMO_EXECUTOR_ID,
           user_id: userId,
         },
         assistant_reply:

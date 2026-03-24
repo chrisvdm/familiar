@@ -91,11 +91,14 @@ const sendExecutorResultToTexty = async ({ payload, result }) => {
 
   setTimeout(async () => {
     try {
+      const executionId = String(payload.execution_id || "").trim() || undefined;
+
       await fetch(executorResultWebhookUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${expectedToken}`,
           "Content-Type": "application/json",
+          ...(executionId ? { "Idempotency-Key": executionId } : {}),
         },
         body: JSON.stringify({
           integration_id: integrationId,
@@ -109,7 +112,7 @@ const sendExecutorResultToTexty = async ({ payload, result }) => {
               ? payload.context.channel
               : undefined,
           result: {
-            execution_id: String(payload.execution_id || "").trim() || undefined,
+            execution_id: executionId,
             tool_name: payload.tool_name,
             state: "completed",
             content:
@@ -233,6 +236,7 @@ const server = createServer(async (request, response) => {
           thread_id: textyResult.body?.thread_id ?? null,
           action: textyResult.body?.action?.type ?? null,
           execution_state: textyResult.body?.execution?.state ?? null,
+          execution_id: textyResult.body?.execution?.execution_id ?? null,
         },
         todos: getTodosForUser(userId),
         observed: {

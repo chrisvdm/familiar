@@ -242,6 +242,11 @@ That is the basic integration loop.
 
 If your executor returns `accepted` or `in_progress`, Texty also includes an executor-result webhook URL in the execution payload. The example server uses that URL to POST back to Texty at `/api/v1/webhooks/executor` with the later result, and Texty then delivers that thread message to `POST /channels/messages`.
 
+For retries, the safest pattern is:
+
+- reuse the same `execution_id`
+- also send `Idempotency-Key` with that same value when posting the callback
+
 ## How To Adapt It
 
 Once you understand the example, the normal next step is:

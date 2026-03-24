@@ -15,12 +15,19 @@ Align the public Texty API with the clarified product terms and harden the execu
   - `POST /api/v1/webhooks/executor`
 - Added idempotency handling to the executor webhook endpoint:
   - `Idempotency-Key` replays the original success response
+  - `result.execution_id` is used as a retry key fallback when no idempotency header is present
   - conflicting reuse returns `409 idempotency_conflict`
   - duplicate callbacks do not append duplicate assistant messages or trigger duplicate channel sends
+- Added execution correlation to the initial conversation response:
+  - Texty now returns `execution.state`
+  - Texty now returns `execution.execution_id`
+- Updated the minimal executor example to:
+  - surface `execution_id` in its observed task metadata
+  - reuse `execution_id` as the callback `Idempotency-Key`
 
 ## Result
 
-The public contract now matches the current product model instead of carrying early MVP naming, and the async executor callback path is safe for normal webhook retries.
+The public contract now matches the current product model instead of carrying early MVP naming, and the async executor callback path now has both correlation and retry safety for real async execution.
 
 ## Verification
 

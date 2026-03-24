@@ -200,3 +200,63 @@ test("executor result endpoint rejects idempotency conflicts", async () => {
     request_id: "req_123",
   });
 });
+
+test("executor result endpoint falls back to result.execution_id for retry replay", async () => {
+  const body = {
+    ...createInput(),
+    result: {
+      ...createInput().result,
+      execution_id: "exec_123",
+    },
+  } satisfies ProviderExecutorResultInput;
+  const storageKey = buildIdempotencyKey({
+    method: "POST",
+    path: "/api/v1/webhooks/executor",
+    idempotencyKey: "exec_123",
+  });
+  const requestHash = await hashIdempotencyRequest({
+    method: "POST",
+    path: storageKey,
+    body,
+  });
+  let handled = false;
+
+  const endpoint = createHandleExecutorResultEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () =>
+      createReplayContext({
+        storageKey,
+        requestHash,
+        status: 200,
+        body: {
+          status: "ok",
+          channel_delivery: "sent",
+        },
+      }),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest,
+    readIdempotencyReplay,
+    storeIdempotencyReplay,
+    handleProviderExecutorResult: async () => {
+      handled = true;
+      return { status: "ok" };
+    },
+  });
+
+  const response = await endpoint({
+    request: createCompletionRequest({
+      body,
+    }),
+  });
+
+  assert.equal(handled, false);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("X-Idempotent-Replay"), "true");
+});

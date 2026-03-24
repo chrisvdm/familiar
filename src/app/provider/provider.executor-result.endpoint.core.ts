@@ -124,7 +124,10 @@ export const createHandleExecutorResultEndpoint = (
         });
       }
 
-      const idempotencyKey = deps.getIdempotencyHeader(request);
+      const idempotencyKey =
+        deps.getIdempotencyHeader(request) ||
+        input.result.execution_id?.trim() ||
+        null;
 
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({

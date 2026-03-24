@@ -22,6 +22,13 @@ type ProviderToolExecutionResponse = {
   };
 };
 
+type ProviderToolExecutionResult = {
+  executionId: string;
+  state: ProviderExecutionState;
+  message: string;
+  data: Record<string, unknown> | null;
+};
+
 const VALID_EXECUTION_STATES = new Set<ProviderExecutionState>([
   "completed",
   "needs_clarification",
@@ -39,14 +46,17 @@ export const buildProviderChannelMessageUrl = (baseUrl: string) =>
   `${baseUrl.replace(/\/$/, "")}/channels/messages`;
 
 export const normalizeProviderToolExecution = ({
+  executionId,
   responseOk,
   payload,
 }: {
+  executionId: string;
   responseOk: boolean;
   payload: ProviderToolExecutionResponse;
-}) => {
+}): ProviderToolExecutionResult => {
   if (!responseOk || !payload.ok) {
     return {
+      executionId,
       state: "failed" as const,
       message:
         payload.error?.message ||
@@ -59,6 +69,7 @@ export const normalizeProviderToolExecution = ({
 
   if (!VALID_EXECUTION_STATES.has(state)) {
     return {
+      executionId,
       state: "failed" as const,
       message: "The executor returned an invalid execution state.",
       data: null,
@@ -76,6 +87,7 @@ export const normalizeProviderToolExecution = ({
           : "The tool ran successfully.");
 
   return {
+    executionId,
     state,
     message,
     data: payload.result?.data ?? null,
@@ -111,12 +123,19 @@ export const executeProviderToolRequest = async ({
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }) => {
+  const executionId = crypto.randomUUID();
+
   if (providerId === BUILT_IN_DEMO_PROVIDER_ID) {
-    return executeBuiltInDemoTool({
+    const result = await executeBuiltInDemoTool({
       toolName,
       args,
       userId,
     });
+
+    return {
+      executionId,
+      ...result,
+    };
   }
 
   if (!providerConfig.baseUrl) {
@@ -134,7 +153,7 @@ export const executeProviderToolRequest = async ({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        execution_id: crypto.randomUUID(),
+        execution_id: executionId,
         integration_id: providerId,
         user_id: userId,
         thread_id: threadId,
@@ -158,6 +177,7 @@ export const executeProviderToolRequest = async ({
       payload = (await response.json()) as ProviderToolExecutionResponse;
     } catch {
       return {
+        executionId,
         state: "failed" as const,
         message: "The executor returned an invalid JSON response.",
         data: null,
@@ -165,12 +185,14 @@ export const executeProviderToolRequest = async ({
     }
 
     return normalizeProviderToolExecution({
+      executionId,
       responseOk: response.ok,
       payload,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return {
+        executionId,
         state: "failed" as const,
         message: "The executor request timed out.",
         data: null,
@@ -178,6 +200,7 @@ export const executeProviderToolRequest = async ({
     }
 
     return {
+      executionId,
       state: "failed" as const,
       message: "The executor could not be reached.",
       data: null,

@@ -25,6 +25,7 @@ test("buildProviderChannelMessageUrl appends channel message path once", () => {
 
 test("normalizeProviderToolExecution treats invalid states as failed", () => {
   const result = normalizeProviderToolExecution({
+    executionId: "exec_123",
     responseOk: true,
     payload: {
       ok: true,
@@ -33,6 +34,7 @@ test("normalizeProviderToolExecution treats invalid states as failed", () => {
   });
 
   assert.deepEqual(result, {
+    executionId: "exec_123",
     state: "failed",
     message: "The executor returned an invalid execution state.",
     data: null,
@@ -59,11 +61,19 @@ test("executeProviderToolRequest returns failed for invalid JSON responses", asy
       }) as unknown as Response,
   });
 
-  assert.deepEqual(result, {
-    state: "failed",
-    message: "The executor returned an invalid JSON response.",
-    data: null,
-  });
+  assert.equal(result.executionId.length > 0, true);
+  assert.deepEqual(
+    {
+      state: result.state,
+      message: result.message,
+      data: result.data,
+    },
+    {
+      state: "failed",
+      message: "The executor returned an invalid JSON response.",
+      data: null,
+    },
+  );
 });
 
 test("executeProviderToolRequest returns failed for unreachable executors", async () => {
@@ -82,11 +92,19 @@ test("executeProviderToolRequest returns failed for unreachable executors", asyn
     },
   });
 
-  assert.deepEqual(result, {
-    state: "failed",
-    message: "The executor could not be reached.",
-    data: null,
-  });
+  assert.equal(result.executionId.length > 0, true);
+  assert.deepEqual(
+    {
+      state: result.state,
+      message: result.message,
+      data: result.data,
+    },
+    {
+      state: "failed",
+      message: "The executor could not be reached.",
+      data: null,
+    },
+  );
 });
 
 test("executeProviderToolRequest returns normalized success payloads", async () => {
@@ -141,13 +159,25 @@ test("executeProviderToolRequest returns normalized success payloads", async () 
   assert.match(capturedBody, /"executor_result_webhook_url":"https:\/\/texty.example\/api\/v1\/webhooks\/executor"/);
   assert.match(capturedBody, /"raw_input_text":"buy milk and eggs"/);
   assert.match(capturedBody, /"shortcut_mode":true/);
-  assert.deepEqual(result, {
-    state: "completed",
-    message: "Updated row 42.",
-    data: {
-      row_id: "42",
+  assert.equal(result.executionId.length > 0, true);
+  assert.match(
+    capturedBody,
+    new RegExp(`"execution_id":"${result.executionId}"`),
+  );
+  assert.deepEqual(
+    {
+      state: result.state,
+      message: result.message,
+      data: result.data,
     },
-  });
+    {
+      state: "completed",
+      message: "Updated row 42.",
+      data: {
+        row_id: "42",
+      },
+    },
+  );
 });
 
 test("sendProviderChannelMessage posts a text message payload", async () => {

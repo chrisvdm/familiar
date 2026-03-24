@@ -246,6 +246,10 @@ Success response:
       "created_at": "2026-03-19T09:30:01.000Z"
     }
   ],
+  "execution": {
+    "state": "accepted",
+    "execution_id": "exec_123"
+  },
   "action": {
     "type": "clarification"
   }
@@ -451,6 +455,11 @@ Optional fields:
 - `result.execution_id`
 - `result.tool_name`
 - `result.data`
+
+Retry behavior:
+
+- Texty accepts a normal `Idempotency-Key` header on this endpoint
+- if no idempotency header is present, Texty falls back to `result.execution_id` when available
 
 Behavior:
 

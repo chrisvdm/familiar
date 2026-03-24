@@ -419,6 +419,7 @@ When a tool returns `accepted` or `in_progress`, the intended follow-up path is 
   "user_id": "user_123",
   "thread_id": "thread_abc",
   "result": {
+    "execution_id": "exec_123",
     "state": "completed",
     "content": "Your import finished successfully."
   }
@@ -427,6 +428,7 @@ When a tool returns `accepted` or `in_progress`, the intended follow-up path is 
 
 This is an async executor result callback, not Texty-owned task management.
 Texty should append that result to the thread and handle notifying the user from there, rather than having the executor message the user channel directly.
+If the executor retries that callback, Texty can dedupe via `Idempotency-Key` or, if no header is provided, via `result.execution_id`.
 
 ## Scripts
 

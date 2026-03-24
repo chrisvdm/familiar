@@ -1948,6 +1948,7 @@ export const handleProviderConversationInput = async ({
     | "tool_call"
     | "command" = "direct_reply";
   let executionState: ProviderExecutionState | undefined;
+  let executionId: string | undefined;
   let pendingToolConfirmation: PendingToolConfirmation | null = null;
   let activeToolShortcut: ActiveToolShortcut | null | undefined = undefined;
   let decisionReasoning: string | null = null;
@@ -1985,6 +1986,7 @@ export const handleProviderConversationInput = async ({
       assistantContent = execution.message;
       action = "tool_call";
       executionState = execution.state;
+      executionId = execution.executionId;
 
       logProviderAudit({
         event: "provider.tool.executed",
@@ -2038,6 +2040,7 @@ export const handleProviderConversationInput = async ({
       assistantContent = execution.message;
       action = "tool_call";
       executionState = execution.state;
+      executionId = execution.executionId;
       activeToolShortcut = currentState.activeToolShortcut;
 
       logProviderAudit({
@@ -2081,6 +2084,7 @@ export const handleProviderConversationInput = async ({
         assistantContent = execution.message;
         action = "tool_call";
         executionState = execution.state;
+        executionId = execution.executionId;
 
         const confirmationRemainder =
           pendingTool?.toolName === "todos.add"
@@ -2108,6 +2112,7 @@ export const handleProviderConversationInput = async ({
             assistantContent = `${execution.message} ${followOnExecution.message}`.trim();
             executionState =
               execution.state === "failed" ? execution.state : followOnExecution.state;
+            executionId = followOnExecution.executionId;
           }
         }
 
@@ -2171,6 +2176,7 @@ export const handleProviderConversationInput = async ({
         assistantContent = execution.message;
         action = "tool_call";
         executionState = execution.state;
+        executionId = execution.executionId;
 
         logProviderAudit({
           event: "provider.tool.executed",
@@ -2271,6 +2277,7 @@ export const handleProviderConversationInput = async ({
         assistantContent = execution.message;
         action = "tool_call";
         executionState = execution.state;
+        executionId = execution.executionId;
 
         logProviderAudit({
           event: "provider.tool.executed",
@@ -2357,6 +2364,13 @@ export const handleProviderConversationInput = async ({
       task_status:
         executionState ?? (action === "tool_call" ? "completed" : null),
     },
+    execution:
+      executionState || executionId
+        ? {
+            state: executionState ?? null,
+            execution_id: executionId ?? null,
+          }
+        : null,
     model: model || finalContext.selectedModel,
   };
 };
