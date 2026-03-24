@@ -1,0 +1,20 @@
+{
+  "integration_id": "demo_countdown",
+  "base_url": "http://localhost:8790",
+  "token_env": "TEXTY_EXECUTOR_TOKEN",
+  "tools": [
+    {
+      "tool_name": "countdown.start",
+      "description": "Start a 10 second countdown timer and notify the user when it finishes. Use this when the user asks to start, launch, or run a countdown or timer.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Optional completion message to send when the countdown finishes."
+          }
+        }
+      }
+    }
+  ]
+}

@@ -2002,7 +2002,7 @@ export const handleProviderConversationInput = async ({
         },
       });
     } else {
-      assistantContent = `Shortcut mode is active for ${shortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's enough" to stop.`;
+      assistantContent = `Holding tool context for ${shortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's all for ${shortcutInvocation.tool.toolName}" to stop.`;
       action = "direct_reply";
     }
   } else if (currentState.activeToolShortcut) {
@@ -2010,13 +2010,18 @@ export const handleProviderConversationInput = async ({
       (tool) => tool.toolName === currentState.activeToolShortcut?.toolName,
     );
 
-    if (isToolShortcutExitInput(content)) {
-      assistantContent = "Shortcut mode is off.";
+    if (
+      isToolShortcutExitInput({
+        content,
+        toolName: currentState.activeToolShortcut.toolName,
+      })
+    ) {
+      assistantContent = `Stopped holding tool context for ${currentState.activeToolShortcut.toolName}.`;
       action = "direct_reply";
       activeToolShortcut = null;
     } else if (!shortcutTool) {
       assistantContent =
-        "That shortcut tool is no longer available. Choose another tool or continue normally.";
+        "That held tool is no longer available. Choose another tool or continue normally.";
       action = "clarification";
       executionState = "needs_clarification";
       activeToolShortcut = null;

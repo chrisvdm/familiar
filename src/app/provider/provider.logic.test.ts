@@ -232,9 +232,34 @@ test("tool shortcut invocation resolves an active tool and keeps the raw remaind
 });
 
 test("tool shortcut exit phrases are recognized", () => {
-  assert.equal(isToolShortcutExitInput("that's enough"), true);
-  assert.equal(isToolShortcutExitInput("done"), true);
-  assert.equal(isToolShortcutExitInput("keep going"), false);
+  assert.equal(
+    isToolShortcutExitInput({
+      content: "that's all for todos.add",
+      toolName: "todos.add",
+    }),
+    true,
+  );
+  assert.equal(
+    isToolShortcutExitInput({
+      content: "that's all for @[todos.add]",
+      toolName: "todos.add",
+    }),
+    true,
+  );
+  assert.equal(
+    isToolShortcutExitInput({
+      content: "that's all for countdown.start",
+      toolName: "todos.add",
+    }),
+    false,
+  );
+  assert.equal(
+    isToolShortcutExitInput({
+      content: "keep going",
+      toolName: "todos.add",
+    }),
+    false,
+  );
 });
 
 test("shortcut arguments preserve a verbatim string for array tools", () => {

@@ -157,7 +157,7 @@ export const extractToolStringValue = ({
 
 const TOOL_SHORTCUT_PATTERN = /^@\[(.+?)\](?:\s+([\s\S]*))?$/;
 const TOOL_SHORTCUT_EXIT_PATTERN =
-  /^(?:that'?s enough|thats enough|enough|done|stop|cancel|exit tool|stop tool|leave tool mode)$/i;
+  /^that'?s all for\s+(@\[(.+?)\]|(.+))$/i;
 
 export const parseToolShortcutInvocation = ({
   content,
@@ -196,8 +196,24 @@ export const parseToolShortcutInvocation = ({
   };
 };
 
-export const isToolShortcutExitInput = (content: string) =>
-  TOOL_SHORTCUT_EXIT_PATTERN.test(content.trim());
+export const isToolShortcutExitInput = ({
+  content,
+  toolName,
+}: {
+  content: string;
+  toolName: string;
+}) => {
+  const trimmed = content.trim();
+  const match = trimmed.match(TOOL_SHORTCUT_EXIT_PATTERN);
+
+  if (!match) {
+    return false;
+  }
+
+  const requestedToolName = (match[2] || match[3] || "").trim().toLowerCase();
+
+  return Boolean(requestedToolName) && requestedToolName === toolName.trim().toLowerCase();
+};
 
 const getToolSchemaProperties = (tool: AllowedTool) => {
   const properties = tool.inputSchema?.properties;

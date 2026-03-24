@@ -126,6 +126,7 @@ This is the smallest useful setup path for connecting code to Texty and getting 
 There is a tiny reference example here:
 
 - [`examples/minimal-executor/README.md`](examples/minimal-executor/README.md)
+- [`examples/async-countdown/README.md`](examples/async-countdown/README.md)
 
 What that example is for:
 
@@ -133,6 +134,13 @@ What that example is for:
 - run the tiny example server
 - point Texty at it
 - see a full request go from Texty to your tool target and back
+
+There is also a dedicated async callback example:
+
+- `examples/async-countdown`
+  - starts a fixed 10 second timer
+  - returns `accepted` immediately
+  - sends the final result back through `POST /api/v1/webhooks/executor`
 
 If you are new to this, think of it like this:
 

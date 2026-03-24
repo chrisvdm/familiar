@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Async Countdown Executor</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top right, rgba(255, 222, 173, 0.35), transparent 34%),
+          linear-gradient(180deg, #f3efe6 0%, #edf4f7 100%);
+        color: #18222a;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; padding: 24px 16px 40px; }
+      main { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
+      .hero, .panel {
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(28, 42, 51, 0.12);
+        border-radius: 22px;
+        box-shadow: 0 18px 42px rgba(30, 48, 57, 0.08);
+        backdrop-filter: blur(10px);
+      }
+      .hero { padding: 22px; }
+      .panel { padding: 18px; }
+      .layout { display: grid; gap: 16px; }
+      @media (min-width: 980px) {
+        .layout { grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr); }
+      }
+      h1, h2, p { margin: 0; }
+      h1 { font-size: 30px; margin-bottom: 10px; }
+      h2 { font-size: 17px; margin-bottom: 10px; }
+      p { color: #50606a; line-height: 1.55; }
+      .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      .tag {
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: #eef4fa;
+        border: 1px solid #d5e1eb;
+        color: #204d73;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      form, .stack { display: grid; gap: 14px; }
+      .field-grid { display: grid; gap: 12px; }
+      @media (min-width: 720px) {
+        .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
+      input, textarea, button { font: inherit; }
+      input, textarea {
+        width: 100%;
+        border: 1px solid #c8d2d9;
+        border-radius: 14px;
+        padding: 11px 13px;
+        background: rgba(255, 255, 255, 0.96);
+        color: #18222a;
+      }
+      textarea { min-height: 118px; resize: vertical; }
+      button {
+        border: 0;
+        border-radius: 14px;
+        padding: 13px 16px;
+        background: linear-gradient(135deg, #8b4d12 0%, #bf6e1c 100%);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(139, 77, 18, 0.24);
+      }
+      button:disabled { opacity: 0.65; cursor: wait; }
+      .examples { display: flex; flex-wrap: wrap; gap: 8px; }
+      .examples button {
+        background: #fff;
+        color: #8b4d12;
+        border: 1px solid #e5c9a9;
+        box-shadow: none;
+        padding: 9px 12px;
+      }
+      .log, .json {
+        border-radius: 16px;
+        padding: 14px;
+        background: #f5f7f8;
+        border: 1px solid #dbe2e6;
+      }
+      .chat-log { display: grid; gap: 12px; min-height: 210px; }
+      .bubble { border-radius: 18px; padding: 14px 15px; line-height: 1.55; }
+      .bubble.user { background: #e9f1f8; margin-left: auto; max-width: 90%; }
+      .bubble.assistant { background: #fdf7ee; border: 1px solid #f0dcc1; max-width: 92%; }
+      .label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #66757d;
+      }
+      .countdowns { display: grid; gap: 10px; }
+      .countdown {
+        border-radius: 16px;
+        padding: 14px;
+        background: linear-gradient(135deg, #fffaf1 0%, #fff 100%);
+        border: 1px solid #efd9bb;
+      }
+      .countdown strong { display: block; margin-bottom: 4px; }
+      .empty { color: #627179; }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Async Countdown Executor</h1>
+        <p>
+          This example shows the async webhook path end to end. Send a chat message,
+          Texty routes it to <code>countdown.start</code>, the executor immediately
+          returns <code>accepted</code>, and 10 seconds later it posts the completion
+          result back to Texty.
+        </p>
+        <div class="tags">
+          <span class="tag">10 second timer</span>
+          <span class="tag">async webhook</span>
+          <span class="tag">channel delivery</span>
+        </div>
+      </section>
+
+      <section class="layout">
+        <section class="panel">
+          <h2>Try It</h2>
+          <form id="playground-form">
+            <div class="field-grid">
+              <label>
+                Executor token
+                <input id="token" name="token" value="__TOKEN__" />
+              </label>
+              <label>
+                Texty base URL
+                <input id="textyBaseUrl" name="textyBaseUrl" value="__TEXTY_BASE_URL__" />
+              </label>
+              <label>
+                Integration ID
+                <input id="integrationId" name="integrationId" value="__INTEGRATION_ID__" readonly />
+              </label>
+              <label>
+                User ID
+                <input id="userId" name="userId" value="__USER_ID__" />
+              </label>
+            </div>
+
+            <label>
+              Chat message
+              <textarea id="text" name="text">Start a 10 second countdown for me</textarea>
+            </label>
+
+            <div class="examples">
+              <button type="button" data-example="Start a 10 second countdown for me">
+                Start countdown
+              </button>
+              <button type="button" data-example="Start a countdown and say Deploy window is open when it ends">
+                Custom message
+              </button>
+            </div>
+
+            <button id="submitButton" type="submit">Send to Texty</button>
+          </form>
+        </section>
+
+        <section class="stack">
+          <section class="panel">
+            <h2>Chat</h2>
+            <div id="chatLog" class="chat-log">
+              <div class="empty">No conversation yet.</div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Countdowns</h2>
+            <div id="countdowns" class="countdowns">
+              <div class="empty">No countdowns started yet.</div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="panel">
+        <h2>Observed Payload</h2>
+        <div class="json"><pre id="payloadView">// request and response payloads appear here</pre></div>
+      </section>
+    </main>
+
+    <script nonce="__NONCE__">
+      const form = document.getElementById("playground-form");
+      const submitButton = document.getElementById("submitButton");
+      const tokenEl = document.getElementById("token");
+      const textyBaseUrlEl = document.getElementById("textyBaseUrl");
+      const integrationIdEl = document.getElementById("integrationId");
+      const userIdEl = document.getElementById("userId");
+      const textEl = document.getElementById("text");
+      const chatLogEl = document.getElementById("chatLog");
+      const countdownsEl = document.getElementById("countdowns");
+      const payloadViewEl = document.getElementById("payloadView");
+
+      const renderJson = (element, value) => {
+        element.textContent = JSON.stringify(value, null, 2);
+      };
+
+      const renderChat = ({ userText, assistantReply }) => {
+        chatLogEl.innerHTML = "";
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "bubble user";
+        userBubble.innerHTML = `<span class="label">User</span>${userText}`;
+        chatLogEl.appendChild(userBubble);
+
+        if (assistantReply) {
+          const assistantBubble = document.createElement("div");
+          assistantBubble.className = "bubble assistant";
+          assistantBubble.innerHTML = `<span class="label">Assistant</span>${assistantReply}`;
+          chatLogEl.appendChild(assistantBubble);
+        }
+      };
+
+      const renderCountdowns = (countdowns) => {
+        countdownsEl.innerHTML = "";
+
+        if (!Array.isArray(countdowns) || countdowns.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No countdowns started yet.";
+          countdownsEl.appendChild(empty);
+          return;
+        }
+
+        countdowns.forEach((countdown) => {
+          const item = document.createElement("div");
+          item.className = "countdown";
+          item.innerHTML = `
+            <strong>${countdown.status === "completed" ? "Completed" : "Running"} 10 second countdown</strong>
+            <div>Execution: ${countdown.execution_id || "pending"}</div>
+            <div>Started: ${countdown.started_at}</div>
+            <div>Completes: ${countdown.completes_at}</div>
+            <div>Message: ${countdown.completion_message}</div>
+          `;
+          countdownsEl.appendChild(item);
+        });
+      };
+
+      document.querySelectorAll("[data-example]").forEach((button) => {
+        button.addEventListener("click", () => {
+          textEl.value = button.getAttribute("data-example") || "";
+          textEl.focus();
+        });
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const userText = textEl.value.trim();
+
+        if (!userText) {
+          return;
+        }
+
+        submitButton.disabled = true;
+
+        try {
+          const response = await fetch("__PLAYGROUND_PATH__", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              token: tokenEl.value,
+              text: userText,
+              user_id: userIdEl.value,
+              texty_base_url: textyBaseUrlEl.value,
+              integration_id: integrationIdEl.value,
+              mode: "__PLAYGROUND_MODE__",
+            }),
+          });
+
+          const payload = await response.json();
+          renderJson(payloadViewEl, payload);
+          renderChat({
+            userText,
+            assistantReply: payload.assistant_reply || "",
+          });
+          renderCountdowns(payload.countdowns || []);
+        } catch (error) {
+          renderJson(payloadViewEl, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

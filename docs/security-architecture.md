@@ -246,7 +246,17 @@ At minimum:
 
 This is necessary for debugging, incident response, and operational trust.
 
-### 9. Secret Management
+### 9. Internal Documentation Access
+
+Internal docs and worklogs should eventually have an explicit access boundary instead of relying on repo convention alone.
+
+Future follow-up:
+
+- decide whether internal docs should live in a private repo, a private docs workspace, or a clearly separated internal-only docs area
+- keep code-adjacent API and integration docs versioned with the code
+- avoid using `.gitignore` as a substitute for actual access control
+
+### 10. Secret Management
 
 All secrets must be stored in secure secret storage.
 
