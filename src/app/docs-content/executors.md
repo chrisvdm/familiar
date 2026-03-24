@@ -1,10 +1,15 @@
 # Executors
 
-An executor is the runtime that performs the requested work.
+An executor is the script, service, workflow, or built tool that _familiar_ triggers to do the requested work.
 
-## What familiar owns
+In simple terms:
 
-By the time familiar calls an executor, it has already handled:
+- _familiar_ handles the conversation
+- the executor does the thing
+
+## What _familiar_ owns
+
+By the time _familiar_ calls an executor, it has already handled:
 
 - thread continuity
 - memory lookup
@@ -12,7 +17,7 @@ By the time familiar calls an executor, it has already handled:
 - tool selection
 - argument extraction
 
-## What familiar sends
+## What _familiar_ sends
 
 By the time the executor receives a request:
 
@@ -21,6 +26,27 @@ By the time the executor receives a request:
 - missing fields should already have been clarified
 
 That means the executor does not need to repeat routing or conversational extraction.
+
+### Example execution request
+
+```json
+{
+  "integration_id": "integration_a",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "tool_name": "spreadsheet.update_row",
+  "arguments": {
+    "sheet": "Sales Leads",
+    "row_id": "42",
+    "values": {
+      "status": "contacted"
+    }
+  },
+  "context": {
+    "executor_result_webhook_url": "https://example.com/api/v1/webhooks/executor"
+  }
+}
+```
 
 ## Blocking or async
 
@@ -31,16 +57,16 @@ Executors decide whether a request is:
 
 ## Executor endpoints
 
-familiar currently calls two integration-owned endpoints:
+_familiar_ currently calls two integration-owned endpoints:
 
 ```text
 POST {integration.baseUrl}/tools/execute
 POST {integration.baseUrl}/channels/messages
 ```
 
-`/tools/execute` is where familiar asks the executor to do real work.
+`/tools/execute` is where _familiar_ asks the executor to do real work.
 
-`/channels/messages` is where familiar asks the integration to deliver a user-facing message back to the active channel.
+`/channels/messages` is where _familiar_ asks the integration to deliver a user-facing message back to the active channel.
 
 ## Channel delivery
 
@@ -51,8 +77,18 @@ The normal rule is simple:
 - send back to the linked channel for the active thread
 - identify that channel by `channel.type` and `channel.id`
 
-## Example executor responses
+### Example executor responses
 
 A blocking response can return the final result immediately.
 
-An async response should return a short acknowledgment such as `Action started.` and then call familiar back later with the final result.
+An async response should return a short acknowledgment such as `Action started.` and then call _familiar_ back later with the final result.
+
+```json
+{
+  "ok": true,
+  "state": "accepted",
+  "result": {
+    "summary": "Action started."
+  }
+}
+```

@@ -2,56 +2,70 @@
 
 The core model is intentionally small so humans and AI systems can understand it quickly.
 
-## Account
+## Executor
 
-An account is the owner of the familiar setup.
+An executor is the code or service that _familiar_ triggers after a tool has been selected.
 
-It is the billing, workspace, or team boundary.
+In practice, that usually means:
+
+- a script
+- a small service
+- a workflow runner
+- a built tool behind an API
+
+Examples:
+
+- a script that updates a spreadsheet row
+- a service that starts an import
+- a workflow that sends an onboarding email
+- a tool that creates or updates a record in another system
+
+_familiar_ owns the conversation. The executor owns the side effects.
 
 ## Integration
 
-An integration is one configured familiar connection inside an account.
+An integration is one configured end-to-end _familiar_ setup inside an account.
+
+It is the full configuration for a specific app, bot, instance, or deployment.
 
 An integration:
 
 - has credentials
+- defines which channels belong to it
 - syncs tools
 - identifies end users
 - defines where executor calls are sent
 - defines where channel messages are delivered
 
-## User
-
-`user_id` is the end-user identity inside one integration.
-
-It stays stable across threads and channels for that user.
-
-## Channel
-
-A channel is where the user is speaking from, such as web chat, email, or WhatsApp.
-
-Channels should have:
-
-- `channel.type`
-- `channel.id`
-
-`channel.name` can be included as optional descriptive metadata.
-
 ## Thread
 
-A thread is one conversation record.
+A thread is one context-aware conversation record.
 
-Threads give familiar a place to keep:
+You can think of a thread as the place where one topic, task, or theme keeps its continuity.
+
+That matters because _familiar_ uses threads to keep the right context together instead of mixing unrelated conversations.
+
+Threads give _familiar_ a place to keep:
 
 - the visible conversation
 - thread-local memory
 - the current pinned tool, when one exists
 
-## Executor
+Examples:
 
-An executor is the code or service that familiar triggers after a tool has been selected.
+- one thread for planning a trip
+- one thread for working on a spreadsheet task
+- one thread for debugging an integration issue
 
-familiar owns the conversation. The executor owns the side effects.
+_familiar_ also supports command-based thread management in the product today.
+
+Examples include:
+
+- `:threads`
+- `:thread`
+- `:switch`
+- `:rename`
+- `:delete`
 
 ## Pinned tool
 
@@ -64,4 +78,13 @@ The pinned tool ends when:
 - the user says `that's all for [tool-name]`
 - the user invokes another `@[tool-name]`
 
-familiar does not silently exit the pinned tool state just because a message looks conversational.
+_familiar_ does not silently exit the pinned tool state just because a message looks conversational.
+
+> [!NOTE]
+> **Terminology**
+>
+> `account` is the owner of the _familiar_ setup. It is the billing, workspace, or team boundary.
+>
+> `user_id` is the end-user identity inside one integration and stays stable across threads and channels for that user.
+>
+> `channel` is where the user is speaking from, such as web chat, email, or WhatsApp. It should include `channel.type` and `channel.id`, and may also include `channel.name`.

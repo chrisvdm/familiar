@@ -37,7 +37,7 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
                       {entry.label}
                     </a>
                     {entry.slug === activeDoc?.slug && entry.sections.length > 0 ? (
-                      <ol
+                      <ul
                         className="docs-subnav"
                         aria-label={`${entry.label} sections`}
                       >
@@ -51,7 +51,7 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
                             </a>
                           </li>
                         ))}
-                      </ol>
+                      </ul>
                     ) : null}
                   </li>
                 ))}

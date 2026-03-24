@@ -4,7 +4,14 @@ const docModules = import.meta.glob("../docs-content/*.md", {
   eager: true,
 }) as Record<string, string>;
 
-const DOC_ORDER = ["intro", "concepts", "integrations", "executors", "webhooks"];
+const DOC_ORDER = [
+  "intro",
+  "quickstart",
+  "concepts",
+  "integrations",
+  "executors",
+  "webhooks",
+];
 
 const toSlug = (path: string) =>
   path.split("/").at(-1)?.replace(/\.md$/, "") ?? "";
@@ -72,4 +79,20 @@ export const getDocBySlug = (slug?: string) => {
   }
 
   return docs.find((entry) => entry.slug === normalizedSlug) ?? defaultDoc;
+};
+
+export const getNextDoc = (slug?: string) => {
+  const activeDoc = getDocBySlug(slug);
+
+  if (!activeDoc) {
+    return null;
+  }
+
+  const activeIndex = docs.findIndex((entry) => entry.slug === activeDoc.slug);
+
+  if (activeIndex === -1 || activeIndex === docs.length - 1) {
+    return null;
+  }
+
+  return docs[activeIndex + 1] ?? null;
 };

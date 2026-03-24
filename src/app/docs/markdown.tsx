@@ -4,7 +4,8 @@ import { toAnchorId } from "./content";
 
 const renderInline = (text: string) => {
   const nodes: React.ReactNode[] = [];
-  const pattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/g;
+  const pattern =
+    /`([^`]+)`|\*\*([^*]+)\*\*|_([^_]+)_|\*([^*]+)\*|\[([^\]]+)\]\(([^)]+)\)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -19,10 +20,22 @@ const renderInline = (text: string) => {
           {match[1]}
         </code>,
       );
-    } else if (match[2] && match[3]) {
+    } else if (match[2]) {
       nodes.push(
-        <a key={`${match.index}-link`} href={match[3]} className="docs-link">
+        <strong key={`${match.index}-strong`} className="docs-strong">
           {match[2]}
+        </strong>,
+      );
+    } else if (match[3] || match[4]) {
+      nodes.push(
+        <em key={`${match.index}-em`} className="docs-emphasis">
+          {match[3] || match[4]}
+        </em>,
+      );
+    } else if (match[5] && match[6]) {
+      nodes.push(
+        <a key={`${match.index}-link`} href={match[6]} className="docs-link">
+          {match[5]}
         </a>,
       );
     }
@@ -73,6 +86,47 @@ export const renderMarkdown = (source: string) => {
         <pre key={`code-${blocks.length}`} className="docs-code-block">
           <code data-language={language}>{codeLines.join("\n")}</code>
         </pre>,
+      );
+      continue;
+    }
+
+    if (rawLine.trim().startsWith(">")) {
+      const quoteLines: string[] = [];
+
+      while (index < lines.length && lines[index].trim().startsWith(">")) {
+        quoteLines.push(lines[index].replace(/^\s*>\s?/, ""));
+        index += 1;
+      }
+
+      const noteMatch = quoteLines[0]?.trim().match(/^\[!(NOTE|WARNING)\]$/i);
+      const calloutType = noteMatch?.[1]?.toLowerCase() ?? null;
+      const contentLines = noteMatch ? quoteLines.slice(1) : quoteLines;
+      const paragraphs = contentLines
+        .join("\n")
+        .split(/\n\s*\n/)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+
+      blocks.push(
+        <blockquote
+          key={`quote-${blocks.length}`}
+          className={
+            calloutType === "warning"
+              ? "docs-callout docs-callout-warning"
+              : "docs-callout"
+          }
+        >
+          {calloutType === "warning" ? (
+            <p className="docs-callout-label">
+              Warning
+            </p>
+          ) : null}
+          {paragraphs.map((paragraph, paragraphIndex) => (
+            <p key={`${paragraphIndex}-${paragraph}`} className="docs-callout-text">
+              {renderInline(paragraph)}
+            </p>
+          ))}
+        </blockquote>,
       );
       continue;
     }
