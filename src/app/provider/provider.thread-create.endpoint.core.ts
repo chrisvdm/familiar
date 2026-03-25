@@ -1,13 +1,14 @@
 import type { ProviderUserContext } from "./provider.types.ts";
 import {
-  requireNonEmptyString,
   resolveProviderIdFromInput,
+  resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
 
 type AuthResult =
   | {
       ok: true;
       providerId: string;
+      accountId?: string;
     }
   | {
       ok: false;
@@ -20,7 +21,7 @@ type AuthResult =
 
 type ThreadCreateInput = {
   integration_id?: string;
-  user_id: string;
+  user_id?: string;
   title?: string;
   is_private?: boolean;
   channel: {
@@ -143,7 +144,10 @@ export const createHandleThreadCreateEndpoint = (
         explicitProviderId: input.integration_id,
         authenticatedProviderId: auth.providerId,
       });
-      const userId = requireNonEmptyString(input.user_id, "user_id");
+      const userId = resolveUserIdFromInput({
+        explicitUserId: input.user_id,
+        authenticatedAccountId: auth.accountId,
+      });
 
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({

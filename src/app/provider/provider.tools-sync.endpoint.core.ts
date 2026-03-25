@@ -1,17 +1,19 @@
 import type { ProviderToolSyncInput, ProviderUserContext } from "./provider.types.ts";
 import {
-  requireNonEmptyString,
   resolveProviderIdFromInput,
+  resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
 
 type NormalizedProviderToolSyncInput = ProviderToolSyncInput & {
   integration_id: string;
+  user_id: string;
 };
 
 type AuthResult =
   | {
       ok: true;
       providerId: string;
+      accountId?: string;
     }
   | {
       ok: false;
@@ -143,7 +145,10 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
         explicitProviderId: input.integration_id ?? params.integrationId,
         authenticatedProviderId: auth.providerId,
       });
-      const userId = requireNonEmptyString(input.user_id, "user_id");
+      const userId = resolveUserIdFromInput({
+        explicitUserId: input.user_id,
+        authenticatedAccountId: auth.accountId,
+      });
       const normalizedInput = {
         ...input,
         integration_id: providerId,

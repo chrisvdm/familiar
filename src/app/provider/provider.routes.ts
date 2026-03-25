@@ -27,7 +27,23 @@ export const providerRoutes = [
   route("/api/v1/input", handleConversationInputEndpoint),
   route("/api/v1/conversation/input", handleConversationInputEndpoint),
   route("/api/v1/webhooks/executor", handleExecutorResultEndpoint),
-  route("/api/v1/threads", handleThreadCreateEndpoint),
+  route("/api/v1/threads", async ({ request, params }) => {
+    if (request.method === "POST") {
+      return handleThreadCreateEndpoint({ request });
+    }
+
+    if (request.method === "PATCH" || request.method === "DELETE") {
+      return handleThreadMutationEndpoint({ request, params });
+    }
+
+    const requestId = getRequestId(request);
+    return jsonError({
+      requestId,
+      status: 405,
+      code: "method_not_allowed",
+      message: "Method not allowed.",
+    });
+  }),
   route("/api/v1/users/:userId/threads", async ({ request, params }) => {
     const requestId = getRequestId(request);
 

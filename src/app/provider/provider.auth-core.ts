@@ -15,6 +15,7 @@ type ProviderAuthSuccess = {
   ok: true;
   providerId: string;
   providerConfig: ProviderConfig;
+  accountId?: string;
 };
 
 export type ProviderAuthResult = ProviderAuthFailure | ProviderAuthSuccess;

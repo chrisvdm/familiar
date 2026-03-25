@@ -4,7 +4,7 @@ The core model is intentionally small so humans and AI systems can understand it
 
 ## Executor
 
-An executor is the code or service that _familiar_ triggers after a tool has been selected.
+An executor is the code or service that *familiar* triggers after a tool has been selected.
 
 In practice, that usually means:
 
@@ -20,11 +20,11 @@ Examples:
 - a workflow that sends an onboarding email
 - a tool that creates or updates a record in another system
 
-_familiar_ owns the conversation. The executor owns the side effects.
+*familiar* owns the conversation. The executor owns the side effects.
 
 ## Integration
 
-An integration is one configured end-to-end _familiar_ setup inside an account.
+An integration is one configured end-to-end *familiar* setup inside an account.
 
 It is the full configuration for a specific app, bot, instance, or deployment.
 
@@ -43,9 +43,9 @@ A thread is one context-aware conversation record.
 
 You can think of a thread as the place where one topic, task, or theme keeps its continuity.
 
-That matters because _familiar_ uses threads to keep the right context together instead of mixing unrelated conversations.
+That matters because *familiar* uses threads to keep the right context together instead of mixing unrelated conversations.
 
-Threads give _familiar_ a place to keep:
+Threads give *familiar* a place to keep:
 
 - the visible conversation
 - thread-local memory
@@ -57,7 +57,7 @@ Examples:
 - one thread for working on a spreadsheet task
 - one thread for debugging an integration issue
 
-_familiar_ also supports command-based thread management in the product today.
+*familiar* also supports command-based thread management in the product today.
 
 Examples include:
 
@@ -78,12 +78,12 @@ The pinned tool ends when:
 - the user says `that's all for [tool-name]`
 - the user invokes another `@[tool-name]`
 
-_familiar_ does not silently exit the pinned tool state just because a message looks conversational.
+*familiar* does not silently exit the pinned tool state just because a message looks conversational.
 
 > [!NOTE]
 > **Terminology**
 >
-> `account` is the owner of the _familiar_ setup. It is the billing, workspace, or team boundary.
+> `account` is the owner of the *familiar* setup. It is the billing, workspace, or team boundary.
 >
 > `user_id` is the end-user identity inside one integration and stays stable across threads and channels for that user.
 >

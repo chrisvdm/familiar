@@ -273,3 +273,48 @@ test("tools sync endpoint returns a traced 429 for rate-limited requests", async
     request_id: "req_123",
   });
 });
+
+test("tools sync endpoint can derive user_id from authenticated account on token-scoped route", async () => {
+  let seenUserId: string | undefined;
+
+  const endpoint = createHandleToolsSyncEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      accountId: "acct_123",
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    syncProviderTools: async (input) => {
+      seenUserId = input.user_id;
+      return {
+        synced: true,
+      };
+    },
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const body = createInput();
+  delete body.user_id;
+  delete body.integration_id;
+
+  const response = await endpoint({
+    request: new Request("https://example.com/api/v1/tools/sync", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-token",
+        "X-Request-Id": "req_123",
+      },
+      body: JSON.stringify(body),
+    }),
+    params: {},
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(seenUserId, "acct_123");
+});

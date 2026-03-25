@@ -1,11 +1,12 @@
 import type { ProviderConversationInput, ProviderUserContext } from "./provider.types.ts";
 import {
-  requireNonEmptyString,
   resolveProviderIdFromInput,
+  resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
 
 type NormalizedProviderConversationInput = ProviderConversationInput & {
   integration_id: string;
+  user_id: string;
 };
 
 type AuthResult =
@@ -16,6 +17,7 @@ type AuthResult =
         token: string;
         baseUrl?: string;
       };
+      accountId?: string;
     }
   | {
       ok: false;
@@ -148,7 +150,10 @@ export const createHandleConversationInputEndpoint = (
       const normalizedInput = {
         ...input,
         integration_id: providerId,
-        user_id: requireNonEmptyString(input.user_id, "user_id"),
+        user_id: resolveUserIdFromInput({
+          explicitUserId: input.user_id,
+          authenticatedAccountId: auth.accountId,
+        }),
       } satisfies NormalizedProviderConversationInput;
 
       if (idempotencyKey) {

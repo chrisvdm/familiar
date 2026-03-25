@@ -1,15 +1,15 @@
 # Executors
 
-An executor is the script, service, workflow, or built tool that _familiar_ triggers to do the requested work.
+An executor is the script, service, workflow, or built tool that *familiar* triggers to do the requested work.
 
 In simple terms:
 
-- _familiar_ handles the conversation
+- *familiar* handles the conversation
 - the executor does the thing
 
-## What _familiar_ owns
+## What *familiar* owns
 
-By the time _familiar_ calls an executor, it has already handled:
+By the time *familiar* calls an executor, it has already handled:
 
 - thread continuity
 - memory lookup
@@ -17,7 +17,7 @@ By the time _familiar_ calls an executor, it has already handled:
 - tool selection
 - argument extraction
 
-## What _familiar_ sends
+## What *familiar* sends
 
 By the time the executor receives a request:
 
@@ -31,22 +31,20 @@ That means the executor does not need to repeat routing or conversational extrac
 
 The executor payload does not need to be one rigid global format.
 
-By default, _familiar_ sends a wrapped payload with fields such as:
+By default, *familiar* sends a wrapped payload with fields such as:
 
 - `tool_name`
 - `arguments`
-- `user_id`
 - `thread_id`
 - `context`
 
-But an integration can also define a tool-level `executor_payload` template and have _familiar_ send that custom JSON shape instead.
+But an integration can also define a tool-level `executor_payload` template and have *familiar* send that custom JSON shape instead.
 
 ### Default execution request
 
 ```json
 {
   "integration_id": "integration_a",
-  "user_id": "user_123",
   "thread_id": "thread_abc",
   "tool_name": "spreadsheet.update_row",
   "arguments": {
@@ -64,7 +62,7 @@ But an integration can also define a tool-level `executor_payload` template and 
 
 ### Custom execution request
 
-For a tool that defines `executor_payload`, _familiar_ can instead send something like:
+For a tool that defines `executor_payload`, *familiar* can instead send something like:
 
 ```json
 {
@@ -74,7 +72,7 @@ For a tool that defines `executor_payload`, _familiar_ can instead send somethin
     "row_id": "42"
   },
   "meta": {
-    "user": "user_123"
+    "user": "current-token-user"
   }
 }
 ```
@@ -90,16 +88,16 @@ Executors decide whether a request is:
 
 ## Executor endpoints
 
-_familiar_ currently calls two integration-owned endpoints:
+*familiar* currently calls two integration-owned endpoints:
 
 ```text
 POST {integration.baseUrl}/tools/execute
 POST {integration.baseUrl}/channels/messages
 ```
 
-`/tools/execute` is where _familiar_ asks the executor to do real work.
+`/tools/execute` is where *familiar* asks the executor to do real work.
 
-`/channels/messages` is where _familiar_ asks the integration to deliver a user-facing message back to the active channel.
+`/channels/messages` is where *familiar* asks the integration to deliver a user-facing message back to the active channel.
 
 ## Channel delivery
 
@@ -114,7 +112,7 @@ The normal rule is simple:
 
 A blocking response can return the final result immediately.
 
-An async response should return a short acknowledgment such as `Action started.` and then call _familiar_ back later with the final result.
+An async response should return a short acknowledgment such as `Action started.` and then call *familiar* back later with the final result.
 
 ```json
 {

@@ -13,6 +13,7 @@ const DOC_ORDER = [
   "integrations",
   "executors",
   "webhooks",
+  "local-development",
 ];
 
 const toSlug = (path: string) =>

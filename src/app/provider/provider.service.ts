@@ -70,14 +70,17 @@ import {
 
 type NormalizedProviderConversationInput = ProviderConversationInput & {
   integration_id: string;
+  user_id: string;
 };
 
 type NormalizedProviderExecutorResultInput = ProviderExecutorResultInput & {
   integration_id: string;
+  user_id: string;
 };
 
 type NormalizedProviderToolSyncInput = ProviderToolSyncInput & {
   integration_id: string;
+  user_id: string;
 };
 
 type OpenRouterResponse = {

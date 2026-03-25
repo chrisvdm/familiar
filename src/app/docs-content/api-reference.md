@@ -1,10 +1,10 @@
 # API Reference
 
-This page is the practical API reference for integrating with _familiar_.
+This page is the practical API reference for integrating with *familiar*.
 
 ## Authentication
 
-Every inbound request to _familiar_ should include:
+Every inbound request to *familiar* should include:
 
 ```text
 Authorization: Bearer <api-token>
@@ -23,7 +23,7 @@ Errors should follow one simple shape:
 {
   "error": {
     "code": "invalid_request",
-    "message": "The request payload is missing user_id.",
+    "message": "Invalid request payload.",
     "details": null
   }
 }
@@ -59,6 +59,15 @@ Example response:
   }
 }
 ```
+
+CLI equivalent:
+
+```text
+familiar init
+```
+
+If the CLI is already available in your environment, that command creates the account, issues the first API token, and stores it locally.
+By default it uses `https://texty.chrsvdmrw.workers.dev`.
 
 ## Get account
 
@@ -99,17 +108,16 @@ Endpoint:
 POST /api/v1/input
 ```
 
-Send one normalized message into _familiar_.
+Send one normalized message into *familiar*.
 
 Use this when:
 
 - a user sends a normal message
-- you want _familiar_ to continue a thread
-- you want _familiar_ to decide whether to reply, clarify, or run a tool
+- you want *familiar* to continue a thread
+- you want *familiar* to decide whether to reply, clarify, or run a tool
 
 ```json
 {
-  "user_id": "user_123",
   "thread_id": "thread_abc",
   "input": {
     "kind": "text",
@@ -145,16 +153,15 @@ Use it when:
 - you are still developing and do not want a separate tool-push step yet
 - you want to bootstrap the current account-backed setup from the same request
 
-If `tools` is present, _familiar_ stores those tools for that user in the current token-backed setup and then uses them for routing.
+If `tools` is present, *familiar* stores those tools in the current token-backed setup and then uses them for routing.
 
-If `tools` is omitted, _familiar_ uses the tools already stored for that user.
+If `tools` is omitted, *familiar* uses the tools already stored for the current token-backed setup.
 
 Example response:
 
 ```json
 {
   "integration_id": "integration_a",
-  "user_id": "user_123",
   "thread_id": "thread_abc",
   "messages": [
     {
@@ -185,23 +192,23 @@ Example response:
 Endpoint:
 
 ```text
-POST /api/v1/users/:user_id/tools/sync
+POST /api/v1/tools/sync
 ```
 
-Tell _familiar_ which tools a user is allowed to use.
+Tell *familiar* which tools the current token-backed setup should use.
+
+Account creation already creates the current default setup behind the token. This endpoint configures that setup. It does not create a new one.
 
 Use this when:
 
 - a new integration is being set up
-- a user gains or loses access to tools
 - a tool schema changes
 
 ```shell
-curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/users/user_123/tools/sync \
+curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_123",
     "tools": [
       {
         "tool_name": "spreadsheet.update_row",
@@ -221,12 +228,16 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/users/user_123/tools/syn
   }'
 ```
 
+Compatibility routes still exist:
+
+- `POST /api/v1/users/:user_id/tools/sync`
+- `POST /api/v1/integrations/:integration_id/users/:user_id/tools/sync`
+
 Example response:
 
 ```json
 {
   "integration_id": "integration_a",
-  "user_id": "user_123",
   "synced_tools": 1,
   "status": "ok"
 }
@@ -251,7 +262,6 @@ Use this when:
 
 ```json
 {
-  "user_id": "user_123",
   "title": "Q2 planning"
 }
 ```
@@ -276,7 +286,7 @@ Use this when:
 Endpoint:
 
 ```text
-PATCH /api/v1/threads/:thread_id
+PATCH /api/v1/threads
 ```
 
 Update thread metadata.
@@ -287,8 +297,15 @@ Current use:
 
 ```json
 {
+  "thread_id": "thread_abc",
   "title": "Client spreadsheet cleanup"
 }
+```
+
+Compatibility route:
+
+```text
+PATCH /api/v1/threads/:thread_id
 ```
 
 ## Delete a thread
@@ -296,7 +313,7 @@ Current use:
 Endpoint:
 
 ```text
-DELETE /api/v1/threads/:thread_id
+DELETE /api/v1/threads
 ```
 
 Delete a thread.
@@ -305,6 +322,18 @@ Use this when:
 
 - the user wants to remove an old conversation
 - a thread was created by mistake
+
+```json
+{
+  "thread_id": "thread_abc"
+}
+```
+
+Compatibility route:
+
+```text
+DELETE /api/v1/threads/:thread_id
+```
 
 ## Read shared memory
 
@@ -318,7 +347,7 @@ Read the shared memory for one integration and user.
 
 Use this when:
 
-- you want to inspect what _familiar_ remembers across normal conversations
+- you want to inspect what *familiar* remembers across normal conversations
 
 ## Read thread memory
 
@@ -333,7 +362,7 @@ Read memory for one specific thread.
 Use this when:
 
 - you want to inspect thread-local context
-- you are debugging how _familiar_ is carrying a task forward
+- you are debugging how *familiar* is carrying a task forward
 
 ## Receive async executor results
 
@@ -368,11 +397,11 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
 ```
 
 > [!NOTE]
-> If you retry the callback, send `Idempotency-Key`. If you do not send one, _familiar_ can fall back to `result.execution_id` when present.
+> If you retry the callback, send `Idempotency-Key`. If you do not send one, *familiar* can fall back to `result.execution_id` when present.
 
 ## Executor-side endpoints
 
-These are not _familiar_ endpoints. They are endpoints your integration exposes so _familiar_ can talk to your system.
+These are not *familiar* endpoints. They are endpoints your integration exposes so *familiar* can talk to your system.
 
 ## Run a tool
 
@@ -382,13 +411,13 @@ Endpoint:
 POST {integration.baseUrl}/tools/execute
 ```
 
-_familiar_ calls this when it has already chosen a tool and prepared the arguments.
+*familiar* calls this when it has already chosen a tool and prepared the arguments.
 
 Use case:
 
 - a user asks to update a spreadsheet row
-- _familiar_ chooses `spreadsheet.update_row`
-- _familiar_ sends structured arguments to your executor
+- *familiar* chooses `spreadsheet.update_row`
+- *familiar* sends structured arguments to your executor
 
 Default payload:
 
@@ -412,7 +441,7 @@ Default payload:
 ```
 
 > [!NOTE]
-> This default body shape is not the only option. A tool can define `executor_payload` during tool sync, and _familiar_ will send that rendered JSON body instead.
+> This default body shape is not the only option. A tool can define `executor_payload` during tool sync, and *familiar* will send that rendered JSON body instead.
 
 Example custom payload:
 
@@ -441,13 +470,13 @@ Endpoint:
 POST {integration.baseUrl}/channels/messages
 ```
 
-_familiar_ calls this when it wants your integration to deliver a user-facing message back to the active channel.
+*familiar* calls this when it wants your integration to deliver a user-facing message back to the active channel.
 
 Use case:
 
 - an async executor result arrives
-- _familiar_ appends it to the thread
-- _familiar_ asks the integration to deliver that message to the right channel
+- *familiar* appends it to the thread
+- *familiar* asks the integration to deliver that message to the right channel
 
 Example payload:
 
@@ -487,7 +516,7 @@ The main status codes you should expect are:
 The API gets much easier to understand if you think of it like this:
 
 1. Sync tools.
-2. Send text into _familiar_.
-3. Let _familiar_ decide what should happen.
+2. Send text into *familiar*.
+3. Let *familiar* decide what should happen.
 4. Let your executor do the work.
 5. If needed, send the final result back later with the executor webhook.

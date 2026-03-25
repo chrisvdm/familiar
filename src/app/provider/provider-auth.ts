@@ -136,6 +136,7 @@ export const authenticateProviderRequest = ({
       providerConfig: {
         token,
       },
+      accountId: accountAuth.account.id,
     };
   })();
 };

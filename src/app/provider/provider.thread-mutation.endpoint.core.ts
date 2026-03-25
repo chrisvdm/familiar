@@ -2,12 +2,14 @@ import type { ProviderUserContext } from "./provider.types.ts";
 import {
   requireNonEmptyString,
   resolveProviderIdFromInput,
+  resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
 
 type AuthResult =
   | {
       ok: true;
       providerId: string;
+      accountId?: string;
     }
   | {
       ok: false;
@@ -20,7 +22,8 @@ type AuthResult =
 
 type ThreadMutationInput = {
   integration_id?: string;
-  user_id: string;
+  user_id?: string;
+  thread_id?: string;
   title?: string;
 };
 
@@ -112,7 +115,7 @@ export const createHandleThreadMutationEndpoint = (
   }: {
     request: Request;
     params: {
-      threadId: string;
+      threadId?: string;
     };
   }) => {
     const requestId = deps.getRequestId(request);
@@ -148,12 +151,19 @@ export const createHandleThreadMutationEndpoint = (
         explicitProviderId: input.integration_id,
         authenticatedProviderId: auth.providerId,
       });
-      const userId = requireNonEmptyString(input.user_id, "user_id");
+      const userId = resolveUserIdFromInput({
+        explicitUserId: input.user_id,
+        authenticatedAccountId: auth.accountId,
+      });
+      const threadId = requireNonEmptyString(
+        params.threadId ?? input.thread_id,
+        "thread_id",
+      );
 
       const storageKey = idempotencyKey
         ? deps.buildIdempotencyKey({
             method: request.method,
-            path: `/api/v1/threads/${params.threadId}`,
+            path: `/api/v1/threads/${threadId}`,
             idempotencyKey,
           })
         : null;
@@ -202,7 +212,7 @@ export const createHandleThreadMutationEndpoint = (
         const result = await deps.renameProviderThread({
           providerId,
           userId,
-          threadId: params.threadId,
+          threadId,
           title: input.title ?? "",
           requestId,
         });
@@ -231,7 +241,7 @@ export const createHandleThreadMutationEndpoint = (
       const result = await deps.deleteProviderThread({
         providerId,
         userId,
-        threadId: params.threadId,
+        threadId,
         requestId,
       });
 

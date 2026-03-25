@@ -30,8 +30,6 @@ Current public model:
   - machine credential
   - identifies the account
   - identifies the current default setup behind that account
-- `user_id`
-  - conversation identity inside the current setup
 - `channel`
   - where the user is speaking from
 - `thread_id`
@@ -83,15 +81,17 @@ Supported retrieval modes in practice:
 
 The current MVP supports two tool setup paths:
 
-1. sync tools separately with `POST /api/v1/users/:user_id/tools/sync`
+1. sync tools separately with `POST /api/v1/tools/sync`
 2. include optional `tools` directly on `POST /api/v1/input`
 
 If `tools` is supplied on input:
 
-- store those tools for that user in the current token-backed setup
+- store those tools in the current token-backed setup
 - immediately use them for that request
 
 This is a bootstrap convenience while admin/setup flows are still evolving.
+
+`POST /api/v1/tools/sync` also configures that same token-backed setup. It does not create the setup itself.
 
 Long term, the hosted registry remains the intended source of truth.
 
@@ -243,7 +243,7 @@ Behavior:
 
 ### 4. Sync tools
 
-`POST /api/v1/users/:user_id/tools/sync`
+`POST /api/v1/tools/sync`
 
 Headers:
 
@@ -281,6 +281,7 @@ Rules:
 - authenticated token resolves the active setup
 - the endpoint replaces or upserts the tool set for that user in that setup
 - response may still include `integration_id` as the resolved backing setup id
+- compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 
 ### 5. Thread endpoints
 

@@ -260,3 +260,42 @@ test("executor result endpoint falls back to result.execution_id for retry repla
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("X-Idempotent-Replay"), "true");
 });
+
+test("executor result endpoint can derive user_id from authenticated account", async () => {
+  let seenUserId: string | undefined;
+
+  const endpoint = createHandleExecutorResultEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      accountId: "acct_123",
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest,
+    readIdempotencyReplay,
+    storeIdempotencyReplay,
+    handleProviderExecutorResult: async ({ input }) => {
+      seenUserId = input.user_id;
+      return {
+        status: "ok",
+      };
+    },
+  });
+
+  const body = createInput();
+  delete body.user_id;
+
+  const response = await endpoint({
+    request: createCompletionRequest({
+      body,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(seenUserId, "acct_123");
+});

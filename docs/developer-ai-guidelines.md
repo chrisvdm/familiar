@@ -13,6 +13,7 @@ Update it when the team adopts a new standing convention, documentation rule, or
 - Use worklogs to capture scope, completed work, results, follow-ups, and notable constraints for a single task.
 - Keep the project brief in `docs/project-brief.md` updated when the product direction or architecture materially changes.
 - Do not use chat history as the only source of truth for project decisions.
+- Write user-facing docs and product interactions so they are understandable to a new junior developer who may not already know technical terms or CLI conventions.
 
 ## Product Rules
 

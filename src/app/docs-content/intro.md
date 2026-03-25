@@ -1,12 +1,12 @@
-# _familiar_
+# *familiar*
 
-_familiar_ is a hosted conversation layer for executable systems.
+*familiar* is a hosted conversation layer for executable systems.
 
-It sits between a person and the code that does the work. _familiar_ keeps the thread, remembers useful context, asks follow-up questions when something is missing, chooses the right tool, and sends structured input to the executor behind that tool.
+It sits between a person and the code that does the work. *familiar* keeps the thread, remembers useful context, asks follow-up questions when something is missing, chooses the right tool, and sends structured input to the executor behind that tool.
 
 ## Why it exists
 
-Without _familiar_, every app or workflow that wants a conversational interface has to rebuild the same pieces:
+Without *familiar*, every app or workflow that wants a conversational interface has to rebuild the same pieces:
 
 - thread handling
 - context and memory
@@ -15,11 +15,11 @@ Without _familiar_, every app or workflow that wants a conversational interface 
 - channel continuity
 - user-facing replies
 
-_familiar_ is meant to own those parts once so connected systems can focus on useful work.
+*familiar* is meant to own those parts once so connected systems can focus on useful work.
 
 ## What it does
 
-_familiar_ currently handles:
+*familiar* currently handles:
 
 - normalized text input
 - thread continuity
@@ -34,24 +34,23 @@ _familiar_ currently handles:
 
 Every user message follows the same shape:
 
-1. _familiar_ receives normalized text.
-2. _familiar_ resolves the correct thread and context.
-3. _familiar_ decides whether to reply directly, ask a follow-up, or run a tool.
-4. If work is needed, _familiar_ calls the executor for the selected tool.
-5. _familiar_ stores the turn and returns the user-facing result.
+1. *familiar* receives normalized text.
+2. *familiar* resolves the correct thread and context.
+3. *familiar* decides whether to reply directly, ask a follow-up, or run a tool.
+4. If work is needed, *familiar* calls the executor for the selected tool.
+5. *familiar* stores the turn and returns the user-facing result.
 
 ## Input model
 
-_familiar_ only receives text.
+*familiar* only receives text.
 
-If your product supports voice notes or speech input, normalize that upstream before sending it to _familiar_. Large transcription blocks are fine as long as they arrive as plain `input.text`.
+If your product supports voice notes or speech input, normalize that upstream before sending it to *familiar*. Large transcription blocks are fine as long as they arrive as plain `input.text`.
 
 ### Example input
 
 ```json
 {
   "integration_id": "integration_a",
-  "user_id": "user_123",
   "input": {
     "kind": "text",
     "text": "Start the Acme import"

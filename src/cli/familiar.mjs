@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const DEFAULT_BASE_URL =
-  process.env.FAMILIAR_BASE_URL?.trim() || "http://localhost:5173";
+  process.env.FAMILIAR_BASE_URL?.trim() || "https://texty.chrsvdmrw.workers.dev";
 const CONFIG_DIR = path.join(os.homedir(), ".codex", "familiar");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 

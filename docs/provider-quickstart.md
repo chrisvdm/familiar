@@ -12,8 +12,6 @@ Core terms:
   - the configured familiar connection for one app, bot, or deployment
 - `executor`
   - the script, service, or workflow runner familiar triggers to do real work
-- `user_id`
-  - the end user identity within an integration
 - `channel`
   - the communication surface the user is speaking through, identified by `channel.type` and `channel.id`
 
@@ -36,8 +34,7 @@ familiar handles the conversation. Your code handles the work.
 To connect something to familiar in the current MVP, you need three things:
 
 1. an API token
-2. a `user_id`
-3. a URL familiar can call when work should run
+2. a URL familiar can call when work should run
 
 That is enough for a first working setup.
 
@@ -60,14 +57,13 @@ That token is the main machine credential in the current MVP.
 
 ## Step 2: Sync Allowed Tools
 
-Tell familiar which tools a given user is allowed to use.
+Tell familiar which tools the current setup should use.
 
 ```shell
-curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/users/user_123/tools/sync \
+curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/tools/sync \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_123",
     "tools": [
       {
         "tool_name": "spreadsheet.update_row",
@@ -87,7 +83,7 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/users/user_123/tools/syn
   }'
 ```
 
-This gives familiar permission to reason over that tool for that setup/user pair.
+This gives familiar permission to reason over that tool for the current setup.
 
 Current MVP shortcut:
 
@@ -103,7 +99,6 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/input \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_123",
     "input": {
       "kind": "text",
       "text": "Update the sales sheet and mark Acme as contacted"
@@ -186,7 +181,6 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_123",
     "thread_id": "thread_abc",
     "result": {
       "execution_id": "exec_123",
@@ -198,7 +192,6 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
 
 Keep this payload minimal unless you need more tracing:
 
-- `user_id`
 - `thread_id`
 - `result.execution_id` when you have one
 - `result.state`

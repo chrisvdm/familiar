@@ -16,7 +16,7 @@ const createRequest = ({
 }: {
   body: {
     integration_id: string;
-    user_id: string;
+    user_id?: string;
     title?: string;
     is_private?: boolean;
     channel: {
@@ -39,7 +39,7 @@ const createRequest = ({
 
 const createInput = () => ({
   integration_id: "provider_a",
-  user_id: "user_123",
+  user_id: "user_123" as string | undefined,
   title: "Work thread",
   is_private: false,
   channel: {
@@ -166,4 +166,38 @@ test("thread create endpoint rejects idempotency conflicts", async () => {
     },
     request_id: "req_123",
   });
+});
+
+test("thread create endpoint can derive user_id from authenticated account", async () => {
+  let seenUserId: string | undefined;
+
+  const endpoint = createHandleThreadCreateEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      accountId: "acct_123",
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    createProviderThread: async ({ userId }) => {
+      seenUserId = userId;
+      return {
+        thread_id: "thread_123",
+      };
+    },
+  });
+
+  const body = createInput();
+  delete body.user_id;
+
+  const response = await endpoint({
+    request: createRequest({ body }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(seenUserId, "acct_123");
 });

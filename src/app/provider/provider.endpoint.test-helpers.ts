@@ -47,6 +47,7 @@ export const sharedEndpointDeps = {
 export const okAuth = () => ({
   ok: true as const,
   providerId: "provider_a",
+  accountId: undefined,
 });
 
 export const createReplayContext = ({

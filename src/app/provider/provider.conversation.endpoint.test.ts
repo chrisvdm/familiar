@@ -379,3 +379,43 @@ test("conversation endpoint returns a traced 429 for rate-limited requests", asy
     request_id: "req_123",
   });
 });
+
+test("conversation endpoint can derive user_id from authenticated account", async () => {
+  let seenUserId: string | undefined;
+
+  const endpoint = createHandleConversationInputEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      accountId: "acct_123",
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    handleProviderConversationInput: async ({ input }) => {
+      seenUserId = input.user_id;
+      return {
+        state: "completed",
+      };
+    },
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const body = createInput();
+  delete body.user_id;
+
+  const response = await endpoint({
+    request: createConversationRequest({
+      body,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(seenUserId, "acct_123");
+});

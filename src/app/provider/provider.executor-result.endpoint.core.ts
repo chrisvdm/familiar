@@ -5,10 +5,12 @@ import type {
 import {
   requireNonEmptyString,
   resolveProviderIdFromInput,
+  resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
 
 type NormalizedProviderExecutorResultInput = ProviderExecutorResultInput & {
   integration_id: string;
+  user_id: string;
 };
 
 type AuthResult =
@@ -19,6 +21,7 @@ type AuthResult =
         token: string;
         baseUrl?: string;
       };
+      accountId?: string;
     }
   | {
       ok: false;
@@ -140,7 +143,10 @@ export const createHandleExecutorResultEndpoint = (
       const normalizedInput = {
         ...input,
         integration_id: providerId,
-        user_id: requireNonEmptyString(input.user_id, "user_id"),
+        user_id: resolveUserIdFromInput({
+          explicitUserId: input.user_id,
+          authenticatedAccountId: auth.accountId,
+        }),
         thread_id: requireNonEmptyString(input.thread_id, "thread_id"),
       } satisfies NormalizedProviderExecutorResultInput;
 

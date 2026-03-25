@@ -147,7 +147,7 @@ Compatibility routes still exist for integration-scoped paths, but they are not 
 
 There are two valid MVP ways to provide tools:
 
-1. `POST /api/v1/users/:user_id/tools/sync`
+1. `POST /api/v1/tools/sync`
 2. include optional `tools` on `POST /api/v1/input`
 
 The second path exists to reduce admin/setup friction during development.

@@ -1,22 +1,45 @@
 # Quickstart
 
-This is the smallest useful path for getting _familiar_ working with your own executor.
+This is the smallest useful path for getting *familiar* working with your own executor.
+
+## Step 0: Create an account
+
+Use either the API or the CLI.
+
+### API
+
+```shell
+curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/accounts \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+That returns your first API token.
+
+### CLI
+
+If you already have the familiar CLI available:
+
+```shell
+familiar init
+```
+
+That creates the account, issues the first API token, and stores it locally.
 
 ## What you need
 
-You need three things:
+You need two things:
 
-- a bearer token for the current _familiar_ setup
-- a `user_id` from your own app
-- a base URL where _familiar_ can call your executor
+- a bearer token for the current *familiar* setup
+- a base URL where *familiar* can call your executor
 
-For this guide, think of the token as identifying one current _familiar_ setup for one app or deployment:
+For this guide, think of the token as identifying one current *familiar* setup for one app or deployment:
 
 - the user-facing channel
-- the _familiar_ conversation layer
+- the *familiar* conversation layer
 - the executor endpoints that do the work
 
-In local development, that configuration can look like:
+If you are working on the *familiar* codebase locally, that configuration can look like:
 
 ```text
 TEXTY_EXECUTOR_CONFIG='{"integration_a":{"token":"dev-token","baseUrl":"http://localhost:8787"}}'
@@ -25,16 +48,17 @@ TEXTY_EXECUTOR_CONFIG='{"integration_a":{"token":"dev-token","baseUrl":"http://l
 > [!NOTE]
 > The current local development config still uses an internal setup key such as `integration_a` inside `TEXTY_EXECUTOR_CONFIG`. That is an implementation detail. The public API happy path can now derive the active setup from the bearer token.
 
-## Step 1: Sync tools with _familiar_
+## Step 1: Sync tools with *familiar*
 
-Sync the tools a user is allowed to use.
+Sync the tools for the current token-backed setup.
+
+The setup already exists behind your token after account creation. This call configures that setup. It does not create a new one.
 
 ```shell
-curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/users/user_123/tools/sync \
+curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_123",
     "tools": [
       {
         "tool_name": "countdown.start",
@@ -52,16 +76,18 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/users/user_123/tools/syn
   }'
 ```
 
-## Step 2: Send text input to _familiar_
+The token-scoped route is the primary MVP path.
+For now, the authenticated token is enough for the single-user happy path.
 
-Send normalized text into _familiar_.
+## Step 2: Send text input to *familiar*
+
+Send normalized text into *familiar*.
 
 ```shell
 curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_123",
     "input": {
       "kind": "text",
       "text": "Start a countdown for the deployment check"
@@ -75,7 +101,7 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/input \
 
 ## Step 3: Expose your executor endpoint
 
-Expose an executor endpoint that _familiar_ can call.
+Expose an executor endpoint that *familiar* can call.
 
 ```text
 POST {integration.baseUrl}/tools/execute
@@ -84,14 +110,12 @@ POST {integration.baseUrl}/tools/execute
 The executor receives structured tool input rather than raw user text.
 
 > [!NOTE]
-> The current default executor request body is wrapped and includes fields like `tool_name`, `arguments`, and `context`. If a tool defines `executor_payload`, _familiar_ can send a different JSON body shape instead.
+> The current default executor request body is wrapped and includes fields like `tool_name`, `arguments`, and `context`. If a tool defines `executor_payload`, *familiar* can send a different JSON body shape instead.
 
 ### Example execution payload
 
 ```json
 {
-  "integration_id": "integration_a",
-  "user_id": "user_123",
   "thread_id": "thread_abc",
   "tool_name": "countdown.start",
   "arguments": {
@@ -144,7 +168,6 @@ curl -X POST https://texty.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: exec_123" \
   -d '{
-    "user_id": "user_123",
     "thread_id": "thread_abc",
     "result": {
       "execution_id": "exec_123",
