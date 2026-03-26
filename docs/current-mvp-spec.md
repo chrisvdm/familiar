@@ -206,6 +206,7 @@ Request:
     {
       "tool_name": "spreadsheet.update_row",
       "description": "Update a spreadsheet row",
+      "input_mode": "processed",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -279,6 +280,9 @@ Rules:
 
 - authenticated token resolves the active setup
 - the endpoint replaces or upserts the tool set for that user in that setup
+- `input_mode` defaults to `processed`
+- `input_mode = raw` means familiar passes the captured user text through verbatim
+- raw tools must define exactly one string field in `input_schema`
 - response may still include `integration_id` as the resolved backing setup id
 - compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 

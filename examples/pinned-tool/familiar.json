@@ -6,6 +6,7 @@
     {
       "tool_name": "notes.capture",
       "description": "Capture verbatim text into the shared notes stream. Use this when the user wants to dictate notes or capture a long block of text.",
+      "input_mode": "raw",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -20,6 +21,7 @@
     {
       "tool_name": "ideas.capture",
       "description": "Capture verbatim text into the ideas stream. Use this when the user wants to dictate ideas or brainstorm fragments.",
+      "input_mode": "raw",
       "input_schema": {
         "type": "object",
         "properties": {

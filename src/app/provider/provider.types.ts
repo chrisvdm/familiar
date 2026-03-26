@@ -20,6 +20,7 @@ export type AllowedTool = {
   toolName: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  inputMode?: "processed" | "raw";
   executorPayload?: unknown;
   policy: Record<string, unknown>;
   status: "active" | "disabled";
@@ -87,6 +88,7 @@ export type ProviderConversationInput = {
     tool_name: string;
     description: string;
     input_schema: Record<string, unknown>;
+    input_mode?: "processed" | "raw";
     executor_payload?: unknown;
     policy?: Record<string, unknown>;
     status?: "active" | "disabled";
@@ -114,6 +116,7 @@ export type ProviderToolSyncInput = {
     tool_name: string;
     description: string;
     input_schema: Record<string, unknown>;
+    input_mode?: "processed" | "raw";
     executor_payload?: unknown;
     policy?: Record<string, unknown>;
     status?: "active" | "disabled";

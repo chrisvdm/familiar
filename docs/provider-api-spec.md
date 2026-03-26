@@ -294,6 +294,10 @@ Shortcut note:
 - explicit tool shortcuts such as `@tool-name` are still just text inside `input.text`
 - familiar still processes the full `input.text` for context and memory
 - each invoked tool receives only the text segment from its invocation until the next invocation, an explicit delimiter like `@@` or `@end`, or end of message
+- tools declare `input_mode` during sync:
+  - `processed` is the default
+  - `raw` means familiar passes the captured text through verbatim
+  - raw tools must define exactly one string field in `input_schema`
 - familiar does not need a separate voice or shortcut input type on the API surface
 
 Rate limiting:

@@ -214,6 +214,7 @@ curl -X POST https://familiar.chrsvdmrw.dev/api/v1/tools/sync \
       {
         "tool_name": "spreadsheet.update_row",
         "description": "Update a spreadsheet row",
+        "input_mode": "processed",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -228,6 +229,12 @@ curl -X POST https://familiar.chrsvdmrw.dev/api/v1/tools/sync \
     ]
   }'
 ```
+
+`input_mode` controls how *familiar* prepares tool arguments:
+
+- `processed` is the default
+- `raw` passes the captured user text through verbatim
+- raw tools must define exactly one string field in `input_schema`
 
 Compatibility routes still exist:
 

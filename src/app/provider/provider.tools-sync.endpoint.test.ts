@@ -47,6 +47,26 @@ const createInput = (): ProviderToolSyncInput => ({
   ],
 });
 
+const createRawInput = (): ProviderToolSyncInput => ({
+  integration_id: "provider_a",
+  user_id: "user_123",
+  tools: [
+    {
+      tool_name: "notes.capture",
+      description: "Capture notes",
+      input_mode: "raw",
+      input_schema: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+          },
+        },
+      },
+    },
+  ],
+});
+
 test("tools sync endpoint includes request tracing on success", async () => {
   const endpoint = createHandleToolsSyncEndpoint({
     ...sharedEndpointDeps,
@@ -120,6 +140,39 @@ test("tools sync endpoint can derive integration_id from auth on token-scoped ro
 
   assert.equal(response.status, 200);
   assert.equal(seenIntegrationId, "provider_a");
+});
+
+test("tools sync endpoint forwards input_mode on tools", async () => {
+  let seenInputMode: string | undefined;
+
+  const endpoint = createHandleToolsSyncEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: okAuth,
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    syncProviderTools: async (input) => {
+      seenInputMode = input.tools[0]?.input_mode;
+      return {
+        synced: true,
+      };
+    },
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const response = await endpoint({
+    request: createRequest({ body: createRawInput() }),
+    params: {
+      integrationId: "provider_a",
+      userId: "user_123",
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(seenInputMode, "raw");
 });
 
 test("tools sync endpoint replays idempotent responses", async () => {

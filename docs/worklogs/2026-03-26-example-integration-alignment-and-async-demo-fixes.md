@@ -29,6 +29,11 @@ Make the public example integrations reflect the current token-backed MVP contra
   - chained inline tool mentions execute as separate tool calls instead of one tool swallowing later invocations
   - unknown `@mentions` are ignored by the tool segmenter so tool payloads can still include agent-like addresses that familiar does not own
   - pinned mode can be exited with either `that's all for ...` or `that's enough ...`
+- added explicit tool `input_mode` handling:
+  - `processed` remains the default
+  - `raw` passes the captured user text through verbatim
+  - raw tools must define exactly one string field in `input_schema`
+  - this applies the same way in normal routing and explicit `@tool-name` invocation flows
 
 ## Result
 

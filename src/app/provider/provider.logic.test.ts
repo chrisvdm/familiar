@@ -10,6 +10,8 @@ import {
   determineMockExecutionState,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
+  getRawToolStringFieldName,
+  getToolInputMode,
   getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
@@ -19,6 +21,7 @@ import {
   parseToolShortcutInvocations,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
+  validateToolInputMode,
 } from "./provider.logic.ts";
 
 test("private threads do not expose shared global memory", () => {
@@ -230,6 +233,47 @@ test("tool shortcut invocation resolves an active tool and keeps the raw remaind
 
   assert.equal(result?.tool.toolName, "todos.add");
   assert.equal(result?.remainder, "buy milk and eggs");
+});
+
+test("tool input mode defaults to processed", () => {
+  assert.equal(
+    getToolInputMode({
+      inputMode: undefined,
+    }),
+    "processed",
+  );
+});
+
+test("raw input mode requires exactly one string field", () => {
+  assert.throws(
+    () =>
+      validateToolInputMode({
+        toolName: "notes.capture",
+        inputMode: "raw",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            body: { type: "string" },
+          },
+        },
+      }),
+    /input_mode raw/,
+  );
+});
+
+test("raw input mode resolves the single string field", () => {
+  assert.equal(
+    getRawToolStringFieldName({
+      inputSchema: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+        },
+      },
+    }),
+    "message",
+  );
 });
 
 test("tool shortcut invocation still accepts bracket form for compatibility", () => {
@@ -598,6 +642,32 @@ test("shortcut arguments preserve a verbatim string for array tools", () => {
 
   assert.deepEqual(args, {
     todo_items: ["buy milk and eggs"],
+  });
+});
+
+test("shortcut arguments use the raw string field for raw tools", () => {
+  const args = buildShortcutToolArguments({
+    tool: {
+      toolName: "notes.capture",
+      description: "Capture notes",
+      inputSchema: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+          },
+        },
+      },
+      inputMode: "raw",
+      executorPayload: undefined,
+      policy: {},
+      status: "active",
+    },
+    content: "I live in a small town",
+  });
+
+  assert.deepEqual(args, {
+    message: "I live in a small town",
   });
 });
 

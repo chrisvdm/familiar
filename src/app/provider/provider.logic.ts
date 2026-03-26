@@ -284,6 +284,52 @@ export const parseToolShortcutInvocations = ({
   return invocations;
 };
 
+export const getToolInputMode = (tool: {
+  inputMode?: "processed" | "raw";
+}) => tool.inputMode ?? "processed";
+
+export const getRawToolStringFieldName = (tool: {
+  inputSchema?: Record<string, unknown>;
+}) => {
+  const properties =
+    tool.inputSchema &&
+    typeof tool.inputSchema === "object" &&
+    tool.inputSchema.properties &&
+    typeof tool.inputSchema.properties === "object"
+      ? (tool.inputSchema.properties as Record<string, unknown>)
+      : {};
+
+  const stringFields = Object.entries(properties)
+    .filter(([, value]) => {
+      if (!value || typeof value !== "object") {
+        return false;
+      }
+
+      return (value as { type?: unknown }).type === "string";
+    })
+    .map(([fieldName]) => fieldName);
+
+  return stringFields.length === 1 ? stringFields[0] : null;
+};
+
+export const validateToolInputMode = (tool: {
+  toolName: string;
+  inputMode?: "processed" | "raw";
+  inputSchema?: Record<string, unknown>;
+}) => {
+  const inputMode = getToolInputMode(tool);
+
+  if (inputMode !== "raw") {
+    return;
+  }
+
+  if (!getRawToolStringFieldName(tool)) {
+    throw new Error(
+      `Tool ${tool.toolName} uses input_mode raw but does not define exactly one string field in input_schema.`,
+    );
+  }
+};
+
 export const parseToolShortcutInvocation = ({
   content,
   tools,
@@ -332,6 +378,18 @@ export const buildShortcutToolArguments = ({
   tool: AllowedTool;
   content: string;
 }) => {
+  if (getToolInputMode(tool) === "raw") {
+    const rawFieldName = getRawToolStringFieldName(tool);
+
+    if (!rawFieldName) {
+      return {};
+    }
+
+    return {
+      [rawFieldName]: content,
+    };
+  }
+
   const properties = getToolSchemaProperties(tool);
   const propertyEntries = Object.entries(properties).filter(([, value]) =>
     Boolean(value && typeof value === "object"),

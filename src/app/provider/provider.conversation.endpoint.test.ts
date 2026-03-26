@@ -198,6 +198,7 @@ test("conversation endpoint forwards optional tools on input", async () => {
           {
             tool_name: "calendar.create_event",
             description: "Create a calendar event",
+            input_mode: "raw",
             input_schema: {
               type: "object",
               properties: {
@@ -215,6 +216,7 @@ test("conversation endpoint forwards optional tools on input", async () => {
     {
       tool_name: "calendar.create_event",
       description: "Create a calendar event",
+      input_mode: "raw",
       input_schema: {
         type: "object",
         properties: {

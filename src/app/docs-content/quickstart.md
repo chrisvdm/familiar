@@ -53,6 +53,7 @@ curl -X POST https://familiar.chrsvdmrw.dev/api/v1/tools/sync \
       {
         "tool_name": "countdown.start",
         "description": "Start a 10 second countdown",
+        "input_mode": "processed",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -65,6 +66,8 @@ curl -X POST https://familiar.chrsvdmrw.dev/api/v1/tools/sync \
     ]
   }'
 ```
+
+Use `input_mode: "raw"` for tools that want the exact captured user text instead of extracted arguments. Raw tools must define exactly one string field in `input_schema`.
 
 The token-scoped route is the primary MVP path.
 For now, the authenticated token is enough for the single-user happy path.

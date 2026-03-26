@@ -52,6 +52,8 @@ import {
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
+  getRawToolStringFieldName,
+  getToolInputMode,
   getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
@@ -63,6 +65,7 @@ import {
   splitTodoItemsFromText,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
   TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
+  validateToolInputMode,
 } from "./provider.logic";
 import {
   loadOrCreateProviderUserContext,
@@ -211,19 +214,27 @@ const normalizeAllowedTools = (
     tool_name: string;
     description: string;
     input_schema: Record<string, unknown>;
+    input_mode?: "processed" | "raw";
     executor_payload?: unknown;
     policy?: Record<string, unknown>;
     status?: "active" | "disabled";
   }>,
 ): AllowedTool[] =>
-  tools.map((tool) => ({
-    toolName: tool.tool_name,
-    description: tool.description,
-    inputSchema: tool.input_schema,
-    executorPayload: tool.executor_payload,
-    policy: tool.policy ?? {},
-    status: tool.status ?? "active",
-  }));
+  tools.map((tool) => {
+    const normalizedTool = {
+      toolName: tool.tool_name,
+      description: tool.description,
+      inputSchema: tool.input_schema,
+      inputMode: tool.input_mode ?? "processed",
+      executorPayload: tool.executor_payload,
+      policy: tool.policy ?? {},
+      status: tool.status ?? "active",
+    } satisfies AllowedTool;
+
+    validateToolInputMode(normalizedTool);
+
+    return normalizedTool;
+  });
 
 export const WEB_PROVIDER_ID = "texty_web";
 
@@ -742,7 +753,7 @@ const formatAllowedTools = (tools: AllowedTool[]) => {
       (tool) =>
         `- ${tool.toolName}: ${tool.description}\n  schema=${JSON.stringify(
           tool.inputSchema,
-        )}\n  policy=${JSON.stringify(tool.policy)}`,
+        )}\n  input_mode=${tool.inputMode}\n  policy=${JSON.stringify(tool.policy)}`,
     )
     .join("\n");
 };
@@ -881,6 +892,18 @@ const normalizeToolArguments = ({
 }) => {
   if (!tool) {
     return args;
+  }
+
+  if (getToolInputMode(tool) === "raw") {
+    const rawFieldName = getRawToolStringFieldName(tool);
+
+    if (!rawFieldName) {
+      return args;
+    }
+
+    return {
+      [rawFieldName]: content,
+    };
   }
 
   const properties = tool.inputSchema?.properties;
