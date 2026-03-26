@@ -155,9 +155,134 @@ export const extractToolStringValue = ({
   return null;
 };
 
-const TOOL_SHORTCUT_PATTERN = /^@(?:\[(.+?)\]|([A-Za-z0-9._-]+))(?:\s+([\s\S]*))?$/;
+const TOOL_SHORTCUT_PATTERN =
+  /(?:^|\s)@(?:\[(.+?)\]|([A-Za-z0-9._-]+))(?=\s|$)/g;
 const TOOL_SHORTCUT_EXIT_PATTERN =
-  /^that'?s all for\s+(@(?:\[(.+?)\]|([A-Za-z0-9._-]+))|(.+))$/i;
+  /^that'?s (?:all(?: for)?|enough(?: for)?)\s+(@(?:\[(.+?)\]|([A-Za-z0-9._-]+))|(.+))$/i;
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const stripInlineToolExitPhrase = ({
+  content,
+  toolName,
+}: {
+  content: string;
+  toolName: string;
+}) => {
+  const escapedToolName = escapeRegex(toolName.trim());
+  const inlineExitPattern = new RegExp(
+    String.raw`\bthat'?s\s+(?:all(?:\s+for)?|enough(?:\s+for)?)\s+(?:@\[${escapedToolName}\]|@${escapedToolName}|${escapedToolName})\b`,
+    "i",
+  );
+  const match = content.match(inlineExitPattern);
+
+  const explicitEndPattern = /(?:^|\s)(@@|@end)(?=\s|$)/i;
+  const explicitEndMatch = content.match(explicitEndPattern);
+  const explicitEndIndex =
+    explicitEndMatch && typeof explicitEndMatch.index === "number"
+      ? explicitEndMatch.index
+      : null;
+  const inlineExitIndex = match && typeof match.index === "number" ? match.index : null;
+
+  if (explicitEndIndex === null && inlineExitIndex === null) {
+    return content.trim();
+  }
+
+  const cutoffIndex =
+    explicitEndIndex === null
+      ? inlineExitIndex
+      : inlineExitIndex === null
+        ? explicitEndIndex
+        : Math.min(explicitEndIndex, inlineExitIndex);
+
+  return content.slice(0, cutoffIndex ?? undefined).trim();
+};
+
+export const parseToolShortcutInvocations = ({
+  content,
+  tools,
+}: {
+  content: string;
+  tools: AllowedTool[];
+}) => {
+  const trimmed = content.trimStart();
+  const rawMatches = [...trimmed.matchAll(TOOL_SHORTCUT_PATTERN)];
+
+  if (rawMatches.length === 0) {
+    return [];
+  }
+
+  const matches = rawMatches
+    .map((match) => {
+      const requestedToolName = (match[1] || match[2] || "").trim();
+
+      if (!requestedToolName) {
+        return null;
+      }
+
+      const tool = tools.find(
+        (entry) =>
+          entry.status === "active" &&
+          entry.toolName.toLowerCase() === requestedToolName.toLowerCase(),
+      );
+
+      if (!tool) {
+        return null;
+      }
+
+      return {
+        match,
+        tool,
+      };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        match: RegExpExecArray;
+        tool: AllowedTool;
+      } => entry !== null,
+    );
+
+  if (matches.length === 0) {
+    return [];
+  }
+
+  const invocations = [];
+
+  for (const [index, entry] of matches.entries()) {
+    const { match, tool } = entry;
+    const requestedToolName = (match[1] || match[2] || "").trim();
+
+    if (!requestedToolName) {
+      continue;
+    }
+
+    const matchStart = match.index ?? -1;
+    const matchLength = match[0]?.length ?? 0;
+
+    if (matchStart < 0 || matchLength === 0) {
+      continue;
+    }
+
+    const contentStart = matchStart + matchLength;
+    const nextStart =
+      index + 1 < matches.length
+        ? (matches[index + 1]?.match.index ?? trimmed.length)
+        : trimmed.length;
+    const remainder = stripInlineToolExitPhrase({
+      content: trimmed.slice(contentStart, nextStart),
+      toolName: tool.toolName,
+    });
+
+    invocations.push({
+      tool,
+      remainder,
+    });
+  }
+
+  return invocations;
+};
 
 export const parseToolShortcutInvocation = ({
   content,
@@ -166,34 +291,7 @@ export const parseToolShortcutInvocation = ({
   content: string;
   tools: AllowedTool[];
 }) => {
-  const match = content.trim().match(TOOL_SHORTCUT_PATTERN);
-
-  if (!match) {
-    return null;
-  }
-
-  const requestedToolName = (match[1] || match[2] || "").trim();
-
-  if (!requestedToolName) {
-    return null;
-  }
-
-  const tool = tools.find(
-    (entry) =>
-      entry.status === "active" &&
-      entry.toolName.toLowerCase() === requestedToolName.toLowerCase(),
-  );
-
-  if (!tool) {
-    return null;
-  }
-
-  const remainder = match[3]?.trim() || "";
-
-  return {
-    tool,
-    remainder,
-  };
+  return parseToolShortcutInvocations({ content, tools })[0] ?? null;
 };
 
 export const isToolShortcutExitInput = ({

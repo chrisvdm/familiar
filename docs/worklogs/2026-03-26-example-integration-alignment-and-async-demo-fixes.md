@@ -23,6 +23,12 @@ Make the public example integrations reflect the current token-backed MVP contra
 - Changed the example payload panels to show the actual `input_response` from *familiar* instead of the example wrapper object.
 - Updated explicit tool invocation syntax to `@tool-name` across the runtime parser, tests, examples, and the main user-facing docs.
   - kept `@[tool-name]` working as a compatibility input for now
+- tightened the pinned-tool parsing model so:
+  - familiar still keeps the whole user message for conversation context
+  - each invoked tool receives only the text between its invocation and the next invocation, `@@`, `@end`, or end of message
+  - chained inline tool mentions execute as separate tool calls instead of one tool swallowing later invocations
+  - unknown `@mentions` are ignored by the tool segmenter so tool payloads can still include agent-like addresses that familiar does not own
+  - pinned mode can be exited with either `that's all for ...` or `that's enough ...`
 
 ## Result
 

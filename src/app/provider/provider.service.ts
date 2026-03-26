@@ -58,6 +58,7 @@ import {
   interpretPendingToolConfirmation,
   isToolShortcutExitInput,
   parseToolShortcutInvocation,
+  parseToolShortcutInvocations,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
@@ -1993,53 +1994,67 @@ export const handleProviderConversationInput = async ({
     content,
     tools: currentContext.allowedTools,
   });
+  const shortcutInvocations = parseToolShortcutInvocations({
+    content,
+    tools: currentContext.allowedTools,
+  });
 
   if (shortcutInvocation) {
+    const lastShortcutInvocation = shortcutInvocations.at(-1) ?? shortcutInvocation;
     activeToolShortcut = {
-      toolName: shortcutInvocation.tool.toolName,
+      toolName: lastShortcutInvocation.tool.toolName,
       createdAt:
-        currentState.activeToolShortcut?.toolName === shortcutInvocation.tool.toolName
+        currentState.activeToolShortcut?.toolName === lastShortcutInvocation.tool.toolName &&
+        currentState.activeToolShortcut
           ? currentState.activeToolShortcut.createdAt
           : new Date().toISOString(),
     };
 
-    if (shortcutInvocation.remainder) {
-      const execution = await executeProviderTool({
-        providerConfig,
-        providerId: input.integration_id,
-        userId: input.user_id,
-        threadId,
-        toolName: shortcutInvocation.tool.toolName,
-        args: buildShortcutToolArguments({
-          tool: shortcutInvocation.tool,
-          content: shortcutInvocation.remainder,
-        }),
-        channel: input.channel,
-        rawInputText: shortcutInvocation.remainder,
-        shortcutMode: true,
-        requestId,
-      });
+    const executableShortcuts = shortcutInvocations.filter((entry) => entry.remainder);
 
-      assistantContent = execution.message;
-      action = "tool_call";
-      executionState = execution.state;
-      executionId = execution.executionId;
+    if (executableShortcuts.length > 0) {
+      const executionMessages = [];
 
-      logProviderAudit({
-        event: "provider.tool.executed",
-        requestId,
-        providerId: input.integration_id,
-        userId: input.user_id,
-        threadId,
-        status: execution.state === "failed" ? "error" : "ok",
-        metadata: {
-          toolName: shortcutInvocation.tool.toolName,
-          executionState: execution.state,
-          viaShortcut: true,
-        },
-      });
+      for (const entry of executableShortcuts) {
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          toolName: entry.tool.toolName,
+          args: buildShortcutToolArguments({
+            tool: entry.tool,
+            content: entry.remainder,
+          }),
+          channel: input.channel,
+          rawInputText: entry.remainder,
+          shortcutMode: true,
+          requestId,
+        });
+
+        executionMessages.push(execution.message);
+        action = "tool_call";
+        executionState = execution.state;
+        executionId = execution.executionId;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: entry.tool.toolName,
+            executionState: execution.state,
+            viaShortcut: true,
+          },
+        });
+      }
+
+      assistantContent = executionMessages.join("\n");
     } else {
-      assistantContent = `Pinned tool: ${shortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's all for ${shortcutInvocation.tool.toolName}" to stop.`;
+      assistantContent = `Pinned tool: ${lastShortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's all for ${lastShortcutInvocation.tool.toolName}" or "that's enough ${lastShortcutInvocation.tool.toolName}" to stop.`;
       action = "direct_reply";
     }
   } else if (currentState.activeToolShortcut) {

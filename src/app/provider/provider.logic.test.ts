@@ -16,6 +16,7 @@ import {
   interpretPendingToolConfirmation,
   isToolShortcutExitInput,
   parseToolShortcutInvocation,
+  parseToolShortcutInvocations,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
 } from "./provider.logic.ts";
@@ -259,6 +260,268 @@ test("tool shortcut invocation still accepts bracket form for compatibility", ()
   assert.equal(result?.remainder, "buy milk and eggs");
 });
 
+test("tool shortcut invocation can appear after ordinary text and captures only the remainder", () => {
+  const result = parseToolShortcutInvocation({
+    content: "My name is john @notes.capture I live in a small town",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result?.tool.toolName, "notes.capture");
+  assert.equal(result?.remainder, "I live in a small town");
+});
+
+test("tool shortcut invocations split chained inline mentions into separate tool payloads", () => {
+  const result = parseToolShortcutInvocations({
+    content:
+      "My name is john @notes.capture I live in a small town @ideas.capture i want to build a horse hospital",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+      {
+        toolName: "ideas.capture",
+        description: "Capture ideas",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.tool.toolName, "notes.capture");
+  assert.equal(result[0]?.remainder, "I live in a small town");
+  assert.equal(result[1]?.tool.toolName, "ideas.capture");
+  assert.equal(result[1]?.remainder, "i want to build a horse hospital");
+});
+
+test("tool shortcut invocations stop at inline exit phrases for the current tool", () => {
+  const result = parseToolShortcutInvocations({
+    content:
+      "my name is john @notes.capture i have puppy that's all notes.capture He runs very fast @ideas.capture I need to buy him a obstacle course",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+      {
+        toolName: "ideas.capture",
+        description: "Capture ideas",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.tool.toolName, "notes.capture");
+  assert.equal(result[0]?.remainder, "i have puppy");
+  assert.equal(result[1]?.tool.toolName, "ideas.capture");
+  assert.equal(result[1]?.remainder, "I need to buy him a obstacle course");
+});
+
+test("tool shortcut invocations stop at @@ delimiter", () => {
+  const result = parseToolShortcutInvocations({
+    content:
+      "@notes.capture I live in a small town @@ He runs very fast @ideas.capture I need to buy him a obstacle course",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+      {
+        toolName: "ideas.capture",
+        description: "Capture ideas",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.remainder, "I live in a small town");
+  assert.equal(result[1]?.remainder, "I need to buy him a obstacle course");
+});
+
+test("tool shortcut invocations stop at @end delimiter", () => {
+  const result = parseToolShortcutInvocations({
+    content:
+      "@notes.capture I live in a small town @end He runs very fast @ideas.capture I need to buy him a obstacle course",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+      {
+        toolName: "ideas.capture",
+        description: "Capture ideas",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.remainder, "I live in a small town");
+  assert.equal(result[1]?.remainder, "I need to buy him a obstacle course");
+});
+
+test("unknown @mentions inside tool content do not break tool segmentation", () => {
+  const result = parseToolShortcutInvocations({
+    content:
+      "@notes.capture Tell @assistant to summarize this @ideas.capture build a horse hospital",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+      {
+        toolName: "ideas.capture",
+        description: "Capture ideas",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.tool.toolName, "notes.capture");
+  assert.equal(result[0]?.remainder, "Tell @assistant to summarize this");
+  assert.equal(result[1]?.tool.toolName, "ideas.capture");
+  assert.equal(result[1]?.remainder, "build a horse hospital");
+});
+
+test("unknown leading @mentions are ignored rather than forcing tool mode", () => {
+  const result = parseToolShortcutInvocations({
+    content: "@assistant tell me what @notes.capture should remember",
+    tools: [
+      {
+        toolName: "notes.capture",
+        description: "Capture notes",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.tool.toolName, "notes.capture");
+  assert.equal(result[0]?.remainder, "should remember");
+});
+
 test("tool shortcut exit phrases are recognized", () => {
   assert.equal(
     isToolShortcutExitInput({
@@ -270,6 +533,20 @@ test("tool shortcut exit phrases are recognized", () => {
   assert.equal(
     isToolShortcutExitInput({
       content: "that's all for @todos.add",
+      toolName: "todos.add",
+    }),
+    true,
+  );
+  assert.equal(
+    isToolShortcutExitInput({
+      content: "that's enough @todos.add",
+      toolName: "todos.add",
+    }),
+    true,
+  );
+  assert.equal(
+    isToolShortcutExitInput({
+      content: "that's all todos.add",
       toolName: "todos.add",
     }),
     true,

@@ -71,12 +71,27 @@ Examples include:
 
 A user can make an explicit tool call with `@tool-name`.
 
-That pins the tool for the current thread so later text is passed verbatim to the same executor path.
+*familiar* still processes the whole user message for thread context and memory.
+
+If a message contains explicit tool invocations, each invoked tool receives only the text between:
+
+- that invocation
+- the next `@tool-name` invocation
+- an explicit delimiter such as `@@` or `@end`
+- or the end of the message
+
+That pins the last-invoked tool for the current thread so later text is passed verbatim to the same executor path.
 
 The pinned tool ends when:
 
 - the user says `that's all for [tool-name]`
+- the user says `that's enough [tool-name]`
 - the user invokes another `@tool-name`
+
+Advanced shorthand:
+
+- `@@` ends the current captured tool segment inside the same message
+- `@end` does the same thing in a more readable form
 
 *familiar* does not silently exit the pinned tool state just because a message looks conversational.
 
