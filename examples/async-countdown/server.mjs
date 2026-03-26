@@ -21,6 +21,14 @@ const currentDir = dirname(currentFile);
 const homePageTemplate = readFileSync(join(currentDir, "index.html"), "utf8");
 const deliveredChannelMessages = [];
 
+const getDeliveredChannelMessagesForUser = (userId) =>
+  deliveredChannelMessages.filter((entry) => {
+    const payload = entry?.payload;
+    return payload && typeof payload.user_id === "string" && payload.user_id === userId;
+  });
+
+const isCountdownRequest = (text) => /\b(countdown|timer)\b/i.test(text);
+
 const renderHomePage = () =>
   homePageTemplate
     .replaceAll("__PORT__", String(port))
@@ -32,15 +40,11 @@ const renderHomePage = () =>
     .replaceAll("__PLAYGROUND_MODE__", "proxy")
     .replaceAll("__NONCE__", "");
 
-const buildSyncBody = (userId) => ({
-  integration_id: integrationId,
-  user_id: userId,
+const buildSyncBody = () => ({
   tools: toolDefinitions,
 });
 
-const buildInputBody = (userId, text) => ({
-  integration_id: integrationId,
-  user_id: userId,
+const buildInputBody = (text) => ({
   input: {
     kind: "text",
     text,
@@ -139,16 +143,16 @@ const sendExecutorResultToTexty = async ({ payload, result }) => {
   }, COUNTDOWN_SECONDS * 1000);
 };
 
-const syncCountdownToolWithTexty = async ({ token, userId }) => {
+const syncCountdownToolWithTexty = async ({ token }) => {
   const response = await fetch(
-    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/integrations/${integrationId}/users/${userId}/tools/sync`,
+    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/tools/sync`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildSyncBody(userId)),
+      body: JSON.stringify(buildSyncBody()),
     },
   );
 
@@ -165,7 +169,7 @@ const runTextyInput = async ({ token, userId, text }) => {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildInputBody(userId, text)),
+    body: JSON.stringify(buildInputBody(text)),
   });
 
   return {
@@ -179,12 +183,43 @@ const extractAssistantReply = (inputResponse) => {
   return typeof response?.content === "string" ? response.content : "";
 };
 
+const buildPlaygroundState = ({ userId, syncResult = null, inputResult = null }) => ({
+  ok: true,
+  demo_identity: {
+    integration_id: integrationId,
+    user_id: userId,
+  },
+  assistant_reply: "",
+  countdowns: getCountdownsForUser(userId),
+  observed: {
+    sync_status: syncResult?.status ?? null,
+    sync_response: syncResult?.body ?? null,
+    input_status: inputResult?.status ?? null,
+    input_response: inputResult?.body ?? null,
+    delivered_channel_messages: getDeliveredChannelMessagesForUser(userId),
+  },
+});
+
 const server = createServer(async (request, response) => {
   if (request.method === "GET" && request.url === "/") {
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
     });
     response.end(renderHomePage());
+    return;
+  }
+
+  if (request.method === "GET" && request.url?.startsWith("/playground/texty")) {
+    const requestUrl = new URL(request.url, `http://localhost:${port}`);
+    const token = String(requestUrl.searchParams.get("token") || "").trim();
+    const userId = String(requestUrl.searchParams.get("user_id") || defaultUserId).trim();
+
+    if (!token || token !== expectedToken) {
+      unauthorized(response);
+      return;
+    }
+
+    sendJson(response, 200, buildPlaygroundState({ userId }));
     return;
   }
 
@@ -224,10 +259,24 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (!isCountdownRequest(text)) {
+      sendJson(response, 200, {
+        ...buildPlaygroundState({ userId }),
+        assistant_reply:
+          "This demo only supports countdown requests. Try asking me to start a 10 second countdown.",
+        task: {
+          thread_id: null,
+          response_type: "direct_reply",
+          execution_state: null,
+          execution_id: null,
+        },
+      });
+      return;
+    }
+
     try {
       const syncResult = await syncCountdownToolWithTexty({
         token,
-        userId,
       });
       const textyResult = await runTextyInput({
         token,
@@ -236,25 +285,17 @@ const server = createServer(async (request, response) => {
       });
 
       sendJson(response, 200, {
-        ok: true,
-        demo_identity: {
-          integration_id: integrationId,
-          user_id: userId,
-        },
+        ...buildPlaygroundState({
+          userId,
+          syncResult,
+          inputResult: textyResult,
+        }),
         assistant_reply: extractAssistantReply(textyResult.body),
         task: {
           thread_id: textyResult.body?.thread_id ?? null,
           response_type: textyResult.body?.response?.type ?? null,
           execution_state: textyResult.body?.execution?.state ?? null,
           execution_id: textyResult.body?.execution?.execution_id ?? null,
-        },
-        countdowns: getCountdownsForUser(userId),
-        observed: {
-          sync_status: syncResult.status,
-          sync_response: syncResult.body,
-          input_status: textyResult.status,
-          input_response: textyResult.body,
-          delivered_channel_messages: deliveredChannelMessages,
         },
       });
     } catch (error) {

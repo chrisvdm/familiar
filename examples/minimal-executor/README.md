@@ -150,12 +150,10 @@ familiar creates the demo provider-user context on first sync or input.
 ## Sync The Tool
 
 ```shell
-curl -X POST http://localhost:5173/api/v1/integrations/demo_executor/users/demo_user/tools/sync \
+curl -X POST http://localhost:5173/api/v1/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "integration_id": "demo_executor",
-    "user_id": "demo_user",
     "tools": [
       {
         "tool_name": "todos.add",
@@ -187,8 +185,6 @@ curl -X POST http://localhost:5173/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "integration_id": "demo_executor",
-    "user_id": "demo_user",
     "input": {
       "kind": "text",
       "text": "Add buy dog food to my todo list"

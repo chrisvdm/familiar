@@ -160,6 +160,8 @@ const getDeliveredMessages = ({
   userId: string;
 }) => [...(store.get(userId) ?? [])];
 
+const isCountdownRequest = (text: string) => /\b(countdown|timer)\b/i.test(text);
+
 const scheduleBackgroundTask = (task: Promise<unknown>) => {
   try {
     requestInfo?.cf?.waitUntil?.(task);
@@ -245,6 +247,34 @@ const extractTask = (inputResponse: Record<string, unknown>) => {
   };
 };
 
+const buildAsyncCountdownState = ({
+  userId,
+  syncResult = null,
+  inputResult = null,
+}: {
+  userId: string;
+  syncResult?: Record<string, unknown> | null;
+  inputResult?: Record<string, unknown> | null;
+}) => ({
+  ok: true,
+  demo_identity: {
+    integration_id: COUNTDOWN_EXECUTOR_ID,
+    user_id: userId,
+  },
+  assistant_reply: "",
+  countdowns: getCountdownsForUser(userId),
+  observed: {
+    sync_status: syncResult ? 200 : null,
+    sync_response: syncResult,
+    input_status: inputResult ? 200 : null,
+    input_response: inputResult,
+    delivered_channel_messages: getDeliveredMessages({
+      store: countdownDeliveredChannelMessages,
+      userId,
+    }),
+  },
+});
+
 export const providerDemoRoutes = [
   route("/sandbox/demo-executor", async ({ request, rw }) => {
     if (request.method !== "GET") {
@@ -322,6 +352,23 @@ export const providerDemoRoutes = [
         },
         { status: 400 },
       );
+    }
+
+    if (!isCountdownRequest(text)) {
+      return Response.json({
+        ...buildAsyncCountdownState({
+          userId,
+        }),
+        assistant_reply:
+          "This demo only supports countdown requests. Try asking me to start a 10 second countdown.",
+        task: {
+          thread_id: null,
+          action: "direct_reply",
+          execution_state: null,
+          execution_id: null,
+          reasoning: null,
+        },
+      });
     }
 
     try {
@@ -460,6 +507,18 @@ export const providerDemoRoutes = [
     );
   }),
   route("/sandbox/async-countdown/playground/texty", async ({ request }) => {
+    if (request.method === "GET") {
+      const requestUrl = new URL(request.url);
+      const token = String(requestUrl.searchParams.get("token") || "").trim();
+      const userId = String(requestUrl.searchParams.get("user_id") || DEMO_USER_ID).trim();
+
+      if (!token || token !== DEMO_TOKEN) {
+        return unauthorized();
+      }
+
+      return Response.json(buildAsyncCountdownState({ userId }));
+    }
+
     if (request.method !== "POST") {
       return Response.json(
         {
@@ -522,24 +581,13 @@ export const providerDemoRoutes = [
       });
 
       return Response.json({
-        ok: true,
-        demo_identity: {
-          integration_id: COUNTDOWN_EXECUTOR_ID,
-          user_id: userId,
-        },
+        ...buildAsyncCountdownState({
+          userId,
+          syncResult,
+          inputResult: textyResult,
+        }),
         assistant_reply: extractAssistantReply(textyResult),
         task: extractTask(textyResult),
-        countdowns: getCountdownsForUser(userId),
-        observed: {
-          sync_status: 200,
-          sync_response: syncResult,
-          input_status: 200,
-          input_response: textyResult,
-          delivered_channel_messages: getDeliveredMessages({
-            store: countdownDeliveredChannelMessages,
-            userId,
-          }),
-        },
       });
     } catch (error) {
       return Response.json(

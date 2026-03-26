@@ -30,15 +30,11 @@ const renderHomePage = () =>
     .replaceAll("__PLAYGROUND_MODE__", "proxy")
     .replaceAll("__NONCE__", "");
 
-const buildSyncBody = (userId) => ({
-  integration_id: integrationId,
-  user_id: userId,
+const buildSyncBody = () => ({
   tools: toolDefinitions,
 });
 
-const buildInputBody = (userId, text) => ({
-  integration_id: integrationId,
-  user_id: userId,
+const buildInputBody = (text) => ({
   input: {
     kind: "text",
     text,
@@ -128,16 +124,16 @@ const sendExecutorResultToTexty = async ({ payload, result }) => {
   }, 250);
 };
 
-const syncTodoToolWithTexty = async ({ token, userId }) => {
+const syncTodoToolWithTexty = async ({ token }) => {
   const response = await fetch(
-    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/integrations/${integrationId}/users/${userId}/tools/sync`,
+    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/tools/sync`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildSyncBody(userId)),
+      body: JSON.stringify(buildSyncBody()),
     },
   );
 
@@ -154,7 +150,7 @@ const runTextyInput = async ({ token, userId, text }) => {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildInputBody(userId, text)),
+    body: JSON.stringify(buildInputBody(text)),
   });
 
   return {
@@ -164,6 +160,12 @@ const runTextyInput = async ({ token, userId, text }) => {
 };
 
 const extractAssistantReply = (inputResponse) => {
+  const responseContent = inputResponse?.response?.content;
+
+  if (typeof responseContent === "string") {
+    return responseContent;
+  }
+
   const messages = Array.isArray(inputResponse?.messages) ? inputResponse.messages : [];
   const assistantMessage = [...messages].reverse().find((message) => message.role === "assistant");
   return typeof assistantMessage?.content === "string" ? assistantMessage.content : "";
@@ -217,7 +219,6 @@ const server = createServer(async (request, response) => {
     try {
       const syncResult = await syncTodoToolWithTexty({
         token,
-        userId,
       });
       const textyResult = await runTextyInput({
         token,
@@ -234,7 +235,7 @@ const server = createServer(async (request, response) => {
         assistant_reply: extractAssistantReply(textyResult.body),
         task: {
           thread_id: textyResult.body?.thread_id ?? null,
-          action: textyResult.body?.action?.type ?? null,
+          action: textyResult.body?.response?.type ?? null,
           execution_state: textyResult.body?.execution?.state ?? null,
           execution_id: textyResult.body?.execution?.execution_id ?? null,
         },

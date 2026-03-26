@@ -12,7 +12,7 @@ import {
 const port = Number(process.env.PORT || 8791);
 const expectedToken = (process.env.TEXTY_EXECUTOR_TOKEN || "dev-token").trim();
 const textyBaseUrl = (process.env.TEXTY_BASE_URL || "http://localhost:5173").trim();
-const integrationId = (process.env.TEXTY_INTEGRATION_ID || "demo_held_tool").trim();
+const integrationId = (process.env.TEXTY_INTEGRATION_ID || "demo_pinned_tool").trim();
 const defaultUserId = (process.env.TEXTY_USER_ID || "demo_user").trim();
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = dirname(currentFile);
@@ -28,15 +28,11 @@ const renderHomePage = () =>
     .replaceAll("__PLAYGROUND_PATH__", "/playground/texty")
     .replaceAll("__NONCE__", "");
 
-const buildSyncBody = (userId) => ({
-  integration_id: integrationId,
-  user_id: userId,
+const buildSyncBody = () => ({
   tools: toolDefinitions,
 });
 
-const buildInputBody = (userId, text) => ({
-  integration_id: integrationId,
-  user_id: userId,
+const buildInputBody = (text) => ({
   input: {
     kind: "text",
     text,
@@ -74,16 +70,16 @@ const unauthorized = (response) =>
     },
   });
 
-const syncToolsWithTexty = async ({ token, userId }) => {
+const syncToolsWithTexty = async ({ token }) => {
   const response = await fetch(
-    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/integrations/${integrationId}/users/${userId}/tools/sync`,
+    `${textyBaseUrl.replace(/\/$/, "")}/api/v1/tools/sync`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildSyncBody(userId)),
+      body: JSON.stringify(buildSyncBody()),
     },
   );
 
@@ -100,7 +96,7 @@ const runTextyInput = async ({ token, userId, text }) => {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildInputBody(userId, text)),
+    body: JSON.stringify(buildInputBody(text)),
   });
 
   return {
@@ -157,7 +153,6 @@ const server = createServer(async (request, response) => {
     try {
       const syncResult = await syncToolsWithTexty({
         token,
-        userId,
       });
       const textyResult = await runTextyInput({
         token,

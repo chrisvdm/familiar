@@ -514,7 +514,7 @@
 
         statusCardEl.innerHTML = [
           "<strong>Latest task</strong>",
-          "<div class=\"muted\" style=\"margin-top: 6px;\">Action: <code>" + action + "</code></div>",
+          "<div class=\"muted\" style=\"margin-top: 6px;\">Response type: <code>" + action + "</code></div>",
           "<div class=\"muted\">Execution: <code>" + executionState + "</code></div>",
           reasoning
             ? "<div class=\"muted\" style=\"margin-top: 8px;\">Reasoning: " + reasoning.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>"
@@ -570,13 +570,11 @@
             user_id: userIdEl.value
           },
           sync_request: {
-            url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/integrations/" + integrationIdEl.value + "/users/" + userIdEl.value + "/tools/sync"
+            url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/tools/sync"
           },
           input_request: {
             url: textyBaseUrlEl.value.replace(/\/$/, "") + "/api/v1/input",
             body: {
-              integration_id: integrationIdEl.value,
-              user_id: userIdEl.value,
               input: {
                 kind: "text",
                 text: userText

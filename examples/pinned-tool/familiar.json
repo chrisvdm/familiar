@@ -1,5 +1,5 @@
 {
-  "integration_id": "demo_held_tool",
+  "integration_id": "demo_pinned_tool",
   "base_url": "http://localhost:8791",
   "token_env": "TEXTY_EXECUTOR_TOKEN",
   "tools": [

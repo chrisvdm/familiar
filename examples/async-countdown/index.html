@@ -209,25 +209,31 @@
       const chatLogEl = document.getElementById("chatLog");
       const countdownsEl = document.getElementById("countdowns");
       const payloadViewEl = document.getElementById("payloadView");
+      let messageHistory = [];
+      let latestRun = null;
+      let pollHandle = null;
 
       const renderJson = (element, value) => {
         element.textContent = JSON.stringify(value, null, 2);
       };
 
-      const renderChat = ({ userText, assistantReply }) => {
+      const renderChat = (messages) => {
         chatLogEl.innerHTML = "";
 
-        const userBubble = document.createElement("div");
-        userBubble.className = "bubble user";
-        userBubble.innerHTML = `<span class="label">User</span>${userText}`;
-        chatLogEl.appendChild(userBubble);
-
-        if (assistantReply) {
-          const assistantBubble = document.createElement("div");
-          assistantBubble.className = "bubble assistant";
-          assistantBubble.innerHTML = `<span class="label">Assistant</span>${assistantReply}`;
-          chatLogEl.appendChild(assistantBubble);
+        if (!Array.isArray(messages) || messages.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No conversation yet.";
+          chatLogEl.appendChild(empty);
+          return;
         }
+
+        messages.forEach((message) => {
+          const bubble = document.createElement("div");
+          bubble.className = `bubble ${message.role === "user" ? "user" : "assistant"}`;
+          bubble.innerHTML = `<span class="label">${message.role === "user" ? "User" : "Assistant"}</span>${message.content}`;
+          chatLogEl.appendChild(bubble);
+        });
       };
 
       const renderCountdowns = (countdowns) => {
@@ -241,18 +247,101 @@
           return;
         }
 
-        countdowns.forEach((countdown) => {
-          const item = document.createElement("div");
-          item.className = "countdown";
-          item.innerHTML = `
-            <strong>${countdown.status === "completed" ? "Completed" : "Running"} 10 second countdown</strong>
-            <div>Execution: ${countdown.execution_id || "pending"}</div>
-            <div>Started: ${countdown.started_at}</div>
-            <div>Completes: ${countdown.completes_at}</div>
-            <div>Message: ${countdown.completion_message}</div>
-          `;
-          countdownsEl.appendChild(item);
+        const latestCountdown = countdowns[countdowns.length - 1];
+        const item = document.createElement("div");
+        item.className = "countdown";
+        item.innerHTML = `
+          <strong>${latestCountdown.status === "completed" ? "Completed" : "Running"} 10 second countdown</strong>
+          <div>Execution: ${latestCountdown.execution_id || "pending"}</div>
+          <div>Started: ${latestCountdown.started_at}</div>
+          <div>Completes: ${latestCountdown.completes_at}</div>
+          <div>Message: ${latestCountdown.completion_message}</div>
+        `;
+        countdownsEl.appendChild(item);
+      };
+
+      const hasRunningCountdown = (countdowns) =>
+        Array.isArray(countdowns) && countdowns.some((countdown) => countdown.status !== "completed");
+
+      const stopPolling = () => {
+        if (pollHandle) {
+          clearTimeout(pollHandle);
+          pollHandle = null;
+        }
+      };
+
+      const schedulePoll = () => {
+        stopPolling();
+        pollHandle = setTimeout(refreshState, 1500);
+      };
+
+      const findCompletionMessage = (payload) => {
+        if (!latestRun) {
+          return "";
+        }
+
+        const deliveredMessages = Array.isArray(payload.observed?.delivered_channel_messages)
+          ? payload.observed.delivered_channel_messages
+          : [];
+
+        for (const entry of deliveredMessages) {
+          const deliveredPayload = entry && typeof entry === "object" ? entry.payload : null;
+          const task = deliveredPayload && typeof deliveredPayload === "object" ? deliveredPayload.task : null;
+          const message = deliveredPayload && typeof deliveredPayload === "object" ? deliveredPayload.message : null;
+          const executionId = task && typeof task === "object" ? task.execution_id : null;
+          const threadId =
+            deliveredPayload && typeof deliveredPayload.thread_id === "string"
+              ? deliveredPayload.thread_id
+              : null;
+          const text = message && typeof message === "object" ? message.text : null;
+
+          const matchesCurrentRun =
+            typeof latestRun.executionId === "string" && latestRun.executionId
+              ? typeof executionId === "string" && executionId === latestRun.executionId
+              : typeof threadId === "string" && threadId === latestRun.threadId;
+
+          if (typeof text === "string" && matchesCurrentRun) {
+            return text;
+          }
+        }
+
+        return "";
+      };
+
+      const refreshState = async () => {
+        const params = new URLSearchParams({
+          token: tokenEl.value,
+          user_id: userIdEl.value,
         });
+        const response = await fetch(`__PLAYGROUND_PATH__?${params.toString()}`);
+        const payload = await response.json();
+        renderJson(payloadViewEl, payload);
+        renderCountdowns(payload.countdowns || []);
+
+        const completionMessage = findCompletionMessage(payload);
+        if (
+          completionMessage &&
+          latestRun &&
+          !latestRun.completionAppended
+        ) {
+          latestRun.completionAppended = true;
+          messageHistory = [...messageHistory, { role: "assistant", content: completionMessage }];
+          renderChat(messageHistory);
+        }
+
+        const activeCountdown = Array.isArray(payload.countdowns)
+          ? payload.countdowns.find((countdown) => countdown.execution_id === latestRun?.executionId)
+          : null;
+
+        if (
+          payload.ok &&
+          activeCountdown &&
+          activeCountdown.status !== "completed"
+        ) {
+          schedulePoll();
+        } else {
+          stopPolling();
+        }
       };
 
       document.querySelectorAll("[data-example]").forEach((button) => {
@@ -271,6 +360,7 @@
           return;
         }
 
+        stopPolling();
         submitButton.disabled = true;
 
         try {
@@ -291,16 +381,33 @@
 
           const payload = await response.json();
           renderJson(payloadViewEl, payload);
-          renderChat({
-            userText,
-            assistantReply: payload.assistant_reply || "",
-          });
+          messageHistory = [
+            { role: "user", content: userText },
+            ...(payload.assistant_reply ? [{ role: "assistant", content: payload.assistant_reply }] : []),
+          ];
+          renderChat(messageHistory);
           renderCountdowns(payload.countdowns || []);
+
+          latestRun = {
+            executionId: payload.task?.execution_id || null,
+            threadId: payload.task?.thread_id || null,
+            completionAppended: false,
+          };
+
+          if (
+            payload.ok &&
+            latestRun.executionId &&
+            hasRunningCountdown(payload.countdowns || [])
+          ) {
+            schedulePoll();
+          }
         } catch (error) {
           renderJson(payloadViewEl, {
             ok: false,
             error: error instanceof Error ? error.message : String(error),
           });
+          stopPolling();
+          latestRun = null;
         } finally {
           submitButton.disabled = false;
         }
