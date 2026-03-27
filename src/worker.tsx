@@ -9,7 +9,7 @@ import { DocsLayout } from "@/app/layouts/docs-layout";
 import { setCommonHeaders } from "@/app/headers";
 import { Debug } from "@/app/pages/debug";
 import { DocsPage } from "@/app/pages/docs";
-import { Home } from "@/app/pages/home";
+import { Home } from "@/app/pages/home/index";
 import { Setup } from "@/app/pages/setup";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
 import { SandboxProvider } from "@/app/pages/sandbox-provider";

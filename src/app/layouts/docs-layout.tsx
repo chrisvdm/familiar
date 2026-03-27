@@ -1,5 +1,6 @@
 import type { LayoutProps } from "rwsdk/router";
 
+import { FamiliarMark } from "@/app/components/familiar-mark";
 import { defaultDoc, docs, getDocBySlug } from "@/app/docs/content";
 
 export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
@@ -22,12 +23,10 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
         <section className="docs-layout">
           <aside className="docs-sidebar">
             <a className="docs-brand" href="/">
-              <img
+              <FamiliarMark
                 className="docs-brand-logo"
-                src="/familiar-mark.svg"
-                alt="familiar logo"
-                width="30"
-                height="30"
+                role="img"
+                aria-label="familiar logo"
               />
               <span className="docs-brand-name">familiar</span>
             </a>

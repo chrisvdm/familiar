@@ -1,4 +1,4 @@
-import homeStyles from "./home.css?url";
+import homeStyles from "./pages/home/home.css?url";
 
 export const StaticDocument: React.FC<{ children: React.ReactNode }> = ({
   children,
