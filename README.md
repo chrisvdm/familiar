@@ -1,4 +1,4 @@
-<img src="public/logo.png" width="325" align="right" />
+<img src="public/familiar-mark.svg" width="220" align="right" />
 
 # familiar
 
@@ -6,30 +6,27 @@ _coming soon..._
 
 familiar is a hosted conversation layer for executable systems.
 
-## CLI
+## Hosted Setup
 
-The first install path being prepared for *familiar* is the CLI.
+The current working setup path is the hosted API.
 
-Planned install commands:
-
-```sh
-npx @familiar/cli@latest init
-```
-
-or:
-
-```sh
-npm install -g @familiar/cli
-familiar init
-```
-
-That package is not published yet. Until it is live, use the hosted setup page or `POST /api/v1/accounts`.
-
-The CLI talks to the hosted product by default:
+Use the hosted product directly:
 
 ```text
 https://familiar.chrsvdmrw.dev
 ```
+
+Create an account and get the first API token with `curl`:
+
+```sh
+curl -X POST https://familiar.chrsvdmrw.dev/api/v1/accounts \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+You can then use the returned token for the rest of the API.
+
+The CLI exists in this repo as a local development helper, but it is not the public install path right now because the package is not published yet.
 
 People talk to familiar. familiar keeps track of threads, context, and memory. When work needs to happen, familiar decides which tool should run, triggers that tool's target, and then explains the result back to the user.
 
@@ -142,7 +139,7 @@ flowchart LR
 
 This is the smallest useful setup path for connecting code to familiar and getting a working request through the system.
 
-1. Create a connection and get a token.
+1. Create an account and get a token.
 2. Define your tools in `familiar.json`.
 3. Sync the tools familiar can use for a user.
 4. Send user input to familiar.
@@ -187,6 +184,8 @@ Core terms:
 
 - `account`
   - the owner that pays for and manages familiar
+- `token`
+  - the machine credential used to authenticate API requests to familiar
 - `integration`
   - the configured familiar connection for one app, bot, or deployment
 - `executor`
