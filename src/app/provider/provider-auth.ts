@@ -135,6 +135,9 @@ export const authenticateProviderRequest = ({
       providerId: resolvedProviderId,
       providerConfig: {
         token,
+        ...(accountAuth.integration.baseUrl
+          ? { baseUrl: accountAuth.integration.baseUrl }
+          : {}),
       },
       accountId: accountAuth.account.id,
     };

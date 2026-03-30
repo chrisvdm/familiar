@@ -3,6 +3,12 @@ type CreateAccountResult = {
     id: string;
     createdAt: string;
   };
+  integration: {
+    id: string;
+    baseUrl: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
   token: {
     value: string;
     prefix: string;
@@ -16,6 +22,12 @@ type AuthenticatedAccount = {
     id: string;
     defaultSetupId: string;
     createdAt: string;
+  };
+  integration: {
+    id: string;
+    baseUrl: string | null;
+    createdAt: string;
+    updatedAt: string;
   };
   token: {
     id: string;
@@ -49,6 +61,17 @@ type AccountEndpointDeps = {
   ) => Promise<AuthenticatedAccount | null>;
   createAccountWithInitialToken: (input: {
   }) => Promise<CreateAccountResult>;
+  normalizeIntegrationBaseUrl: (baseUrl: string) => string;
+  updateAccountIntegrationBaseUrl: (input: {
+    accountId: string;
+    integrationId: string;
+    baseUrl: string | null;
+  }) => Promise<{
+    id: string;
+    baseUrl: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
 };
 
 const getBearerToken = (request: Request) => {
@@ -151,6 +174,7 @@ export const createHandleGetAccountEndpoint = (deps: AccountEndpointDeps) => {
         },
         setup: {
           id: auth.account.defaultSetupId,
+          base_url: auth.integration.baseUrl,
         },
         token: {
           id: auth.token.id,
@@ -161,5 +185,91 @@ export const createHandleGetAccountEndpoint = (deps: AccountEndpointDeps) => {
         },
       },
     });
+  };
+};
+
+export const createHandleCurrentIntegrationEndpoint = (
+  deps: AccountEndpointDeps,
+) => {
+  return async ({ request }: { request: Request }) => {
+    const requestId = deps.getRequestId(request);
+
+    if (request.method !== "GET" && request.method !== "PATCH") {
+      return deps.jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    const token = getBearerToken(request);
+
+    if (!token) {
+      return deps.jsonError({
+        requestId,
+        status: 401,
+        code: "unauthenticated",
+        message: "Missing bearer token.",
+      });
+    }
+
+    const auth = await deps.authenticateAccountToken(token);
+
+    if (!auth) {
+      return deps.jsonError({
+        requestId,
+        status: 403,
+        code: "forbidden",
+        message: "Invalid API token.",
+      });
+    }
+
+    if (request.method === "GET") {
+      return deps.jsonResponse({
+        requestId,
+        body: {
+          integration: {
+            id: auth.integration.id,
+            base_url: auth.integration.baseUrl,
+            created_at: auth.integration.createdAt,
+            updated_at: auth.integration.updatedAt,
+          },
+        },
+      });
+    }
+
+    try {
+      const input = await deps.readJson<{ base_url?: string | null }>(request);
+      const normalizedBaseUrl =
+        input.base_url == null ? null : deps.normalizeIntegrationBaseUrl(input.base_url);
+      const integration = await deps.updateAccountIntegrationBaseUrl({
+        accountId: auth.account.id,
+        integrationId: auth.integration.id,
+        baseUrl: normalizedBaseUrl,
+      });
+
+      return deps.jsonResponse({
+        requestId,
+        body: {
+          integration: {
+            id: integration.id,
+            base_url: integration.baseUrl,
+            created_at: integration.createdAt,
+            updated_at: integration.updatedAt,
+          },
+        },
+      });
+    } catch (error) {
+      return deps.jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid integration configuration request.",
+      });
+    }
   };
 };

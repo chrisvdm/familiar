@@ -3,17 +3,25 @@ import { env } from "cloudflare:workers";
 import type {
   FamiliarAccount,
   FamiliarApiToken,
+  FamiliarIntegrationConfig,
   FamiliarTokenAuth,
 } from "./account.types";
 
 type AccountRegistryStub = {
   createAccount: (input: {
     account: FamiliarAccount;
+    integration: FamiliarIntegrationConfig;
     token: FamiliarApiToken;
   }) => Promise<{
     account: FamiliarAccount;
+    integration: FamiliarIntegrationConfig;
     token: FamiliarApiToken;
   }>;
+  updateIntegration: (input: {
+    integrationId: string;
+    accountId: string;
+    baseUrl: string | null;
+  }) => Promise<{ value: FamiliarIntegrationConfig } | { error: string }>;
   authenticateToken: (input: {
     tokenHash: string;
   }) => Promise<{ value: FamiliarTokenAuth } | { error: string }>;
@@ -52,6 +60,34 @@ const createAccountId = () => `acct_${randomHex(24)}`;
 
 const createSetupId = () => `setup_${randomHex(24)}`;
 
+export const normalizeIntegrationBaseUrl = (rawBaseUrl: string) => {
+  const trimmed = rawBaseUrl.trim();
+
+  if (!trimmed) {
+    throw new Error("Executor base URL must not be empty.");
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error(`Executor base URL is not a valid URL: ${trimmed}`);
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`Executor base URL must use http or https: ${trimmed}`);
+  }
+
+  if (parsed.search || parsed.hash) {
+    throw new Error(
+      `Executor base URL must not include query or hash: ${trimmed}`,
+    );
+  }
+
+  return parsed.toString().replace(/\/$/, "");
+};
+
 const createTokenRecord = async ({
   accountId,
 }: {
@@ -80,10 +116,18 @@ const createTokenRecord = async ({
 export const createAccountWithInitialToken = async ({
 }: {
 }) => {
+  const setupId = createSetupId();
   const account: FamiliarAccount = {
     id: createAccountId(),
-    defaultSetupId: createSetupId(),
+    defaultSetupId: setupId,
     createdAt: new Date().toISOString(),
+  };
+  const integration: FamiliarIntegrationConfig = {
+    id: setupId,
+    accountId: account.id,
+    baseUrl: null,
+    createdAt: account.createdAt,
+    updatedAt: account.createdAt,
   };
   const { value, token } = await createTokenRecord({
     accountId: account.id,
@@ -91,11 +135,13 @@ export const createAccountWithInitialToken = async ({
 
   const result = await getAccountRegistryStub().createAccount({
     account,
+    integration,
     token,
   });
 
   return {
     account: result.account,
+    integration: result.integration,
     token: {
       ...result.token,
       value,
@@ -110,6 +156,28 @@ export const authenticateAccountToken = async (token: string) => {
 
   if ("error" in result) {
     return null;
+  }
+
+  return result.value;
+};
+
+export const updateAccountIntegrationBaseUrl = async ({
+  accountId,
+  integrationId,
+  baseUrl,
+}: {
+  accountId: string;
+  integrationId: string;
+  baseUrl: string | null;
+}) => {
+  const result = await getAccountRegistryStub().updateIntegration({
+    accountId,
+    integrationId,
+    baseUrl,
+  });
+
+  if ("error" in result) {
+    throw new Error(result.error);
   }
 
   return result.value;

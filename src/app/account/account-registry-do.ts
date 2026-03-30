@@ -4,6 +4,7 @@ import type {
   FamiliarAccount,
   FamiliarAccountRegistryState,
   FamiliarApiToken,
+  FamiliarIntegrationConfig,
   FamiliarTokenAuth,
 } from "./account.types";
 
@@ -11,6 +12,7 @@ const ACCOUNT_REGISTRY_KEY = "account-registry";
 
 const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
   accounts: {},
+  integrations: {},
   tokens: {},
   tokenIndex: {},
 });
@@ -30,11 +32,13 @@ export class AccountRegistryDurableObject extends DurableObject {
 
   async createAccount(input: {
     account: FamiliarAccount;
+    integration: FamiliarIntegrationConfig;
     token: FamiliarApiToken;
   }) {
     const state = await this.loadState();
 
     state.accounts[input.account.id] = input.account;
+    state.integrations[input.integration.id] = input.integration;
     state.tokens[input.token.id] = input.token;
     state.tokenIndex[input.token.tokenHash] = input.token.id;
 
@@ -42,8 +46,47 @@ export class AccountRegistryDurableObject extends DurableObject {
 
     return {
       account: input.account,
+      integration: input.integration,
       token: input.token,
     };
+  }
+
+  async updateIntegration(input: {
+    integrationId: string;
+    accountId: string;
+    baseUrl: string | null;
+  }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    if (account.defaultSetupId !== input.integrationId) {
+      return { error: "Integration not found." };
+    }
+
+    const existing = state.integrations[input.integrationId];
+    const now = new Date().toISOString();
+    const integration: FamiliarIntegrationConfig = existing
+      ? {
+          ...existing,
+          baseUrl: input.baseUrl,
+          updatedAt: now,
+        }
+      : {
+          id: input.integrationId,
+          accountId: input.accountId,
+          baseUrl: input.baseUrl,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+    state.integrations[input.integrationId] = integration;
+    await this.saveState(state);
+
+    return { value: integration };
   }
 
   async issueToken(input: { accountId: string; token: FamiliarApiToken }) {
@@ -85,6 +128,19 @@ export class AccountRegistryDurableObject extends DurableObject {
       return { error: "Account not found." };
     }
 
+    const existingIntegration = state.integrations[account.defaultSetupId];
+    const integration: FamiliarIntegrationConfig = existingIntegration ?? {
+      id: account.defaultSetupId,
+      accountId: account.id,
+      baseUrl: null,
+      createdAt: account.createdAt,
+      updatedAt: account.createdAt,
+    };
+
+    if (!existingIntegration) {
+      state.integrations[integration.id] = integration;
+    }
+
     const nextToken = {
       ...token,
       lastUsedAt: new Date().toISOString(),
@@ -95,6 +151,7 @@ export class AccountRegistryDurableObject extends DurableObject {
 
     const auth: FamiliarTokenAuth = {
       account,
+      integration,
       token: nextToken,
     };
 

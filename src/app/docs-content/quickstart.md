@@ -38,7 +38,23 @@ TEXTY_EXECUTOR_CONFIG='{"integration_a":{"token":"dev-token","baseUrl":"http://l
 > [!NOTE]
 > The current local development config still uses an internal setup key such as `integration_a` inside `TEXTY_EXECUTOR_CONFIG`. That is an implementation detail. The public API happy path can now derive the active setup from the bearer token.
 
-## Step 1: Sync tools with *familiar*
+## Step 1: Set the executor base URL
+
+Before *familiar* can call your executor, set the executor base URL for the current token-backed setup:
+
+```shell
+curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "base_url": "https://vertex-amplifier-glasses-identical.trycloudflare.com"
+  }'
+```
+
+Use the integration root URL here, not `/tools/execute`.
+*familiar* appends `/tools/execute` itself when it calls your runtime.
+
+## Step 2: Sync tools with *familiar*
 
 Sync the tools for the current token-backed setup.
 
@@ -72,7 +88,7 @@ Use `input_mode: "raw"` for tools that want the exact captured user text instead
 The token-scoped route is the primary MVP path.
 For now, the authenticated token is enough for the single-user happy path.
 
-## Step 2: Send text input to *familiar*
+## Step 3: Send text input to *familiar*
 
 Send normalized text into *familiar*.
 
@@ -92,7 +108,7 @@ curl -X POST https://familiar.chrsvdmrw.dev/api/v1/input \
   }'
 ```
 
-## Step 3: Expose your executor endpoint
+## Step 4: Expose your executor endpoint
 
 Expose an executor endpoint that *familiar* can call.
 
@@ -120,7 +136,7 @@ The executor receives structured tool input rather than raw user text.
 }
 ```
 
-## Step 4: Return a sync or async result
+## Step 5: Return a sync or async result
 
 Return either:
 
@@ -151,7 +167,7 @@ Return either:
 }
 ```
 
-## Step 5: Send the final async result back
+## Step 6: Send the final async result back
 
 If the executor returned `accepted`, send the final result later:
 

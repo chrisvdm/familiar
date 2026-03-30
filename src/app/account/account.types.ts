@@ -4,6 +4,14 @@ export type FamiliarAccount = {
   createdAt: string;
 };
 
+export type FamiliarIntegrationConfig = {
+  id: string;
+  accountId: string;
+  baseUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type FamiliarApiToken = {
   id: string;
   accountId: string;
@@ -17,11 +25,13 @@ export type FamiliarApiToken = {
 
 export type FamiliarAccountRegistryState = {
   accounts: Record<string, FamiliarAccount>;
+  integrations: Record<string, FamiliarIntegrationConfig>;
   tokens: Record<string, FamiliarApiToken>;
   tokenIndex: Record<string, string>;
 };
 
 export type FamiliarTokenAuth = {
   account: FamiliarAccount;
+  integration: FamiliarIntegrationConfig;
   token: FamiliarApiToken;
 };

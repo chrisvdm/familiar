@@ -89,7 +89,8 @@ Example response:
     "created_at": "2026-03-25T10:00:00.000Z"
   },
   "setup": {
-    "id": "setup_123"
+    "id": "setup_123",
+    "base_url": "https://executor.example"
   },
   "token": {
     "id": "tok_123",
@@ -97,6 +98,72 @@ Example response:
     "last_four": "c123",
     "created_at": "2026-03-25T10:00:00.000Z",
     "last_used_at": "2026-03-25T10:05:00.000Z"
+  }
+}
+```
+
+## Get current integration
+
+Endpoint:
+
+```text
+GET /api/v1/integration
+```
+
+Resolve the current token-backed integration configuration.
+
+Example response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "base_url": "https://executor.example",
+    "created_at": "2026-03-25T10:00:00.000Z",
+    "updated_at": "2026-03-25T10:05:00.000Z"
+  }
+}
+```
+
+## Update current integration
+
+Endpoint:
+
+```text
+PATCH /api/v1/integration
+```
+
+Set the executor base URL for the current token-backed integration.
+
+Use the integration root URL here, not `/tools/execute`.
+*familiar* appends `/tools/execute` when it calls the executor.
+
+```shell
+curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "base_url": "https://vertex-amplifier-glasses-identical.trycloudflare.com"
+  }'
+```
+
+To clear the stored executor base URL:
+
+```json
+{
+  "base_url": null
+}
+```
+
+Example response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "base_url": "https://vertex-amplifier-glasses-identical.trycloudflare.com",
+    "created_at": "2026-03-25T10:00:00.000Z",
+    "updated_at": "2026-03-30T15:00:00.000Z"
   }
 }
 ```
