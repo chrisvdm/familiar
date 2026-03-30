@@ -8,6 +8,7 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   const pathname = requestInfo
     ? new URL(requestInfo.request.url).pathname
     : "/docs";
+  const nonce = requestInfo?.rw.nonce;
   const activeSlug =
     pathname.replace(/^\/docs\/?/, "").split("/")[0] || defaultDoc?.slug || "";
   const activeDoc = getDocBySlug(activeSlug);
@@ -64,12 +65,22 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
 
         <article className="docs-main">{children}</article>
       </section>
-      <script
+      <textarea
         id="docs-ai-copy-source"
-        type="application/json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(docsAiCopy) }}
+        aria-hidden="true"
+        readOnly
+        tabIndex={-1}
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: "0",
+          opacity: "0",
+          pointerEvents: "none",
+        }}
+        value={docsAiCopy}
       />
       <script
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `
             (() => {
@@ -78,11 +89,36 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
               if (!button || !source) return;
 
               const originalLabel = button.textContent;
-              const payload = JSON.parse(source.textContent || '""');
+              const copyText = async () => {
+                const payload = source.value || "";
+
+                if (!payload) {
+                  throw new Error("No docs content available to copy.");
+                }
+
+                if (navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(payload);
+                  return;
+                }
+
+                source.removeAttribute("readonly");
+                source.focus();
+                source.select();
+                source.setSelectionRange(0, payload.length);
+
+                const copied = document.execCommand("copy");
+
+                source.setAttribute("readonly", "readonly");
+                window.getSelection()?.removeAllRanges();
+
+                if (!copied) {
+                  throw new Error("execCommand copy failed.");
+                }
+              };
 
               button.addEventListener("click", async () => {
                 try {
-                  await navigator.clipboard.writeText(payload);
+                  await copyText();
                   button.textContent = "Copied";
                   window.alert("Docs content copied to your clipboard.");
                   window.setTimeout(() => {
