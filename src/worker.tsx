@@ -6,9 +6,11 @@ import { AccountRegistryDurableObject } from "@/app/account/account-registry-do"
 import { Document } from "@/app/document";
 import { StaticDocument } from "@/app/static-document";
 import { DocsLayout } from "@/app/layouts/docs-layout";
+import { PublicLayout } from "@/app/layouts/public-layout";
 import { setCommonHeaders } from "@/app/headers";
 import { Debug } from "@/app/pages/debug";
 import { DocsPage } from "@/app/pages/docs";
+import { DocsAiPage } from "@/app/pages/docs-ai";
 import { Home } from "@/app/pages/home/index";
 import { Setup } from "@/app/pages/setup";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
@@ -87,9 +89,11 @@ export default defineApp([
     StaticDocument,
     [
       route("/", Home),
+      layout(PublicLayout, [route("/setup", Setup)]),
       layout(DocsLayout, [
         route("/docs", DocsPage),
         route("/docs/", DocsPage),
+        route("/docs/ai-copy", DocsAiPage),
         route("/docs/:slug", DocsPage),
       ]),
     ],
@@ -99,7 +103,6 @@ export default defineApp([
   ),
   render(Document, [
     route("/debug", Debug),
-    route("/setup", Setup),
     route("/sandbox/messenger", SandboxMessenger),
     route("/sandbox/provider", SandboxProvider),
   ]),

@@ -2,45 +2,45 @@ import { FamiliarMark } from "@/app/components/familiar-mark";
 
 const OVERVIEW = [
   "Receives normalized user messages.",
-  "Keeps the current conversation and useful context in view.",
-  "Asks follow-up questions when required fields are missing.",
-  "Calls the correct tool with structured input.",
+  "Keeps track of threads and useful context.",
+  "Asks follow-up questions when required details are missing.",
+  "Sends structured input to the right external tool or workflow.",
 ];
 
 const GET_STARTED = [
   {
     step: "01",
     title: "Create an account",
-    body: "Get a token for the current setup.",
+    body: "Get a token for the current familiar setup.",
   },
   {
     step: "02",
     title: "Describe your tools",
-    body: "Use familiar.json or sync tools through the API.",
+    body: "Sync the tools and workflows your system exposes.",
   },
   {
     step: "03",
     title: "Send input",
-    body: "Post user messages and let your executor do the actual work.",
+    body: "Post user messages and let your executor, workflow, or backend do the work.",
   },
 ];
 
 const PRINCIPLES = [
   {
-    title: "Conversation context is kept here",
-    body: "Message history, conversation state, and follow-up questions do not need to be rebuilt in every executor.",
+    title: "Conversation stays in one place",
+    body: "familiar keeps the thread, recent context, and memory policy in one system instead of spreading that logic across each tool or workflow.",
   },
   {
-    title: "Each tool declares its inputs",
-    body: "Each tool has a name, a description, and an input schema. That makes the contract clear to a developer and precise for a model.",
+    title: "Tools define a clear contract",
+    body: "Each tool declares what it does and what input it needs. That gives familiar a reliable way to ask questions and send structured requests.",
   },
   {
-    title: "The executor does the work",
-    body: "familiar decides when a tool should run. Your executor performs the side effects and applies the business rules.",
+    title: "Your systems stay in control",
+    body: "familiar does not replace your workflows or business logic. It decides when to call them and passes clean input into the systems you already own.",
   },
   {
-    title: "Missing information is requested first",
-    body: "If a message is missing required details, familiar asks for them before it sends a tool call.",
+    title: "Missing details are asked for first",
+    body: "If a request is incomplete, familiar asks a follow-up question first instead of guessing and sending a bad tool call.",
   },
 ];
 
@@ -52,18 +52,18 @@ const LIFECYCLE = [
   },
   {
     step: "02",
-    title: "Conversation context is loaded",
-    body: "familiar finds the current conversation, loads recent context, and applies the configured memory policy.",
+    title: "Context is loaded",
+    body: "familiar finds the current thread, loads recent context, and applies the configured memory policy.",
   },
   {
     step: "03",
-    title: "The message is interpreted",
-    body: "familiar determines whether to reply directly, ask a follow-up question, or prepare a tool call that matches the tool schema.",
+    title: "A decision is made",
+    body: "familiar decides whether to reply directly, ask a follow-up question, or call a tool based on the declared contract.",
   },
   {
     step: "04",
-    title: "The tool runs",
-    body: "Your executor receives structured input, does the work, and returns the result immediately or later through the webhook.",
+    title: "Your system runs the work",
+    body: "The executor, workflow, or backend receives structured input, performs the work, and returns the result now or later through the webhook.",
   },
 ];
 
@@ -86,7 +86,7 @@ const EXAMPLES = [
 ];
 
 const RESOURCES = [
-  { label: "Intro", href: "/docs/intro" },
+  { label: "Overview", href: "/docs/intro" },
   { label: "Quickstart", href: "/docs/quickstart" },
   { label: "API reference", href: "/docs/api-reference" },
   { label: "Executors", href: "/docs/executors" },
@@ -119,123 +119,132 @@ export const Home = () => (
           <div className="hero-copy">
             <h1 className="hero-title">familiar</h1>
             <p className="hero-subtitle">
-              A helper for turning user messages into clear actions.
+              Makes tools and workflows usable through conversation.
             </p>
             <p className="hero-detail">
-              API for receiving messages, tracking the current conversation,
-              asking follow-up questions when details are missing, and sending
-              structured input to tools.
+              It is a processing layer for conversational interfaces. It
+              interprets user messages, asks for missing details, keeps track
+              of context, prepares structured tool input, and sends it to the
+              right external system.
             </p>
           </div>
-          <div className="hero-actions">
-            <a className="hero-primary" href="/docs/quickstart">
-              Get started
-            </a>
-            <a className="hero-secondary" href="/docs/api-reference">
-              Read the API
-            </a>
+          <div className="hero-snippet">
+            <p className="hero-snippet-label">Create an account and get started</p>
+            <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.dev/api/v1/accounts \\
+  -H "Content-Type: application/json" \\
+  -d '{}'`}</pre>
+            <div className="hero-actions">
+              <a className="hero-primary" href="/docs/quickstart">
+                Quickstart
+              </a>
+              <a className="hero-secondary" href="/docs/api-reference">
+                API reference
+              </a>
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="landing-section" id="overview">
-        <div className="section-heading">
-          <p className="section-kicker">Overview</p>
-          <h2 className="section-title">
-            It makes user input clear enough for tools to use.
-          </h2>
+    <section className="landing-section" id="overview">
+      <div className="section-heading">
+        <p className="section-kicker">Overview</p>
+        <h2 className="section-title">
+          Add a conversation layer without rebuilding one.
+        </h2>
+      </div>
+      <div className="overview-grid">
+        <div className="overview-copy">
+          <p>
+            Most systems can already do the work. The missing piece is
+            usually the conversation layer in front of that work.
+          </p>
+          <p>
+            familiar accepts user input, keeps track of the thread, asks for
+            missing details, and calls the right external tool or workflow
+            with structured input.
+          </p>
         </div>
-        <div className="overview-grid">
-          <div className="overview-copy">
-            <p>
-              People send messages in plain language. familiar keeps the current
-              conversation in view, asks for missing details, and sends
-              structured input to an executor when the request is ready.
-            </p>
-            <p>
-              That lets the executor focus on the work itself instead of
-              tracking conversation history and parsing raw user text.
-            </p>
-          </div>
-          <div className="overview-list">
-            {OVERVIEW.map((item) => (
-              <div key={item} className="overview-item">
-                <span className="overview-mark" aria-hidden="true">
-                  +
-                </span>
-                <p>{item}</p>
-              </div>
-            ))}
-          </div>
+        <div className="overview-list">
+          {OVERVIEW.map((item) => (
+            <div key={item} className="overview-item">
+              <span className="overview-mark" aria-hidden="true">
+                +
+              </span>
+              <p>{item}</p>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Get Started</p>
-          <h2 className="section-title">
-            To get started, you need three parts.
-          </h2>
-        </div>
-        <div className="steps-grid">
-          <div className="steps-code">
-            <p className="panel-label">Basic request path</p>
-            <pre className="panel-code">{`POST /api/v1/accounts
+    <section className="landing-section">
+      <div className="section-heading">
+        <p className="section-kicker">Get Started</p>
+        <h2 className="section-title">
+          Connect familiar to the systems you already have.
+        </h2>
+      </div>
+      <div className="steps-grid">
+        <div className="steps-code">
+          <p className="panel-label">Basic request path</p>
+          <pre className="panel-code">{`POST /api/v1/accounts
 POST /api/v1/tools/sync
 POST /api/v1/input
 POST /api/v1/webhooks/executor`}</pre>
-          </div>
-          <div className="steps-list">
-            {GET_STARTED.map((item) => (
-              <article key={item.step} className="step-item">
-                <span className="step-number">{item.step}</span>
-                <div>
-                  <h3 className="step-title">{item.title}</h3>
-                  <p className="step-body">{item.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
         </div>
-      </section>
-
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Principles</p>
-          <h2 className="section-title">
-            Designed to turn plain language into reliable tool input.
-          </h2>
-        </div>
-        <div className="principles-grid">
-          {PRINCIPLES.map((item) => (
-            <article key={item.title} className="principle-card">
-              <h3 className="principle-title">{item.title}</h3>
-              <p className="principle-body">{item.body}</p>
+        <div className="steps-list">
+          {GET_STARTED.map((item) => (
+            <article key={item.step} className="step-item">
+              <span className="step-number">{item.step}</span>
+              <div>
+                <h3 className="step-title">{item.title}</h3>
+                <p className="step-body">{item.body}</p>
+              </div>
             </article>
           ))}
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Request Lifecycle</p>
-          <h2 className="section-title">How each message is processed.</h2>
+    <section className="landing-section">
+      <div className="section-heading">
+        <p className="section-kicker">Principles</p>
+        <h2 className="section-title">
+          Keep the conversation layer separate from the execution layer.
+        </h2>
+      </div>
+      <div className="principles-grid">
+        {PRINCIPLES.map((item) => (
+          <article key={item.title} className="principle-card">
+            <h3 className="principle-title">{item.title}</h3>
+            <p className="principle-body">{item.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section className="landing-section">
+      <div className="section-heading">
+        <p className="section-kicker">Request Lifecycle</p>
+        <h2 className="section-title">
+          What happens after someone sends a message.
+        </h2>
+      </div>
+      <div className="lifecycle-grid">
+        <div className="lifecycle-list">
+          {LIFECYCLE.map((item) => (
+            <article key={item.step} className="lifecycle-item">
+              <span className="step-number">{item.step}</span>
+              <div>
+                <h3 className="step-title">{item.title}</h3>
+                <p className="step-body">{item.body}</p>
+              </div>
+            </article>
+          ))}
         </div>
-        <div className="lifecycle-grid">
-          <div className="lifecycle-list">
-            {LIFECYCLE.map((item) => (
-              <article key={item.step} className="lifecycle-item">
-                <span className="step-number">{item.step}</span>
-                <div>
-                  <h3 className="step-title">{item.title}</h3>
-                  <p className="step-body">{item.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="lifecycle-diagram">
-            <p className="panel-label">Mental model</p>
-            <pre className="panel-code panel-code-dark">{`user message
+        <div className="lifecycle-diagram">
+          <p className="panel-label">Mental model</p>
+          <pre className="panel-code panel-code-dark">{`user message
     |
     v
  familiar
@@ -243,49 +252,49 @@ POST /api/v1/webhooks/executor`}</pre>
     +--> direct reply
     +--> follow-up question
     +--> executor call --> result --> familiar --> user`}</pre>
-          </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Examples</p>
-          <h2 className="section-title">Try a few common patterns.</h2>
-          <p className="section-text">
-            Start with one tool call, then look at async work and tool-specific follow-up messages.
-          </p>
-        </div>
-        <div className="examples-grid">
-          {EXAMPLES.map((item) => (
-            <a key={item.href} className="example-card" href={item.href}>
-              <h3 className="example-title">{item.title}</h3>
-              <p className="example-body">{item.body}</p>
-              <span className="example-link">Open example</span>
-            </a>
-          ))}
-        </div>
-      </section>
+    <section className="landing-section">
+      <div className="section-heading">
+        <p className="section-kicker">Examples</p>
+        <h2 className="section-title">See a few integration patterns.</h2>
+        <p className="section-text">
+          Start with a basic executor flow, then look at delayed results and
+          tool-specific follow-up behavior.
+        </p>
+      </div>
+      <div className="examples-grid">
+        {EXAMPLES.map((item) => (
+          <a key={item.href} className="example-card" href={item.href}>
+            <h3 className="example-title">{item.title}</h3>
+            <p className="example-body">{item.body}</p>
+            <span className="example-link">Open example</span>
+          </a>
+        ))}
+      </div>
+    </section>
 
-      <section className="landing-section landing-section-docs">
-        <div className="section-heading">
-          <p className="section-kicker">Docs</p>
-          <h2 className="section-title">Read the API and setup documentation.</h2>
-        </div>
-        <div className="resources-grid">
-          {RESOURCES.map((item) => (
-            <a key={item.href} className="resource-link" href={item.href}>
-              {item.label}
-            </a>
-          ))}
-        </div>
-      </section>
+    <section className="landing-section landing-section-docs">
+      <div className="section-heading">
+        <p className="section-kicker">Docs</p>
+        <h2 className="section-title">Read the setup and API documentation.</h2>
+      </div>
+      <div className="resources-grid">
+        {RESOURCES.map((item) => (
+          <a key={item.href} className="resource-link" href={item.href}>
+            {item.label}
+          </a>
+        ))}
+      </div>
+    </section>
 
       <footer className="landing-footer">
         <div>
           <p className="footer-name">familiar</p>
           <p className="footer-copy">
-            API for receiving user messages, storing conversation state, and
-            calling external tools with structured input.
+            Makes tools and workflows usable through conversation.
           </p>
         </div>
         <div className="footer-links">
@@ -300,7 +309,7 @@ POST /api/v1/webhooks/executor`}</pre>
           </a>
         </div>
       </footer>
-    </div>
+
     <script
       dangerouslySetInnerHTML={{
         __html: `
@@ -321,5 +330,6 @@ POST /api/v1/webhooks/executor`}</pre>
         `,
       }}
     />
+    </div>
   </main>
 );

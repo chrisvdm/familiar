@@ -1,6 +1,7 @@
 import type { LayoutProps } from "rwsdk/router";
 
-import { FamiliarMark } from "@/app/components/familiar-mark";
+import { PublicSiteChrome } from "@/app/components/public-site-chrome";
+import { docsAiCopy } from "@/app/docs/ai-copy";
 import { defaultDoc, docs, getDocBySlug } from "@/app/docs/content";
 
 export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
@@ -12,65 +13,92 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   const activeDoc = getDocBySlug(activeSlug);
 
   return (
-    <main className="landing-page">
-      <section className="landing-shell">
-        <div className="landing-topbar">
-          <a className="landing-docs-link" href="/">
-            Back
-          </a>
-        </div>
-
-        <section className="docs-layout">
-          <aside className="docs-sidebar">
-            <a className="docs-brand" href="/">
-              <FamiliarMark
-                className="docs-brand-logo"
-                role="img"
-                aria-label="familiar logo"
-              />
-              <span className="docs-brand-name">familiar</span>
-            </a>
-            <p className="landing-section-label">Docs</p>
-            <nav aria-label="Documentation">
-              <ol className="docs-nav">
-                {docs.map((entry) => (
-                  <li key={entry.slug} className="docs-nav-item">
-                    <a
-                      className={
-                        entry.slug === activeDoc?.slug
-                          ? "docs-nav-link docs-nav-link-active"
-                          : "docs-nav-link"
-                      }
-                      href={`/docs/${entry.slug}`}
+    <PublicSiteChrome
+      brandLabel="Docs"
+      shellClassName="docs-shell"
+      footer
+      navActions={
+        <button className="docs-copy-button" type="button" data-docs-ai-copy>
+          Copy docs content
+        </button>
+      }
+    >
+      <section className="docs-layout">
+        <aside className="docs-sidebar">
+          <nav aria-label="Documentation">
+            <ol className="docs-nav">
+              {docs.map((entry) => (
+                <li key={entry.slug} className="docs-nav-item">
+                  <a
+                    className={
+                      entry.slug === activeDoc?.slug
+                        ? "docs-nav-link docs-nav-link-active"
+                        : "docs-nav-link"
+                    }
+                    href={`/docs/${entry.slug}`}
+                  >
+                    {entry.label}
+                  </a>
+                  {entry.slug === activeDoc?.slug && entry.sections.length > 0 ? (
+                    <ul
+                      className="docs-subnav"
+                      aria-label={`${entry.label} sections`}
                     >
-                      {entry.label}
-                    </a>
-                    {entry.slug === activeDoc?.slug && entry.sections.length > 0 ? (
-                      <ul
-                        className="docs-subnav"
-                        aria-label={`${entry.label} sections`}
-                      >
-                        {entry.sections.map((section) => (
-                          <li key={section.anchor} className="docs-subnav-item">
-                            <a
-                              className="docs-subnav-link"
-                              href={`/docs/${entry.slug}#${section.anchor}`}
-                            >
-                              {section.title}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          </aside>
+                      {entry.sections.map((section) => (
+                        <li key={section.anchor} className="docs-subnav-item">
+                          <a
+                            className="docs-subnav-link"
+                            href={`/docs/${entry.slug}#${section.anchor}`}
+                          >
+                            {section.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        </aside>
 
-          <article className="docs-main">{children}</article>
-        </section>
+        <article className="docs-main">{children}</article>
       </section>
-    </main>
+      <script
+        id="docs-ai-copy-source"
+        type="application/json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(docsAiCopy) }}
+      />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            (() => {
+              const button = document.querySelector("[data-docs-ai-copy]");
+              const source = document.getElementById("docs-ai-copy-source");
+              if (!button || !source) return;
+
+              const originalLabel = button.textContent;
+              const payload = JSON.parse(source.textContent || '""');
+
+              button.addEventListener("click", async () => {
+                try {
+                  await navigator.clipboard.writeText(payload);
+                  button.textContent = "Copied";
+                  window.alert("Docs content copied to your clipboard.");
+                  window.setTimeout(() => {
+                    button.textContent = originalLabel;
+                  }, 1200);
+                } catch {
+                  button.textContent = "Copy failed";
+                  window.setTimeout(() => {
+                    button.textContent = originalLabel;
+                  }, 1600);
+                }
+              });
+            })();
+          `,
+        }}
+      />
+    </PublicSiteChrome>
   );
 };

@@ -7,21 +7,56 @@
     <style>
       :root {
         color-scheme: light;
-        font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
-        background:
-          radial-gradient(circle at top left, rgba(187, 230, 255, 0.35), transparent 32%),
-          linear-gradient(180deg, #f4f1ea 0%, #edf5f9 100%);
-        color: #18232b;
+        font-family: "Avenir Book", "Avenir Next", "Helvetica Neue", sans-serif;
+        background: #ffffff;
+        color: #1c1f57;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; padding: 24px 16px 40px; }
-      main { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
-      .hero, .panel {
-        background: rgba(255, 255, 255, 0.87);
-        border: 1px solid rgba(27, 41, 50, 0.12);
-        border-radius: 22px;
-        box-shadow: 0 18px 40px rgba(33, 51, 61, 0.08);
+      body { margin: 0; min-height: 100vh; padding: 0 24px 88px; background: #ffffff; }
+      main { max-width: 1290px; margin: 0 auto; display: grid; gap: 28px; }
+      .site-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        min-height: 56px;
+        padding: 18px 10px 12px;
+        background: rgba(255, 255, 255, 0.96);
         backdrop-filter: blur(10px);
+      }
+      .site-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #1c1f57;
+        text-decoration: none;
+      }
+      .site-brand img { width: 32px; height: auto; }
+      .site-brand span {
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .site-links { display: flex; flex-wrap: wrap; gap: 30px; }
+      .site-links a, .site-footer a {
+        color: #1c1f57;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        text-decoration: none;
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+      .site-links a:hover, .site-footer a:hover {
+        opacity: 0.7;
+        transform: translateY(-1px);
+      }
+      .hero, .panel {
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(28, 31, 87, 0.12);
+        border-radius: 4px;
       }
       .hero { padding: 22px; }
       .panel { padding: 18px; }
@@ -32,14 +67,14 @@
       h1, h2, p { margin: 0; }
       h1 { font-size: 30px; margin-bottom: 10px; }
       h2 { font-size: 17px; margin-bottom: 10px; }
-      p { color: #52616a; line-height: 1.55; }
+      p { color: rgba(28, 31, 87, 0.72); line-height: 1.7; }
       .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
       .tag {
         border-radius: 999px;
         padding: 7px 12px;
-        background: #eef5f8;
-        border: 1px solid #d4e3ea;
-        color: #215778;
+        background: rgba(216, 209, 223, 0.32);
+        border: 1px solid rgba(28, 31, 87, 0.12);
+        color: #1c1f57;
         font-size: 12px;
         font-weight: 700;
       }
@@ -52,37 +87,39 @@
       input, textarea, button { font: inherit; }
       input, textarea {
         width: 100%;
-        border: 1px solid #c9d2d8;
-        border-radius: 14px;
+        border: 1px solid rgba(28, 31, 87, 0.14);
+        border-radius: 4px;
         padding: 11px 13px;
         background: rgba(255, 255, 255, 0.96);
-        color: #18232b;
+        color: #1c1f57;
       }
       textarea { min-height: 128px; resize: vertical; }
       button {
         border: 0;
-        border-radius: 14px;
+        border-radius: 4px;
         padding: 13px 16px;
-        background: linear-gradient(135deg, #165a73 0%, #277998 100%);
-        color: #fff;
+        background: #d8d1df;
+        color: #1c1f57;
         font-weight: 700;
         cursor: pointer;
-        box-shadow: 0 10px 24px rgba(22, 90, 115, 0.24);
+        box-shadow: 0 8px 16px rgba(28, 31, 87, 0.08);
+        transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
       }
+      button:hover { background: #cec4d9; transform: translateY(-1px); }
       button:disabled { opacity: 0.65; cursor: wait; }
       .examples { display: flex; flex-wrap: wrap; gap: 8px; }
       .examples button {
         background: #fff;
-        color: #165a73;
-        border: 1px solid #bcd9e4;
+        color: #1c1f57;
+        border: 1px solid rgba(28, 31, 87, 0.14);
         box-shadow: none;
         padding: 9px 12px;
       }
       .log, .json {
-        border-radius: 16px;
+        border-radius: 4px;
         padding: 14px;
-        background: #f5f7f8;
-        border: 1px solid #dbe2e6;
+        background: rgba(231, 229, 235, 0.38);
+        border: 1px solid rgba(28, 31, 87, 0.12);
       }
       .chat-log { display: grid; gap: 12px; min-height: 220px; }
       .bubble { border-radius: 18px; padding: 14px 15px; line-height: 1.55; }
@@ -99,10 +136,10 @@
       }
       .streams { display: grid; gap: 12px; }
       .stream {
-        border-radius: 16px;
+        border-radius: 4px;
         padding: 14px;
-        background: linear-gradient(135deg, #fffaf1 0%, #fff 100%);
-        border: 1px solid #e7dbc8;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(28, 31, 87, 0.12);
       }
       .stream h3 { margin: 0 0 10px; font-size: 15px; }
       .entry { padding: 10px 0; border-top: 1px solid #ece3d4; }
@@ -116,10 +153,51 @@
         font-size: 12px;
         line-height: 1.55;
       }
+      .site-footer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 32px;
+        margin-top: 36px;
+        padding: 44px 0 0;
+        border-top: 1px solid rgba(28, 31, 87, 0.12);
+      }
+      .site-footer-name {
+        margin: 0;
+        font-family: "Shippori Mincho", "Times New Roman", serif;
+        color: #353975;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+      }
+      .site-footer-copy {
+        max-width: 620px;
+        margin: 12px 0 0;
+        color: rgba(28, 31, 87, 0.72);
+        font-size: 15px;
+        line-height: 1.7;
+      }
+      .site-footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: flex-start;
+      }
     </style>
   </head>
   <body>
     <main>
+      <nav class="site-nav" aria-label="Primary">
+        <a class="site-brand" href="/" aria-label="familiar home">
+          <img src="/familiar-mark.svg" alt="" />
+          <span>Examples</span>
+        </a>
+        <div class="site-links">
+          <a href="/#overview">About</a>
+          <a href="/docs/">Docs</a>
+          <a href="/setup">Setup</a>
+        </div>
+      </nav>
+
       <section class="hero">
         <h1>Pinned Tool Example</h1>
         <p>
@@ -210,6 +288,20 @@
         <h2>Observed Payload</h2>
         <div class="json"><pre id="payloadView">// request and response payloads appear here</pre></div>
       </section>
+
+      <footer class="site-footer">
+        <div>
+          <p class="site-footer-name">familiar</p>
+          <p class="site-footer-copy">
+            Makes tools and workflows usable through conversation.
+          </p>
+        </div>
+        <div class="site-footer-links">
+          <a href="/docs/">Docs</a>
+          <a href="/setup">Setup</a>
+          <a href="/sandbox/demo-executor">Demo</a>
+        </div>
+      </footer>
     </main>
 
     <script nonce="__NONCE__">

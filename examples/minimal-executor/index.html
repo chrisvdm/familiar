@@ -7,11 +7,9 @@
     <style>
       :root {
         color-scheme: light;
-        font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
-        background:
-          radial-gradient(circle at top left, #fff4d8 0, rgba(255, 244, 216, 0.25) 28%, transparent 54%),
-          linear-gradient(180deg, #f7f3ea 0%, #eef2f1 100%);
-        color: #172126;
+        font-family: "Avenir Book", "Avenir Next", "Helvetica Neue", sans-serif;
+        background: #ffffff;
+        color: #1c1f57;
       }
 
       * {
@@ -21,23 +19,79 @@
       body {
         margin: 0;
         min-height: 100vh;
-        padding: 28px 18px 40px;
+        padding: 0 24px 88px;
+        background: #ffffff;
       }
 
       main {
-        max-width: 1180px;
+        max-width: 1290px;
         margin: 0 auto;
         display: grid;
-        gap: 18px;
+        gap: 28px;
+      }
+
+      .site-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        min-height: 56px;
+        padding: 18px 10px 12px;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(10px);
+      }
+
+      .site-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #1c1f57;
+        text-decoration: none;
+      }
+
+      .site-brand img {
+        width: 32px;
+        height: auto;
+      }
+
+      .site-brand span {
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .site-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+      }
+
+      .site-links a,
+      .site-footer a {
+        color: #1c1f57;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        text-decoration: none;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .site-links a:hover,
+      .site-footer a:hover {
+        opacity: 0.7;
+        transform: translateY(-1px);
       }
 
       .hero,
       .panel {
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(35, 49, 57, 0.12);
-        border-radius: 22px;
-        box-shadow: 0 18px 50px rgba(44, 58, 66, 0.08);
-        backdrop-filter: blur(8px);
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(28, 31, 87, 0.12);
+        border-radius: 4px;
       }
 
       .hero {
@@ -58,8 +112,8 @@
 
       .hero p {
         max-width: 760px;
-        color: #48555d;
-        line-height: 1.55;
+        color: rgba(28, 31, 87, 0.72);
+        line-height: 1.7;
       }
 
       .hero-tags {
@@ -74,9 +128,9 @@
         align-items: center;
         padding: 7px 12px;
         border-radius: 999px;
-        background: #eef5f1;
-        border: 1px solid #d3e1d8;
-        color: #234436;
+        background: rgba(216, 209, 223, 0.32);
+        border: 1px solid rgba(28, 31, 87, 0.12);
+        color: #1c1f57;
         font-size: 12px;
         font-weight: 700;
       }
@@ -103,7 +157,7 @@
       }
 
       .muted {
-        color: #5b676e;
+        color: rgba(28, 31, 87, 0.72);
       }
 
       form {
@@ -138,11 +192,11 @@
       input,
       textarea {
         width: 100%;
-        border: 1px solid #c7d0d4;
-        border-radius: 14px;
+        border: 1px solid rgba(28, 31, 87, 0.14);
+        border-radius: 4px;
         padding: 11px 13px;
         background: rgba(255, 255, 255, 0.95);
-        color: #172126;
+        color: #1c1f57;
       }
 
       textarea {
@@ -152,17 +206,21 @@
 
       button {
         border: 0;
-        border-radius: 14px;
+        border-radius: 4px;
         padding: 13px 16px;
-        background: linear-gradient(135deg, #1f6a52 0%, #2e8b68 100%);
-        color: #fff;
+        background: #d8d1df;
+        color: #1c1f57;
         font-weight: 700;
         cursor: pointer;
-        transition: transform 120ms ease, box-shadow 120ms ease;
-        box-shadow: 0 10px 24px rgba(31, 106, 82, 0.22);
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease,
+          background-color 160ms ease;
+        box-shadow: 0 8px 16px rgba(28, 31, 87, 0.08);
       }
 
       button:hover {
+        background: #cec4d9;
         transform: translateY(-1px);
       }
 
@@ -173,10 +231,10 @@
       }
 
       .helper {
-        border-radius: 14px;
+        border-radius: 4px;
         padding: 12px 13px;
-        background: #f4f8f7;
-        color: #425057;
+        background: rgba(231, 229, 235, 0.55);
+        color: rgba(28, 31, 87, 0.8);
         line-height: 1.5;
       }
 
@@ -189,10 +247,43 @@
 
       .example-pills button {
         background: #fff;
-        color: #1f6a52;
-        border: 1px solid #bfd7ca;
+        color: #1c1f57;
+        border: 1px solid rgba(28, 31, 87, 0.14);
         box-shadow: none;
         padding: 9px 12px;
+      }
+
+      .site-footer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 32px;
+        margin-top: 36px;
+        padding: 44px 0 0;
+        border-top: 1px solid rgba(28, 31, 87, 0.12);
+      }
+
+      .site-footer-name {
+        margin: 0;
+        font-family: "Shippori Mincho", "Times New Roman", serif;
+        color: #353975;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+      }
+
+      .site-footer-copy {
+        max-width: 620px;
+        margin: 12px 0 0;
+        color: rgba(28, 31, 87, 0.72);
+        font-size: 15px;
+        line-height: 1.7;
+      }
+
+      .site-footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: flex-start;
       }
 
       .chat-log {
@@ -293,6 +384,18 @@
   </head>
   <body>
     <main>
+      <nav class="site-nav" aria-label="Primary">
+        <a class="site-brand" href="/" aria-label="familiar home">
+          <img src="/familiar-mark.svg" alt="" />
+          <span>Examples</span>
+        </a>
+        <div class="site-links">
+          <a href="/#overview">About</a>
+          <a href="/docs/">Docs</a>
+          <a href="/setup">Setup</a>
+        </div>
+      </nav>
+
       <section class="hero">
         <h1>Minimal familiar Executor</h1>
         <p>
@@ -389,6 +492,20 @@
           </div>
         </div>
       </section>
+
+      <footer class="site-footer">
+        <div>
+          <p class="site-footer-name">familiar</p>
+          <p class="site-footer-copy">
+            Makes tools and workflows usable through conversation.
+          </p>
+        </div>
+        <div class="site-footer-links">
+          <a href="/docs/">Docs</a>
+          <a href="/setup">Setup</a>
+          <a href="/sandbox/demo-executor">Demo</a>
+        </div>
+      </footer>
     </main>
 
     <script nonce="__NONCE__">

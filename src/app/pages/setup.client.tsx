@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-import styles from "./setup.module.css";
-
 type CreateAccountResponse = {
   account: {
     id: string;
@@ -67,36 +65,27 @@ export const SetupClient = () => {
   };
 
   return (
-    <section className={styles.shell}>
-      <div className={styles.topbar}>
-        <a className={styles.toplink} href="/">
-          Home
-        </a>
-        <a className={styles.toplink} href="/docs/quickstart">
-          Quickstart
-        </a>
-      </div>
-
-      <header className={styles.hero}>
-        <p className={styles.eyebrow}>Hosted Onboarding</p>
-        <h1 className={styles.title}>Create an account. Get an API token.</h1>
-        <p className={styles.copy}>
+    <section className="setup-shell">
+      <header className="setup-hero">
+        <p className="setup-eyebrow">Hosted Onboarding</p>
+        <h1 className="setup-title">Create an account. Get an API token.</h1>
+        <p className="setup-copy">
           This is the shortest current hosted setup path. It is designed to work
           for humans first, and it keeps the result machine-usable for CLI and AI
           flows.
         </p>
       </header>
 
-      <div className={styles.grid}>
-        <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Create account</h2>
-          <p className={styles.panelCopy}>
+      <div className="setup-grid">
+        <section className="setup-panel">
+          <h2 className="setup-panel-title">Create account</h2>
+          <p className="setup-panel-copy">
             For now, this creates one account and immediately issues the first
             API token for the default familiar setup behind that account.
           </p>
 
           <button
-            className={styles.button}
+            className="setup-button"
             disabled={isPending}
             onClick={handleCreateAccount}
             type="button"
@@ -104,43 +93,35 @@ export const SetupClient = () => {
             {isPending ? "Creating..." : "Create account"}
           </button>
 
-          {status ? <p className={styles.status}>{status}</p> : null}
+          {status ? <p className="setup-status">{status}</p> : null}
         </section>
 
-        <aside className={styles.panel}>
-          <h2 className={styles.panelTitle}>CLI direction</h2>
-          <p className={styles.panelCopy}>
+        {/*
+        <aside className="setup-panel">
+          <h2 className="setup-panel-title">CLI direction</h2>
+          <p className="setup-panel-copy">
             The intended primary setup path for humans and AI agents is:
           </p>
-          <pre className={styles.code}>
+          <pre className="setup-code">
             <code>npx @familiar/cli@latest init</code>
           </pre>
-          <p className={styles.panelCopy}>
+          <p className="setup-panel-copy">
             The package is not published yet, so this page is the working hosted
             path today.
           </p>
         </aside>
-
-        <aside className={styles.panel}>
-          <h2 className={styles.panelTitle}>Why this path</h2>
-          <ol className={styles.asideList}>
-            <li>The account is created in one step.</li>
-            <li>The token is usable from curl, a CLI, or an AI agent.</li>
-            <li>No passkey or email workflow is required yet.</li>
-            <li>Passkeys can still be added later for the dashboard path.</li>
-          </ol>
-        </aside>
+        */}
       </div>
 
       {result ? (
-        <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Your API token</h2>
-          <p className={styles.panelCopy}>
+        <section className="setup-panel">
+          <h2 className="setup-panel-title">Your API token</h2>
+          <p className="setup-panel-copy">
             Copy this token now. This page is the only place it is shown in full.
           </p>
-          <div className={styles.result}>
-            <div className={styles.token}>{result.token.value}</div>
-            <pre className={styles.code}>
+          <div className="setup-result">
+            <div className="setup-token">{result.token.value}</div>
+            <pre className="setup-code">
               <code>{curlExample(result.token.value)}</code>
             </pre>
           </div>

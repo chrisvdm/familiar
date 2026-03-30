@@ -1,8 +1,7 @@
-import styles from "./setup.module.css";
 import { SetupClient } from "./setup.client";
 
 export const Setup = () => (
-  <main className={styles.page}>
+  <section className="setup-layout">
     <SetupClient />
-  </main>
+  </section>
 );
