@@ -10,3 +10,4 @@
 - aligned the standalone public example pages with the public site theme, nav, and footer
 - moved setup-page styling into the shared public stylesheet so the setup route no longer depends on a separate CSS module
 - removed the setup-page "Why this path" block, commented out the "CLI direction" block, and tightened vertical spacing so more of the setup content sits above the fold
+- replaced the `npm run release` script with a repo-local release helper that keeps the RedwoodSDK-style deploy-env checks but works around Cloudflare's current restriction on `wrangler secret put` when the latest Worker version is not yet deployed
