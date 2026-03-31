@@ -7,22 +7,21 @@ import type {
   FamiliarIntegrationConfig,
   FamiliarTokenAuth,
 } from "./account.types";
+import {
+  createInitialRegistryState,
+  normalizeAccountRegistryState,
+} from "./account-registry-state";
 
 const ACCOUNT_REGISTRY_KEY = "account-registry";
-
-const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
-  accounts: {},
-  integrations: {},
-  tokens: {},
-  tokenIndex: {},
-});
 
 export class AccountRegistryDurableObject extends DurableObject {
   private async loadState() {
     const existing =
       await this.ctx.storage.get<FamiliarAccountRegistryState>(ACCOUNT_REGISTRY_KEY);
 
-    return existing ?? createInitialRegistryState();
+    return existing
+      ? normalizeAccountRegistryState(existing)
+      : createInitialRegistryState();
   }
 
   private async saveState(state: FamiliarAccountRegistryState) {
