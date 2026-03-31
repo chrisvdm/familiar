@@ -195,6 +195,16 @@ const BROAD_PERSONAL_MEMORY_QUERY_PATTERN =
 const NAME_RECALL_QUERY_PATTERN =
   /\b(do you know my name|what(?:'s| is) my name|tell me my name|remember my name|what name do i go by|the name i call myself)\b/i;
 
+const isBareNameRecallPrompt = (content: string) => {
+  const trimmed = content.trim().replace(/[.?!]+$/, "");
+
+  if (!trimmed || /\bmy name is\b/i.test(trimmed)) {
+    return false;
+  }
+
+  return /^(?:my name|name|about my name)$/i.test(trimmed);
+};
+
 const getMostRelevantFact = (facts: MemoryFact[]) =>
   [...facts].sort((left, right) => {
     if (right.confidence !== left.confidence) {
@@ -234,15 +244,34 @@ const dedupeMemoryFacts = (facts: MemoryFact[]) => {
 const formatMemoryFactForReply = (fact: MemoryFact) => {
   switch (fact.key) {
     case "name":
-      return `your name is ${fact.value}`;
+      return `you go by ${fact.value}`;
     case "children_count":
       return `you have ${fact.value} children`;
     case "profession":
-      return `your profession is ${fact.value}`;
+      return `you work as ${
+        /^(a|an)\b/i.test(fact.value)
+          ? fact.value
+          : /^[aeiou]/i.test(fact.value)
+            ? `an ${fact.value}`
+            : `a ${fact.value}`
+      }`;
     case "business":
       return `your business is ${fact.value}`;
     case "location":
-      return `your location is ${fact.value}`;
+      return `you are in ${fact.value}`;
+    case "likes":
+    case "interest":
+    case "interests":
+      return `you like ${fact.value}`;
+    case "dislikes":
+      return `you dislike ${fact.value}`;
+    case "favorite":
+    case "favorite_food":
+    case "favorite_drink":
+    case "favorite_music":
+    case "favorite_movie":
+    case "favorite_color":
+      return `your ${fact.key.replace(/_/g, " ")} is ${fact.value}`;
     case "spouse_name":
     case "partner_name":
     case "wife_name":
@@ -251,6 +280,22 @@ const formatMemoryFactForReply = (fact: MemoryFact) => {
     default:
       return `${fact.key.replace(/_/g, " ")}: ${fact.value}`;
   }
+};
+
+const joinMemoryPhrases = (phrases: string[]) => {
+  if (phrases.length === 0) {
+    return "";
+  }
+
+  if (phrases.length === 1) {
+    return phrases[0];
+  }
+
+  if (phrases.length === 2) {
+    return `${phrases[0]} and ${phrases[1]}`;
+  }
+
+  return `${phrases.slice(0, -1).join(", ")}, and ${phrases.at(-1)}`;
 };
 
 export const buildPersonalMemoryReply = ({
@@ -262,19 +307,23 @@ export const buildPersonalMemoryReply = ({
   threadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
 }) => {
-  if (!BROAD_PERSONAL_MEMORY_QUERY_PATTERN.test(content) && !NAME_RECALL_QUERY_PATTERN.test(content)) {
+  const isNameRecall =
+    NAME_RECALL_QUERY_PATTERN.test(content) || isBareNameRecallPrompt(content);
+  const isBroadMemoryRecall = BROAD_PERSONAL_MEMORY_QUERY_PATTERN.test(content);
+
+  if (!isBroadMemoryRecall && !isNameRecall) {
     return null;
   }
 
-  if (NAME_RECALL_QUERY_PATTERN.test(content)) {
+  if (isNameRecall) {
     const storedName = getStoredName({
       threadMemory,
       globalMemory,
     });
 
     return storedName
-      ? `Your name is ${storedName}.`
-      : "I do not know your name yet from stored memory.";
+      ? `You go by ${storedName}.`
+      : "I do not know your name yet.";
   }
 
   const storedFacts = dedupeMemoryFacts([
@@ -283,12 +332,12 @@ export const buildPersonalMemoryReply = ({
   ]).slice(0, 4);
 
   if (storedFacts.length === 0) {
-    return "I do not know much about you yet from stored memory.";
+    return "I do not know much about you yet.";
   }
 
-  return `Here is what I know so far: ${storedFacts
-    .map((fact) => formatMemoryFactForReply(fact))
-    .join("; ")}.`;
+  return `I know that ${joinMemoryPhrases(
+    storedFacts.map((fact) => formatMemoryFactForReply(fact)),
+  )}.`;
 };
 
 export const sanitizeRawToolInput = ({

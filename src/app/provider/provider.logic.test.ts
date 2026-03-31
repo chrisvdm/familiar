@@ -89,7 +89,28 @@ test("personal memory replies return stored name directly", () => {
     globalMemory,
   });
 
-  assert.equal(reply, "Your name is Chris.");
+  assert.equal(reply, "You go by Chris.");
+});
+
+test("personal memory replies treat bare my name prompts as recall", () => {
+  const globalMemory = createEmptyGlobalMemory();
+  const threadMemory = createEmptyThreadMemory();
+  globalMemory.identity.name = [
+    {
+      key: "name",
+      value: "Chris",
+      confidence: 0.99,
+      updatedAt: "2026-03-31T10:00:00.000Z",
+    },
+  ];
+
+  const reply = buildPersonalMemoryReply({
+    content: "my name",
+    threadMemory,
+    globalMemory,
+  });
+
+  assert.equal(reply, "You go by Chris.");
 });
 
 test("personal memory replies summarize stored facts for broad self queries", () => {
@@ -118,9 +139,9 @@ test("personal memory replies summarize stored facts for broad self queries", ()
     globalMemory,
   });
 
-  assert.match(reply ?? "", /Here is what I know so far:/);
-  assert.match(reply ?? "", /your name is Chris/);
-  assert.match(reply ?? "", /your profession is Engineer/);
+  assert.match(reply ?? "", /I know that/);
+  assert.match(reply ?? "", /you go by Chris/);
+  assert.match(reply ?? "", /you work as an Engineer/);
 });
 
 test("personal memory replies admit when no stored name exists", () => {
@@ -133,7 +154,7 @@ test("personal memory replies admit when no stored name exists", () => {
     globalMemory,
   });
 
-  assert.equal(reply, "I do not know your name yet from stored memory.");
+  assert.equal(reply, "I do not know your name yet.");
 });
 
 test("rate limiter allows requests under the rolling limit", () => {
