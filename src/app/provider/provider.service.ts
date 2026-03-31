@@ -46,6 +46,7 @@ import {
 } from "./provider.execution";
 import {
   applyConversationRateLimit,
+  buildShortcutRawInputText,
   buildShortcutToolArguments,
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
@@ -2054,7 +2055,10 @@ export const handleProviderConversationInput = async ({
             content: entry.remainder,
           }),
           channel: input.channel,
-          rawInputText: entry.remainder,
+          rawInputText: buildShortcutRawInputText({
+            tool: entry.tool,
+            content: entry.remainder,
+          }),
           shortcutMode: true,
           requestId,
         });
@@ -2117,7 +2121,10 @@ export const handleProviderConversationInput = async ({
         }),
         executorPayloadTemplate: shortcutTool.executorPayload,
         channel: input.channel,
-        rawInputText: content,
+        rawInputText: buildShortcutRawInputText({
+          tool: shortcutTool,
+          content,
+        }),
         shortcutMode: true,
         requestId,
       });

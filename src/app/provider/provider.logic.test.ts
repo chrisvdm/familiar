@@ -5,6 +5,7 @@ import { createEmptyGlobalMemory } from "../chat/shared.ts";
 
 import {
   applyConversationRateLimit,
+  buildShortcutRawInputText,
   buildShortcutToolArguments,
   clampDecisionConfidence,
   determineMockExecutionState,
@@ -692,6 +693,16 @@ test("sanitizeRawToolInput removes send-to prefixes", () => {
   );
 });
 
+test("sanitizeRawToolInput returns empty string for invocation-only content", () => {
+  assert.equal(
+    sanitizeRawToolInput({
+      toolName: "discord",
+      content: "send message to discord",
+    }),
+    "",
+  );
+});
+
 test("raw shortcut arguments strip explicit invocation prefixes", () => {
   const args = buildShortcutToolArguments({
     tool: {
@@ -716,6 +727,30 @@ test("raw shortcut arguments strip explicit invocation prefixes", () => {
   assert.deepEqual(args, {
     message: "this is from familiar",
   });
+});
+
+test("raw shortcut raw input strips explicit invocation prefixes", () => {
+  const rawInputText = buildShortcutRawInputText({
+    tool: {
+      toolName: "discord",
+      description: "Send a Discord message",
+      inputSchema: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+          },
+        },
+      },
+      inputMode: "raw",
+      executorPayload: undefined,
+      policy: {},
+      status: "active",
+    },
+    content: "@discord boo!",
+  });
+
+  assert.equal(rawInputText, "boo!");
 });
 
 test("todo item splitting produces multiple items for compound task text", () => {

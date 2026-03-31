@@ -179,17 +179,15 @@ export const sanitizeRawToolInput = ({
   const patterns = [
     new RegExp(`^@(?:\\[${escapedToolName}\\]|${escapedToolName})\\s+`, "i"),
     new RegExp(
-      `^(?:please\\s+)?send(?:\\s+this)?\\s+to\\s+${escapedToolName}\\s*[:,-]?\\s*`,
+      `^(?:please\\s+)?send(?:\\s+(?:this|message))?\\s+to\\s+${escapedToolName}\\s*[:,-]?\\s*`,
       "i",
     ),
     new RegExp(`^${escapedToolName}\\s*[:,-]\\s*`, "i"),
   ];
 
   for (const pattern of patterns) {
-    const sanitized = trimmed.replace(pattern, "").trim();
-
-    if (sanitized !== trimmed && sanitized) {
-      return sanitized;
+    if (pattern.test(trimmed)) {
+      return trimmed.replace(pattern, "").trim();
     }
   }
 
@@ -481,6 +479,23 @@ export const buildShortcutToolArguments = ({
   }
 
   return {};
+};
+
+export const buildShortcutRawInputText = ({
+  tool,
+  content,
+}: {
+  tool: AllowedTool;
+  content: string;
+}) => {
+  if (getToolInputMode(tool) === "raw") {
+    return sanitizeRawToolInput({
+      toolName: tool.toolName,
+      content,
+    });
+  }
+
+  return content;
 };
 
 const TODO_ITEM_VERB_PATTERN =
