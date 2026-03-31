@@ -894,12 +894,7 @@ const normalizeToolArguments = ({
       };
     }
 
-    return {
-      [rawFieldName]: sanitizeRawToolInput({
-        toolName: tool.toolName,
-        content,
-      }),
-    };
+    return args;
   }
 
   const properties = tool.inputSchema?.properties;
@@ -998,13 +993,6 @@ const normalizeToolExecutionInput = ({
     if (rawFieldName) {
       const rawFieldValue = normalizedArguments[rawFieldName];
       rawInputText = typeof rawFieldValue === "string" ? rawFieldValue : undefined;
-    }
-
-    if (typeof rawInputText !== "string") {
-      rawInputText = sanitizeRawToolInput({
-        toolName: tool.toolName,
-        content,
-      });
     }
   }
 
