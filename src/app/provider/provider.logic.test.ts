@@ -19,6 +19,7 @@ import {
   isToolShortcutExitInput,
   parseToolShortcutInvocation,
   parseToolShortcutInvocations,
+  sanitizeRawToolInput,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
   validateToolInputMode,
@@ -668,6 +669,52 @@ test("shortcut arguments use the raw string field for raw tools", () => {
 
   assert.deepEqual(args, {
     message: "I live in a small town",
+  });
+});
+
+test("sanitizeRawToolInput removes leading tool shortcut names", () => {
+  assert.equal(
+    sanitizeRawToolInput({
+      toolName: "discord",
+      content: "@discord hi my name is familiar",
+    }),
+    "hi my name is familiar",
+  );
+});
+
+test("sanitizeRawToolInput removes send-to prefixes", () => {
+  assert.equal(
+    sanitizeRawToolInput({
+      toolName: "discord",
+      content: "send to discord: this is a message",
+    }),
+    "this is a message",
+  );
+});
+
+test("raw shortcut arguments strip explicit invocation prefixes", () => {
+  const args = buildShortcutToolArguments({
+    tool: {
+      toolName: "discord",
+      description: "Send a Discord message",
+      inputSchema: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+          },
+        },
+      },
+      inputMode: "raw",
+      executorPayload: undefined,
+      policy: {},
+      status: "active",
+    },
+    content: "send this to discord: this is from familiar",
+  });
+
+  assert.deepEqual(args, {
+    message: "this is from familiar",
   });
 });
 

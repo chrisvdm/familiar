@@ -61,6 +61,7 @@ import {
   isToolShortcutExitInput,
   parseToolShortcutInvocation,
   parseToolShortcutInvocations,
+  sanitizeRawToolInput,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
@@ -902,7 +903,10 @@ const normalizeToolArguments = ({
     }
 
     return {
-      [rawFieldName]: content,
+      [rawFieldName]: sanitizeRawToolInput({
+        toolName: tool.toolName,
+        content,
+      }),
     };
   }
 

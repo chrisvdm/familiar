@@ -162,6 +162,40 @@ const TOOL_SHORTCUT_EXIT_PATTERN =
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+export const sanitizeRawToolInput = ({
+  toolName,
+  content,
+}: {
+  toolName: string;
+  content: string;
+}) => {
+  const trimmed = content.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const escapedToolName = escapeRegex(toolName.trim());
+  const patterns = [
+    new RegExp(`^@(?:\\[${escapedToolName}\\]|${escapedToolName})\\s+`, "i"),
+    new RegExp(
+      `^(?:please\\s+)?send(?:\\s+this)?\\s+to\\s+${escapedToolName}\\s*[:,-]?\\s*`,
+      "i",
+    ),
+    new RegExp(`^${escapedToolName}\\s*[:,-]\\s*`, "i"),
+  ];
+
+  for (const pattern of patterns) {
+    const sanitized = trimmed.replace(pattern, "").trim();
+
+    if (sanitized !== trimmed && sanitized) {
+      return sanitized;
+    }
+  }
+
+  return trimmed;
+};
+
 const stripInlineToolExitPhrase = ({
   content,
   toolName,
@@ -386,7 +420,10 @@ export const buildShortcutToolArguments = ({
     }
 
     return {
-      [rawFieldName]: content,
+      [rawFieldName]: sanitizeRawToolInput({
+        toolName: tool.toolName,
+        content,
+      }),
     };
   }
 
