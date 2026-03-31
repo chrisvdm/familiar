@@ -22,7 +22,6 @@ import {
   createUserMessage,
   getThreadTitleFromMessages,
   pruneGlobalMemoryByThreadId,
-  type ActiveToolShortcut,
   type ChatMessage,
   type PendingToolConfirmation,
   type ChatSessionState,
@@ -60,7 +59,6 @@ import {
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
   interpretPendingToolConfirmation,
-  isToolShortcutExitInput,
   parseToolShortcutInvocation,
   parseToolShortcutInvocations,
   sanitizeRawToolInput,
@@ -1522,12 +1520,10 @@ const appendMessagesToThread = async ({
   threadId,
   messages,
   pendingToolConfirmation,
-  activeToolShortcut,
 }: {
   threadId: string;
   messages: ChatMessage[];
   pendingToolConfirmation?: PendingToolConfirmation | null;
-  activeToolShortcut?: ActiveToolShortcut | null;
 }) => {
   const currentState = await loadChatSession(threadId);
   const nextState = {
@@ -1537,10 +1533,7 @@ const appendMessagesToThread = async ({
       pendingToolConfirmation === undefined
         ? currentState.pendingToolConfirmation
         : pendingToolConfirmation,
-    activeToolShortcut:
-      activeToolShortcut === undefined
-        ? currentState.activeToolShortcut
-        : activeToolShortcut,
+    activeToolShortcut: null,
   };
 
   await saveChatSession(threadId, nextState);
@@ -2034,7 +2027,6 @@ export const handleProviderConversationInput = async ({
   let executionState: ProviderExecutionState | undefined;
   let executionId: string | undefined;
   let pendingToolConfirmation: PendingToolConfirmation | null = null;
-  let activeToolShortcut: ActiveToolShortcut | null | undefined = undefined;
   let decisionReasoning: string | null = null;
   const shortcutInvocation = parseToolShortcutInvocation({
     content,
@@ -2047,15 +2039,6 @@ export const handleProviderConversationInput = async ({
 
   if (shortcutInvocation) {
     const lastShortcutInvocation = shortcutInvocations.at(-1) ?? shortcutInvocation;
-    activeToolShortcut = {
-      toolName: lastShortcutInvocation.tool.toolName,
-      createdAt:
-        currentState.activeToolShortcut?.toolName === lastShortcutInvocation.tool.toolName &&
-        currentState.activeToolShortcut
-          ? currentState.activeToolShortcut.createdAt
-          : new Date().toISOString(),
-    };
-
     const executableShortcuts = shortcutInvocations.filter((entry) => entry.remainder);
 
     if (executableShortcuts.length > 0) {
@@ -2103,70 +2086,9 @@ export const handleProviderConversationInput = async ({
 
       assistantContent = executionMessages.join("\n");
     } else {
-      assistantContent = `Pinned tool: ${lastShortcutInvocation.tool.toolName}. Send the next messages and I will pass them straight through. Say "that's all for ${lastShortcutInvocation.tool.toolName}" or "that's enough ${lastShortcutInvocation.tool.toolName}" to stop.`;
-      action = "direct_reply";
-    }
-  } else if (currentState.activeToolShortcut) {
-    const shortcutTool = currentContext.allowedTools.find(
-      (tool) => tool.toolName === currentState.activeToolShortcut?.toolName,
-    );
-
-    if (
-      isToolShortcutExitInput({
-        content,
-        toolName: currentState.activeToolShortcut.toolName,
-      })
-    ) {
-      assistantContent = `Unpinned tool: ${currentState.activeToolShortcut.toolName}.`;
-      action = "direct_reply";
-      activeToolShortcut = null;
-    } else if (!shortcutTool) {
-      assistantContent =
-        "That pinned tool is no longer available. Choose another tool or continue normally.";
+      assistantContent = `Tool shortcut detected for ${lastShortcutInvocation.tool.toolName}. Include the payload in the same message, for example \`@${lastShortcutInvocation.tool.toolName} hello\`.`;
       action = "clarification";
       executionState = "needs_clarification";
-      activeToolShortcut = null;
-    } else {
-      const execution = await executeProviderTool({
-        providerConfig,
-        providerId: input.integration_id,
-        userId: input.user_id,
-        threadId,
-        toolName: shortcutTool.toolName,
-        args: buildShortcutToolArguments({
-          tool: shortcutTool,
-          content,
-        }),
-        executorPayloadTemplate: shortcutTool.executorPayload,
-        channel: input.channel,
-        rawInputText: buildShortcutRawInputText({
-          tool: shortcutTool,
-          content,
-        }),
-        shortcutMode: true,
-        requestId,
-      });
-
-      assistantContent = execution.message;
-      action = "tool_call";
-      executionState = execution.state;
-      executionId = execution.executionId;
-      activeToolShortcut = currentState.activeToolShortcut;
-
-      logProviderAudit({
-        event: "provider.tool.executed",
-        requestId,
-        providerId: input.integration_id,
-        userId: input.user_id,
-        threadId,
-        status: execution.state === "failed" ? "error" : "ok",
-        metadata: {
-          toolName: shortcutTool.toolName,
-          executionState: execution.state,
-          viaShortcut: true,
-          continuedShortcut: true,
-        },
-      });
     }
   } else if (currentState.pendingToolConfirmation) {
     const pendingTool = currentContext.allowedTools.find(
@@ -2433,7 +2355,6 @@ export const handleProviderConversationInput = async ({
     threadId,
     messages: [createAssistantMessage(assistantContent)],
     pendingToolConfirmation,
-    activeToolShortcut,
   });
 
   const finalContext = await saveProviderUserContext({
