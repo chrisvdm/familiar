@@ -215,6 +215,18 @@ export const sanitizeRawToolInput = ({
   return trimmed;
 };
 
+const sanitizeShortcutInvocationContent = ({
+  toolName,
+  content,
+}: {
+  toolName: string;
+  content: string;
+}) =>
+  sanitizeRawToolInput({
+    toolName,
+    content,
+  });
+
 const stripInlineToolExitPhrase = ({
   content,
   toolName,
@@ -431,6 +443,11 @@ export const buildShortcutToolArguments = ({
   tool: AllowedTool;
   content: string;
 }) => {
+  const sanitizedContent = sanitizeShortcutInvocationContent({
+    toolName: tool.toolName,
+    content,
+  });
+
   if (getToolInputMode(tool) === "raw") {
     const rawFieldName = getRawToolStringFieldName(tool);
 
@@ -439,10 +456,7 @@ export const buildShortcutToolArguments = ({
     }
 
     return {
-      [rawFieldName]: sanitizeRawToolInput({
-        toolName: tool.toolName,
-        content,
-      }),
+      [rawFieldName]: sanitizedContent,
     };
   }
 
@@ -460,7 +474,7 @@ export const buildShortcutToolArguments = ({
 
   if (stringField) {
     return {
-      [stringField]: content,
+      [stringField]: sanitizedContent,
     };
   }
 
@@ -471,7 +485,7 @@ export const buildShortcutToolArguments = ({
 
   if (singleStringField && propertyEntries.length === 1) {
     return {
-      [singleStringField[0]]: content,
+      [singleStringField[0]]: sanitizedContent,
     };
   }
 
@@ -484,7 +498,7 @@ export const buildShortcutToolArguments = ({
 
   if (arrayField) {
     return {
-      [arrayField]: [content],
+      [arrayField]: [sanitizedContent],
     };
   }
 
@@ -495,7 +509,7 @@ export const buildShortcutToolArguments = ({
 
   if (singleStringArrayField && propertyEntries.length === 1) {
     return {
-      [singleStringArrayField[0]]: [content],
+      [singleStringArrayField[0]]: [sanitizedContent],
     };
   }
 
@@ -510,13 +524,16 @@ export const buildShortcutRawInputText = ({
   content: string;
 }) => {
   if (getToolInputMode(tool) === "raw") {
-    return sanitizeRawToolInput({
+    return sanitizeShortcutInvocationContent({
       toolName: tool.toolName,
       content,
     });
   }
 
-  return content;
+  return sanitizeShortcutInvocationContent({
+    toolName: tool.toolName,
+    content,
+  });
 };
 
 const TODO_ITEM_VERB_PATTERN =

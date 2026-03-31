@@ -730,6 +730,30 @@ test("raw shortcut arguments strip explicit invocation prefixes", () => {
   });
 });
 
+test("processed shortcut arguments strip explicit invocation prefixes", () => {
+  const args = buildShortcutToolArguments({
+    tool: {
+      toolName: "discord",
+      description: "Send a Discord message",
+      inputSchema: {
+        type: "object",
+        properties: {
+          message: {
+            type: "string",
+          },
+        },
+      },
+      policy: {},
+      status: "active",
+    },
+    content: "@discord hello",
+  });
+
+  assert.deepEqual(args, {
+    message: "hello",
+  });
+});
+
 test("raw shortcut raw input strips explicit invocation prefixes", () => {
   const rawInputText = buildShortcutRawInputText({
     tool: {
