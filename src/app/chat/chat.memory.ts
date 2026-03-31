@@ -14,6 +14,15 @@ import {
   type ThreadMemory,
 } from "./shared.ts";
 
+const memoryEnv = env as typeof env & {
+  OPENROUTER_MEMORY_MODEL?: string;
+  OPENROUTER_MODEL?: string;
+  OPENROUTER_MEMORY_SELECTOR_MODEL?: string;
+  OPENROUTER_SITE_URL?: string;
+  OPENROUTER_SITE_NAME?: string;
+  OPENROUTER_API_KEY?: string;
+};
+
 type OpenRouterMessage = {
   role: "system" | "user" | "assistant";
   content: string;
@@ -50,10 +59,37 @@ type DerivedMemoryFact = {
   confidence: number;
   rationale: string;
 };
+
+type MemorySelectorResponse = {
+  reasoning?: string;
+  thread_fact_ids?: string[];
+  global_fact_ids?: string[];
+  derived_fact_ids?: string[];
+  thread_summary_ids?: string[];
+  snippet_ids?: string[];
+};
+
+type MemorySelectionIds = {
+  threadFactIds: string[];
+  globalFactIds: string[];
+  derivedFactIds: string[];
+  threadSummaryIds: string[];
+  snippetIds: string[];
+};
+
+type MemoryContextCandidate<T> = {
+  id: string;
+  line: string;
+  item: T;
+};
+
 const EXTRACTION_MESSAGE_LIMIT = 12;
 const MEMORY_FACT_LIMIT = 6;
 const MEMORY_SNIPPET_LIMIT = 3;
 const MEMORY_THREAD_SUMMARY_LIMIT = 4;
+const MEMORY_SELECTOR_FACT_LIMIT = 8;
+const MEMORY_SELECTOR_SNIPPET_LIMIT = 5;
+const MEMORY_SELECTOR_THREAD_SUMMARY_LIMIT = 6;
 const GLOBAL_MEMORY_KEYS = new Set([
   "name",
   "children_count",
@@ -199,6 +235,9 @@ const QUERY_ALIASES: Record<string, string[]> = {
 const MEMORY_EXTRACTION_SYSTEM_PROMPT =
   "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Do not infer gender, sex, or pronouns from a name, writing style, relationship terms, or any other indirect cue. Only store gender or pronouns if the user explicitly stated them. Ignore transient tasks, moods, and one-off requests.";
 
+const MEMORY_SELECTOR_SYSTEM_PROMPT =
+  "You select the smallest useful subset of stored memory for another model. Return JSON only. Do not include markdown fences. Choose only memories that are explicitly relevant to the user's latest message. Prefer too little over too much. Never invent facts or ids. Use the provided ids exactly as given.";
+
 const clampConfidence = (value: number | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return 0.7;
@@ -224,6 +263,64 @@ const dedupeStrings = (values: string[]) =>
     ),
   );
 
+const dedupeFactList = (facts: MemoryFact[]) => {
+  const seen = new Set<string>();
+
+  return facts.filter((fact) => {
+    const key = `${fact.key}:${fact.value.trim().toLowerCase()}:${
+      fact.sourceThreadId ?? ""
+    }`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const dedupeDerivedFactList = (facts: DerivedMemoryFact[]) => {
+  const seen = new Set<string>();
+
+  return facts.filter((fact) => {
+    const key = `${fact.key}:${fact.value.trim().toLowerCase()}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const dedupeThreadSummaryList = (summaries: GlobalThreadSummary[]) => {
+  const seen = new Set<string>();
+
+  return summaries.filter((summary) => {
+    if (seen.has(summary.threadId)) {
+      return false;
+    }
+
+    seen.add(summary.threadId);
+    return true;
+  });
+};
+
+const dedupeMessageList = (messages: ChatMessage[]) => {
+  const seen = new Set<string>();
+
+  return messages.filter((message) => {
+    if (seen.has(message.id)) {
+      return false;
+    }
+
+    seen.add(message.id);
+    return true;
+  });
+};
+
 const extractJsonObject = (content: string) => {
   const trimmed = content.trim();
 
@@ -238,6 +335,31 @@ const extractJsonObject = (content: string) => {
 const parseExtraction = (content: string): MemoryExtraction | null => {
   try {
     return JSON.parse(extractJsonObject(content)) as MemoryExtraction;
+  } catch {
+    return null;
+  }
+};
+
+const parseMemorySelectorResponse = (
+  content: string,
+): MemorySelectionIds | null => {
+  try {
+    const parsed = JSON.parse(extractJsonObject(content)) as MemorySelectorResponse;
+    const normalizeIds = (value: unknown) =>
+      Array.isArray(value)
+        ? value
+            .filter((entry): entry is string => typeof entry === "string")
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+        : [];
+
+    return {
+      threadFactIds: normalizeIds(parsed.thread_fact_ids),
+      globalFactIds: normalizeIds(parsed.global_fact_ids),
+      derivedFactIds: normalizeIds(parsed.derived_fact_ids),
+      threadSummaryIds: normalizeIds(parsed.thread_summary_ids),
+      snippetIds: normalizeIds(parsed.snippet_ids),
+    };
   } catch {
     return null;
   }
@@ -611,6 +733,17 @@ const getTopFacts = (facts: MemoryFact[]) =>
     })
     .slice(0, MEMORY_FACT_LIMIT);
 
+const getTopSelectorFacts = (facts: MemoryFact[]) =>
+  [...facts]
+    .sort((left, right) => {
+      if (right.confidence !== left.confidence) {
+        return right.confidence - left.confidence;
+      }
+
+      return right.updatedAt.localeCompare(left.updatedAt);
+    })
+    .slice(0, MEMORY_SELECTOR_FACT_LIMIT);
+
 const deriveFactsFromMemory = (facts: MemoryFact[]): DerivedMemoryFact[] => {
   const derivedFacts: DerivedMemoryFact[] = [];
   const factsByKey = new Map<string, MemoryFact[]>();
@@ -721,6 +854,16 @@ const getTopThreadSummaries = (summaries: GlobalThreadSummary[]) =>
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .slice(0, MEMORY_THREAD_SUMMARY_LIMIT);
 
+const getTopSelectorThreadSummaries = (summaries: GlobalThreadSummary[]) =>
+  [...summaries]
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, MEMORY_SELECTOR_THREAD_SUMMARY_LIMIT);
+
+const getTopRecentSnippets = (messages: ChatMessage[]) =>
+  messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .slice(-MEMORY_SELECTOR_SNIPPET_LIMIT);
+
 const getRelevantSnippets = ({
   messages,
   queryTokens,
@@ -755,12 +898,14 @@ const createMemoryContextSection = ({
 
 const callOpenRouter = async ({
   messages,
+  model,
   timeZone,
 }: {
   messages: OpenRouterMessage[];
+  model?: string;
   timeZone?: string | null;
 }) => {
-  const apiKey = env.OPENROUTER_API_KEY;
+  const apiKey = memoryEnv.OPENROUTER_API_KEY;
 
   if (!apiKey) {
     throw new Error(
@@ -773,12 +918,15 @@ const callOpenRouter = async ({
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": env.OPENROUTER_SITE_URL || "http://localhost:5173",
-      "X-Title": env.OPENROUTER_SITE_NAME || "Texty",
+      "HTTP-Referer": memoryEnv.OPENROUTER_SITE_URL || "http://localhost:5173",
+      "X-Title": memoryEnv.OPENROUTER_SITE_NAME || "Texty",
     },
     body: JSON.stringify({
       model:
-        env.OPENROUTER_MEMORY_MODEL || env.OPENROUTER_MODEL || DEFAULT_MODEL,
+        model ||
+        memoryEnv.OPENROUTER_MEMORY_MODEL ||
+        memoryEnv.OPENROUTER_MODEL ||
+        DEFAULT_MODEL,
       messages: [
         {
           role: "system",
@@ -804,6 +952,197 @@ const callOpenRouter = async ({
   }
 
   return content;
+};
+
+const getMemorySelectorModel = () =>
+  memoryEnv.OPENROUTER_MEMORY_SELECTOR_MODEL?.trim() ||
+  memoryEnv.OPENROUTER_MEMORY_MODEL?.trim() ||
+  memoryEnv.OPENROUTER_MODEL?.trim() ||
+  DEFAULT_MODEL;
+
+const buildThreadFactCandidate = (
+  fact: MemoryFact,
+  index: number,
+): MemoryContextCandidate<MemoryFact> => ({
+  id: `tf_${index + 1}`,
+  line: `- tf_${index + 1}: ${fact.key} = ${fact.value} (${Math.round(
+    fact.confidence * 100,
+  )}% confidence)`,
+  item: fact,
+});
+
+const buildGlobalFactCandidate = (
+  fact: MemoryFact,
+  index: number,
+): MemoryContextCandidate<MemoryFact> => ({
+  id: `gf_${index + 1}`,
+  line: `- gf_${index + 1}: ${fact.key} = ${fact.value} (${Math.round(
+    fact.confidence * 100,
+  )}% confidence)`,
+  item: fact,
+});
+
+const buildDerivedFactCandidate = (
+  fact: DerivedMemoryFact,
+  index: number,
+): MemoryContextCandidate<DerivedMemoryFact> => ({
+  id: `df_${index + 1}`,
+  line: `- df_${index + 1}: ${fact.key} = ${fact.value} (${fact.rationale})`,
+  item: fact,
+});
+
+const buildThreadSummaryCandidate = (
+  summary: GlobalThreadSummary,
+  index: number,
+): MemoryContextCandidate<GlobalThreadSummary> => ({
+  id: `ts_${index + 1}`,
+  line: `- ts_${index + 1}: ${summary.title} -> ${summary.summary}${
+    summary.keywords.length > 0 ? ` [${summary.keywords.join(", ")}]` : ""
+  }`,
+  item: summary,
+});
+
+const buildSnippetCandidate = (
+  message: ChatMessage,
+  index: number,
+): MemoryContextCandidate<ChatMessage> => ({
+  id: `sn_${index + 1}`,
+  line: `- sn_${index + 1}: (${message.role}) ${message.content}`,
+  item: message,
+});
+
+const selectCandidatesByIds = <T,>(
+  candidates: MemoryContextCandidate<T>[],
+  ids: string[],
+) => {
+  const idSet = new Set(ids);
+  return candidates.filter((candidate) => idSet.has(candidate.id)).map((candidate) => candidate.item);
+};
+
+const buildMemorySelectorPrompt = ({
+  userMessage,
+  threadFactCandidates,
+  globalFactCandidates,
+  derivedFactCandidates,
+  threadSummaryCandidates,
+  snippetCandidates,
+}: {
+  userMessage: string;
+  threadFactCandidates: MemoryContextCandidate<MemoryFact>[];
+  globalFactCandidates: MemoryContextCandidate<MemoryFact>[];
+  derivedFactCandidates: MemoryContextCandidate<DerivedMemoryFact>[];
+  threadSummaryCandidates: MemoryContextCandidate<GlobalThreadSummary>[];
+  snippetCandidates: MemoryContextCandidate<ChatMessage>[];
+}) =>
+  [
+    `Latest user message: ${JSON.stringify(userMessage)}`,
+    "",
+    "Select the smallest set of relevant memory ids for answering this message well.",
+    "Return strict JSON with this shape:",
+    '{"reasoning":"string","thread_fact_ids":["tf_1"],"global_fact_ids":["gf_1"],"derived_fact_ids":["df_1"],"thread_summary_ids":["ts_1"],"snippet_ids":["sn_1"]}',
+    "If a category has nothing useful, return an empty array for that category.",
+    "",
+    "Thread facts:",
+    threadFactCandidates.map((candidate) => candidate.line).join("\n") || "(none)",
+    "",
+    "User facts:",
+    globalFactCandidates.map((candidate) => candidate.line).join("\n") || "(none)",
+    "",
+    "Derived facts:",
+    derivedFactCandidates.map((candidate) => candidate.line).join("\n") || "(none)",
+    "",
+    "Memory tree:",
+    threadSummaryCandidates.map((candidate) => candidate.line).join("\n") || "(none)",
+    "",
+    "Conversation snippets:",
+    snippetCandidates.map((candidate) => candidate.line).join("\n") || "(none)",
+  ].join("\n");
+
+const selectMemoryContextWithAi = async ({
+  userMessage,
+  threadFacts,
+  globalFacts,
+  derivedFacts,
+  threadSummaries,
+  snippets,
+  timeZone,
+}: {
+  userMessage: string;
+  threadFacts: MemoryFact[];
+  globalFacts: MemoryFact[];
+  derivedFacts: DerivedMemoryFact[];
+  threadSummaries: GlobalThreadSummary[];
+  snippets: ChatMessage[];
+  timeZone?: string | null;
+}) => {
+  const threadFactCandidates = threadFacts.map(buildThreadFactCandidate);
+  const globalFactCandidates = globalFacts.map(buildGlobalFactCandidate);
+  const derivedFactCandidates = derivedFacts.map(buildDerivedFactCandidate);
+  const threadSummaryCandidates = threadSummaries.map(buildThreadSummaryCandidate);
+  const snippetCandidates = snippets.map(buildSnippetCandidate);
+
+  if (
+    threadFactCandidates.length === 0 &&
+    globalFactCandidates.length === 0 &&
+    derivedFactCandidates.length === 0 &&
+    threadSummaryCandidates.length === 0 &&
+    snippetCandidates.length === 0
+  ) {
+    return null;
+  }
+
+  try {
+    const rawContent = await callOpenRouter({
+      model: getMemorySelectorModel(),
+      timeZone,
+      messages: [
+        {
+          role: "system",
+          content: MEMORY_SELECTOR_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: buildMemorySelectorPrompt({
+            userMessage,
+            threadFactCandidates,
+            globalFactCandidates,
+            derivedFactCandidates,
+            threadSummaryCandidates,
+            snippetCandidates,
+          }),
+        },
+      ],
+    });
+
+    const selection = parseMemorySelectorResponse(rawContent);
+
+    if (!selection) {
+      return null;
+    }
+
+    return {
+      relevantThreadFacts: selectCandidatesByIds(
+        threadFactCandidates,
+        selection.threadFactIds,
+      ),
+      relevantGlobalFacts: selectCandidatesByIds(
+        globalFactCandidates,
+        selection.globalFactIds,
+      ),
+      relevantDerivedFacts: selectCandidatesByIds(
+        derivedFactCandidates,
+        selection.derivedFactIds,
+      ),
+      selectedThreadSummaries: selectCandidatesByIds(
+        threadSummaryCandidates,
+        selection.threadSummaryIds,
+      ),
+      relevantSnippets: selectCandidatesByIds(snippetCandidates, selection.snippetIds),
+    };
+  } catch (error) {
+    console.warn("Memory selector model failed, falling back to heuristic retrieval.", error);
+    return null;
+  }
 };
 
 export const refreshMemories = async ({
@@ -942,23 +1281,25 @@ Return strict JSON with this shape:
   };
 };
 
-export const buildMemoryContext = ({
+export const buildMemoryContext = async ({
   userMessage,
   messages,
   threadMemory,
   globalMemory,
+  timeZone,
 }: {
   userMessage: string;
   messages: ChatMessage[];
   threadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
+  timeZone?: string | null;
 }) => {
   const queryTokens = expandQueryTokens(tokenize(userMessage));
   const isBroadSelfQuery = isBroadPersonalMemoryQuery(userMessage);
   const globalFacts = flattenGlobalMemoryFacts(globalMemory);
   const derivedFacts = deriveFactsFromMemory(globalFacts);
-  const relevantThreadFacts = getRelevantFacts(threadMemory.facts, queryTokens);
-  const relevantGlobalFacts = isBroadSelfQuery
+  const heuristicRelevantThreadFacts = getRelevantFacts(threadMemory.facts, queryTokens);
+  const heuristicRelevantGlobalFacts = isBroadSelfQuery
     ? (() => {
         const matchedFacts = getRelevantFacts(globalFacts, queryTokens);
 
@@ -971,23 +1312,69 @@ export const buildMemoryContext = ({
     : getRelevantFacts(globalFacts, queryTokens).filter(
         (fact) => scoreTextAgainstQuery(`${fact.key} ${fact.value}`, queryTokens) > 0,
       );
-  const relevantThreadSummaries = getRelevantThreadSummaries({
+  const heuristicRelevantThreadSummaries = getRelevantThreadSummaries({
     summaries: globalMemory.threadSummaries,
     queryTokens,
   });
-  const selectedThreadSummaries = isBroadSelfQuery
+  const heuristicSelectedThreadSummaries = isBroadSelfQuery
     ? (() => {
-        if (relevantThreadSummaries.length > 0) {
-          return relevantThreadSummaries;
+        if (heuristicRelevantThreadSummaries.length > 0) {
+          return heuristicRelevantThreadSummaries;
         }
 
         return getTopThreadSummaries(globalMemory.threadSummaries);
       })()
-    : relevantThreadSummaries;
-  const relevantDerivedFacts = getRelevantDerivedFacts(derivedFacts, queryTokens);
-  const relevantSnippets = getRelevantSnippets({ messages, queryTokens });
+    : heuristicRelevantThreadSummaries;
+  const heuristicRelevantDerivedFacts = getRelevantDerivedFacts(derivedFacts, queryTokens);
+  const heuristicRelevantSnippets = getRelevantSnippets({ messages, queryTokens });
   const isTargetedPersonalQuery =
     isPersonalMemoryQuery(userMessage) && !isBroadSelfQuery;
+
+  const selectorResult = await selectMemoryContextWithAi({
+    userMessage,
+    threadFacts: dedupeFactList([
+      ...heuristicRelevantThreadFacts,
+      ...getTopSelectorFacts(threadMemory.facts),
+    ]),
+    globalFacts: dedupeFactList([
+      ...heuristicRelevantGlobalFacts,
+      ...getTopSelectorFacts(globalFacts),
+    ]),
+    derivedFacts: dedupeDerivedFactList([
+      ...heuristicRelevantDerivedFacts,
+      ...derivedFacts.slice(0, MEMORY_SELECTOR_FACT_LIMIT),
+    ]),
+    threadSummaries: dedupeThreadSummaryList([
+      ...heuristicSelectedThreadSummaries,
+      ...getTopSelectorThreadSummaries(globalMemory.threadSummaries),
+    ]),
+    snippets: dedupeMessageList([
+      ...heuristicRelevantSnippets,
+      ...getTopRecentSnippets(messages),
+    ]),
+    timeZone,
+  });
+
+  const relevantThreadFacts =
+    selectorResult && selectorResult.relevantThreadFacts.length > 0
+      ? selectorResult.relevantThreadFacts.slice(0, MEMORY_FACT_LIMIT)
+      : heuristicRelevantThreadFacts;
+  const relevantGlobalFacts =
+    selectorResult && selectorResult.relevantGlobalFacts.length > 0
+      ? selectorResult.relevantGlobalFacts.slice(0, MEMORY_FACT_LIMIT)
+      : heuristicRelevantGlobalFacts;
+  const relevantDerivedFacts =
+    selectorResult && selectorResult.relevantDerivedFacts.length > 0
+      ? selectorResult.relevantDerivedFacts.slice(0, MEMORY_FACT_LIMIT)
+      : heuristicRelevantDerivedFacts;
+  const selectedThreadSummaries =
+    selectorResult && selectorResult.selectedThreadSummaries.length > 0
+      ? selectorResult.selectedThreadSummaries.slice(0, MEMORY_THREAD_SUMMARY_LIMIT)
+      : heuristicSelectedThreadSummaries;
+  const relevantSnippets =
+    selectorResult && selectorResult.relevantSnippets.length > 0
+      ? selectorResult.relevantSnippets.slice(0, MEMORY_SNIPPET_LIMIT)
+      : heuristicRelevantSnippets;
 
   const threadLines = [
     threadMemory.summary ? `Summary: ${threadMemory.summary}` : "",

@@ -234,6 +234,36 @@ Important rule:
 - they do not disable default capture for normal conversations
 - private threads remain the explicit exception
 
+### Memory Retrieval Pipeline
+
+Retrieval should be treated as a staged pipeline, not one step.
+
+Recommended stages:
+
+1. scope resolution
+2. candidate generation
+3. turn-level selection
+4. answer-model usage
+
+What each stage means:
+
+- scope resolution
+  - decide which memory buckets are allowed by policy
+  - examples: thread memory only, integration/user shared memory, explicit shared scope, or provider-supplied external context
+- candidate generation
+  - build a bounded set of possible context items
+  - examples: thread facts, global facts, derived facts, memory-tree summaries, and a few recent snippets
+- turn-level selection
+  - use a cheaper model or deterministic logic to choose the smallest relevant subset for the current user message
+- answer-model usage
+  - pass only that selected subset into the more expensive model that answers or routes the turn
+
+Important rule:
+
+- retrieval scope is not the same thing as prompt context
+- allowed memory may be much larger than what the answer model should actually see
+- familiar should prefer bounded semantic selection over dumping the full memory tree into the answer prompt
+
 ### Memory Scope
 
 A memory scope is the bucket from which shared memory is retrieved.

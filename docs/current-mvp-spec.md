@@ -77,6 +77,18 @@ Supported retrieval modes in practice:
 - `provider_user`
 - `external`
 
+Current retrieval approach:
+
+- load memory according to policy
+- build a bounded candidate set from memory facts, summaries, and a few snippets
+- use a cheaper model to select the smallest relevant subset for the turn
+- send that selected context to the main answer or routing model
+
+The product should optimize for:
+
+- cheap AI reads the memory tree
+- expensive AI answers
+
 ### Tools
 
 The current MVP supports two tool setup paths:

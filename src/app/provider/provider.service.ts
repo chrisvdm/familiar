@@ -2044,11 +2044,12 @@ export const handleProviderConversationInput = async ({
   const memoryContext =
     currentContext.memoryPolicy.mode === "external"
       ? input.context?.external_memories?.join("\n") || null
-      : buildMemoryContext({
+      : await buildMemoryContext({
           userMessage: content,
           messages: currentState.messages,
           threadMemory: currentState.memory,
           globalMemory: memoryScope,
+          timeZone,
         });
   const nextState = await appendMessagesToThread({
     threadId,

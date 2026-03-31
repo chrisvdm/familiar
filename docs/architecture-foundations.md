@@ -296,7 +296,8 @@ This is the key separation:
 
 - capture answers: "Should this be stored?"
 - retrieval answers: "What stored memory may be loaded for this provider/product?"
-- usage answers: "How should the loaded memory influence this turn?"
+- selection answers: "Which small subset of the loaded memory is actually relevant for this turn?"
+- usage answers: "How should the selected memory influence this turn?"
 
 So:
 
@@ -306,6 +307,38 @@ So:
 - another provider may send its own external retrieved context
 
 This means familiar can preserve useful user context without forcing every provider to depend on it.
+
+## Memory Selection Rule
+
+For familiar-owned memory retrieval, the default runtime should be:
+
+1. determine the allowed memory scope from policy
+2. build a bounded candidate set from thread memory, shared memory, derived facts, memory-tree nodes, and a few recent snippets
+3. use a cheaper model to select the smallest relevant subset for the current message
+4. send only that selected context into the more expensive answer or routing model
+
+This is different from both:
+
+- dumping the whole memory tree into the prompt
+- relying only on keyword matching over stored facts
+
+The reason is simple:
+
+- the stored memory is already natural-language-heavy
+- the main problem is turn-level relevance, not just persistence
+- a small model is usually good enough to understand whether a memory node matters
+- the larger model should spend its context window on answering, not on reading every possible memory node
+
+Heuristic retrieval is still useful as fallback.
+
+If the cheap selector fails, returns invalid ids, or produces no useful match, familiar should fall back to deterministic or heuristic selection rather than failing the turn.
+
+This means the preferred shape is:
+
+- policy-scoped retrieval
+- bounded candidate generation
+- cheap-model semantic selection
+- expensive-model answer generation
 
 ## Recommended Retrieval Modes
 
@@ -476,6 +509,7 @@ familiar should:
 
 - read/write thread memory
 - read/write integration-scoped global memory
+- apply turn-level memory selection before injecting that memory into the main model
 
 ### If mode is `custom_scope`
 
@@ -483,13 +517,14 @@ familiar should:
 
 - read/write thread memory
 - read/write memory under the explicit `memory_scope_id`
+- apply turn-level memory selection before injecting that memory into the main model
 
 ### If mode is `external`
 
 familiar should:
 
 - accept retrieved context from the provider
-- use it in the prompt for the current turn
+- optionally apply the same turn-level selection step to that provider-supplied context if the payload is larger than the answer model should see directly
 - avoid treating it as familiar-owned long-term memory unless explicitly configured to persist it
 
 ## Default Recommendation
@@ -525,6 +560,18 @@ Memory sharing must be explicit.
 Sometimes the provider will have a better RAG layer.
 familiar must allow that.
 
+### 4. Treating retrieval as if loading and selection were the same step
+
+They are not.
+
+Loading defines the allowed memory scope.
+Selection defines what the answer model should actually see for this turn.
+
+If those are collapsed into one step, familiar either:
+
+- sends too much memory into the prompt
+- or uses brittle matching rules that miss relevant context
+
 ## Short Version
 
 The simplest way to explain the rule set is:
@@ -532,6 +579,7 @@ The simplest way to explain the rule set is:
 - familiar remembers normal conversations by default
 - private threads are not added to shared memory
 - providers decide how much of that remembered context they want to retrieve and use
+- familiar should usually narrow that retrieved memory with a cheap selector before the main model answers
 - some providers may ignore familiar memory and use their own RAG instead
 
 ## Recommended Near-Term Implementation Path
