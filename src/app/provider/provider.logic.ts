@@ -162,6 +162,27 @@ const TOOL_SHORTCUT_EXIT_PATTERN =
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+export const extractIntroducedName = (content: string) => {
+  const match = content
+    .trim()
+    .match(/^(?:(?:hi|hello|hey)[,!\s]+)?my name is\s+([a-z][a-z' -]{0,40})[.?!]*$/i);
+
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const normalized = match[1]
+    .trim()
+    .split(/\s+/)
+    .map((part) =>
+      part ? `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}` : "",
+    )
+    .filter(Boolean)
+    .join(" ");
+
+  return normalized || null;
+};
+
 export const sanitizeRawToolInput = ({
   toolName,
   content,

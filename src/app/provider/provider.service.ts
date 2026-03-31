@@ -51,6 +51,7 @@ import {
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
+  extractIntroducedName,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
   getRawToolStringFieldName,
@@ -341,27 +342,6 @@ const scoreThreadFit = ({
   }
 
   return matches / Math.max(contentTokens.size, 1);
-};
-
-const extractIntroducedName = (content: string) => {
-  const match = content
-    .trim()
-    .match(/^(?:(?:hi|hello|hey)[,!\s]+)?(?:my name is|i am|i'm)\s+([a-z][a-z' -]{0,40})[.?!]*$/i);
-
-  if (!match?.[1]) {
-    return null;
-  }
-
-  const normalized = match[1]
-    .trim()
-    .split(/\s+/)
-    .map((part) =>
-      part ? `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}` : "",
-    )
-    .filter(Boolean)
-    .join(" ");
-
-  return normalized || null;
 };
 
 const buildDirectReply = async ({

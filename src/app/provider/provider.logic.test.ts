@@ -9,6 +9,7 @@ import {
   buildShortcutToolArguments,
   clampDecisionConfidence,
   determineMockExecutionState,
+  extractIntroducedName,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
   getRawToolStringFieldName,
@@ -751,6 +752,17 @@ test("raw shortcut raw input strips explicit invocation prefixes", () => {
   });
 
   assert.equal(rawInputText, "boo!");
+});
+
+test("extractIntroducedName accepts explicit name introductions", () => {
+  assert.equal(extractIntroducedName("my name is chris"), "Chris");
+  assert.equal(extractIntroducedName("Hi, my name is jane doe"), "Jane Doe");
+});
+
+test("extractIntroducedName ignores identity and role statements", () => {
+  assert.equal(extractIntroducedName("i am a web developer"), null);
+  assert.equal(extractIntroducedName("i'm tired"), null);
+  assert.equal(extractIntroducedName("i am from cape town"), null);
 });
 
 test("todo item splitting produces multiple items for compound task text", () => {
