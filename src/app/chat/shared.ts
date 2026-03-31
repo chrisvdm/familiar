@@ -11,6 +11,7 @@ export type PendingToolConfirmation = {
   mode: "confirmation" | "follow_up";
   toolName: string;
   arguments: Record<string, unknown>;
+  rawInputText?: string;
   confidence: number;
   createdAt: string;
   question?: string;

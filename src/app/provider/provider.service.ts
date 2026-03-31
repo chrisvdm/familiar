@@ -883,6 +883,17 @@ const normalizeToolArguments = ({
       return args;
     }
 
+    const currentValue = args[rawFieldName];
+
+    if (typeof currentValue === "string") {
+      return {
+        [rawFieldName]: sanitizeRawToolInput({
+          toolName: tool.toolName,
+          content: currentValue,
+        }),
+      };
+    }
+
     return {
       [rawFieldName]: sanitizeRawToolInput({
         toolName: tool.toolName,
@@ -961,6 +972,45 @@ const normalizeToolArguments = ({
   return {
     ...args,
     [fieldName]: extractedValue,
+  };
+};
+
+const normalizeToolExecutionInput = ({
+  tool,
+  args,
+  content,
+}: {
+  tool?: AllowedTool;
+  args: Record<string, unknown>;
+  content: string;
+}) => {
+  const normalizedArguments = normalizeToolArguments({
+    tool,
+    args,
+    content,
+  });
+
+  let rawInputText: string | undefined;
+
+  if (tool && getToolInputMode(tool) === "raw") {
+    const rawFieldName = getRawToolStringFieldName(tool);
+
+    if (rawFieldName) {
+      const rawFieldValue = normalizedArguments[rawFieldName];
+      rawInputText = typeof rawFieldValue === "string" ? rawFieldValue : undefined;
+    }
+
+    if (typeof rawInputText !== "string") {
+      rawInputText = sanitizeRawToolInput({
+        toolName: tool.toolName,
+        content,
+      });
+    }
+  }
+
+  return {
+    arguments: normalizedArguments,
+    rawInputText,
   };
 };
 
@@ -2151,6 +2201,7 @@ export const handleProviderConversationInput = async ({
           args: currentState.pendingToolConfirmation.arguments,
           executorPayloadTemplate: pendingTool?.executorPayload,
           channel: input.channel,
+          rawInputText: currentState.pendingToolConfirmation.rawInputText,
           requestId,
         });
 
@@ -2229,13 +2280,28 @@ export const handleProviderConversationInput = async ({
         assistantContent = updated.followUp;
         action = "clarification";
         executionState = "needs_clarification";
+        const pendingRawFieldName = getRawToolStringFieldName(pendingTool);
+        const updatedRawInputText =
+          getToolInputMode(pendingTool) === "raw"
+            ? pendingRawFieldName && typeof updated.arguments[pendingRawFieldName] === "string"
+              ? (updated.arguments[pendingRawFieldName] as string)
+              : undefined
+            : currentState.pendingToolConfirmation.rawInputText;
         pendingToolConfirmation = {
           ...currentState.pendingToolConfirmation,
           mode: "follow_up",
           arguments: updated.arguments,
+          rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
           question: updated.followUp,
         };
       } else {
+        const pendingRawFieldName = getRawToolStringFieldName(pendingTool);
+        const updatedRawInputText =
+          getToolInputMode(pendingTool) === "raw"
+            ? pendingRawFieldName && typeof updated.arguments[pendingRawFieldName] === "string"
+              ? (updated.arguments[pendingRawFieldName] as string)
+              : undefined
+            : currentState.pendingToolConfirmation.rawInputText;
         const execution = await executeProviderTool({
           providerConfig,
           providerId: input.integration_id,
@@ -2244,6 +2310,7 @@ export const handleProviderConversationInput = async ({
           toolName: currentState.pendingToolConfirmation.toolName,
           args: updated.arguments,
           channel: input.channel,
+          rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
           requestId,
         });
 
@@ -2290,7 +2357,7 @@ export const handleProviderConversationInput = async ({
       const tool = currentContext.allowedTools.find(
         (entry) => entry.toolName === decision.tool_name,
       );
-      const normalizedArguments = normalizeToolArguments({
+      const normalizedInput = normalizeToolExecutionInput({
         tool,
         args: decision.arguments,
         content,
@@ -2302,7 +2369,8 @@ export const handleProviderConversationInput = async ({
       pendingToolConfirmation = {
         mode: "follow_up",
         toolName: decision.tool_name,
-        arguments: normalizedArguments,
+        arguments: normalizedInput.arguments,
+        rawInputText: normalizedInput.rawInputText,
         confidence,
         createdAt: new Date().toISOString(),
         question: decision.question,
@@ -2312,7 +2380,7 @@ export const handleProviderConversationInput = async ({
       const tool = currentContext.allowedTools.find(
         (entry) => entry.toolName === decision.tool_name,
       );
-      const normalizedArguments = normalizeToolArguments({
+      const normalizedInput = normalizeToolExecutionInput({
         tool,
         args: decision.arguments,
         content,
@@ -2332,7 +2400,8 @@ export const handleProviderConversationInput = async ({
         pendingToolConfirmation = {
           mode: "confirmation",
           toolName: decision.tool_name,
-          arguments: normalizedArguments,
+          arguments: normalizedInput.arguments,
+          rawInputText: normalizedInput.rawInputText,
           confidence,
           createdAt: new Date().toISOString(),
         };
@@ -2343,9 +2412,10 @@ export const handleProviderConversationInput = async ({
           userId: input.user_id,
           threadId,
           toolName: decision.tool_name,
-          args: normalizedArguments,
+          args: normalizedInput.arguments,
           executorPayloadTemplate: tool?.executorPayload,
           channel: input.channel,
+          rawInputText: normalizedInput.rawInputText,
           requestId,
         });
 
