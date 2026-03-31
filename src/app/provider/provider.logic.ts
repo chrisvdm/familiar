@@ -1,4 +1,10 @@
-import { createEmptyGlobalMemory, type GlobalMemory } from "../chat/shared.ts";
+import {
+  createEmptyGlobalMemory,
+  flattenGlobalMemoryFacts,
+  type GlobalMemory,
+  type MemoryFact,
+  type ThreadMemory,
+} from "../chat/shared.ts";
 
 import type {
   AllowedTool,
@@ -181,6 +187,108 @@ export const extractIntroducedName = (content: string) => {
     .join(" ");
 
   return normalized || null;
+};
+
+const BROAD_PERSONAL_MEMORY_QUERY_PATTERN =
+  /\b(what do you know about me|who am i|tell me about myself|tell me what you know about me|summari[sz]e (me|what you know)|what do you remember about me|what do you know of me)\b/i;
+
+const NAME_RECALL_QUERY_PATTERN =
+  /\b(do you know my name|what(?:'s| is) my name|tell me my name|remember my name|what name do i go by|the name i call myself)\b/i;
+
+const getMostRelevantFact = (facts: MemoryFact[]) =>
+  [...facts].sort((left, right) => {
+    if (right.confidence !== left.confidence) {
+      return right.confidence - left.confidence;
+    }
+
+    return right.updatedAt.localeCompare(left.updatedAt);
+  })[0] ?? null;
+
+const getStoredName = ({
+  threadMemory,
+  globalMemory,
+}: {
+  threadMemory: ThreadMemory;
+  globalMemory: GlobalMemory;
+}) =>
+  getMostRelevantFact([
+    ...(globalMemory.identity.name ?? []),
+    ...threadMemory.facts.filter((fact) => fact.key === "name"),
+  ])?.value ?? null;
+
+const dedupeMemoryFacts = (facts: MemoryFact[]) => {
+  const seen = new Set<string>();
+
+  return facts.filter((fact) => {
+    const key = `${fact.key}:${fact.value.trim().toLowerCase()}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const formatMemoryFactForReply = (fact: MemoryFact) => {
+  switch (fact.key) {
+    case "name":
+      return `your name is ${fact.value}`;
+    case "children_count":
+      return `you have ${fact.value} children`;
+    case "profession":
+      return `your profession is ${fact.value}`;
+    case "business":
+      return `your business is ${fact.value}`;
+    case "location":
+      return `your location is ${fact.value}`;
+    case "spouse_name":
+    case "partner_name":
+    case "wife_name":
+    case "husband_name":
+      return `${fact.key.replace(/_/g, " ")} is ${fact.value}`;
+    default:
+      return `${fact.key.replace(/_/g, " ")}: ${fact.value}`;
+  }
+};
+
+export const buildPersonalMemoryReply = ({
+  content,
+  threadMemory,
+  globalMemory,
+}: {
+  content: string;
+  threadMemory: ThreadMemory;
+  globalMemory: GlobalMemory;
+}) => {
+  if (!BROAD_PERSONAL_MEMORY_QUERY_PATTERN.test(content) && !NAME_RECALL_QUERY_PATTERN.test(content)) {
+    return null;
+  }
+
+  if (NAME_RECALL_QUERY_PATTERN.test(content)) {
+    const storedName = getStoredName({
+      threadMemory,
+      globalMemory,
+    });
+
+    return storedName
+      ? `Your name is ${storedName}.`
+      : "I do not know your name yet from stored memory.";
+  }
+
+  const storedFacts = dedupeMemoryFacts([
+    ...flattenGlobalMemoryFacts(globalMemory),
+    ...threadMemory.facts,
+  ]).slice(0, 4);
+
+  if (storedFacts.length === 0) {
+    return "I do not know much about you yet from stored memory.";
+  }
+
+  return `Here is what I know so far: ${storedFacts
+    .map((fact) => formatMemoryFactForReply(fact))
+    .join("; ")}.`;
 };
 
 export const sanitizeRawToolInput = ({

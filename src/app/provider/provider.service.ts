@@ -26,6 +26,7 @@ import {
   type PendingToolConfirmation,
   type ChatSessionState,
   type ChatThreadSummary,
+  type GlobalMemory,
 } from "../chat/shared";
 import type {
   AllowedTool,
@@ -47,6 +48,7 @@ import {
   applyConversationRateLimit,
   buildShortcutRawInputText,
   buildShortcutToolArguments,
+  buildPersonalMemoryReply,
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
@@ -346,12 +348,16 @@ const buildDirectReply = async ({
   content,
   messages,
   memoryContext,
+  threadMemory,
+  globalMemory,
   replyModel,
   timeZone,
 }: {
   content: string;
   messages: ChatMessage[];
   memoryContext: string | null;
+  threadMemory: ChatSessionState["memory"];
+  globalMemory: GlobalMemory;
   replyModel: string;
   timeZone?: string | null;
 }) => {
@@ -359,6 +365,16 @@ const buildDirectReply = async ({
 
   if (introducedName) {
     return `Hi ${introducedName}, pleased to meet you.`;
+  }
+
+  const personalMemoryReply = buildPersonalMemoryReply({
+    content,
+    threadMemory,
+    globalMemory,
+  });
+
+  if (personalMemoryReply) {
+    return personalMemoryReply;
   }
 
   return callOpenRouter({
@@ -1143,6 +1159,8 @@ const decideConversationAction = async ({
   content,
   messages,
   memoryContext,
+  threadMemory,
+  globalMemory,
   tools,
   replyModel,
   timeZone,
@@ -1150,15 +1168,32 @@ const decideConversationAction = async ({
   content: string;
   messages: ChatMessage[];
   memoryContext: string | null;
+  threadMemory: ChatSessionState["memory"];
+  globalMemory: GlobalMemory;
   tools: AllowedTool[];
   replyModel: string;
   timeZone?: string | null;
 }) => {
+  const personalMemoryReply = buildPersonalMemoryReply({
+    content,
+    threadMemory,
+    globalMemory,
+  });
+
+  if (personalMemoryReply) {
+    return {
+      action: "direct_reply",
+      reply: personalMemoryReply,
+    } satisfies ConversationDecision;
+  }
+
   if (tools.filter((tool) => tool.status === "active").length === 0) {
     const reply = await buildDirectReply({
       content,
       messages,
       memoryContext,
+      threadMemory,
+      globalMemory,
       replyModel,
       timeZone,
     });
@@ -1248,6 +1283,8 @@ const decideConversationAction = async ({
       content,
       messages,
       memoryContext,
+      threadMemory,
+      globalMemory,
       replyModel,
       timeZone,
     });
@@ -2249,6 +2286,8 @@ export const handleProviderConversationInput = async ({
       content,
       messages: currentState.messages,
       memoryContext,
+      threadMemory: currentState.memory,
+      globalMemory: memoryScope,
       tools: currentContext.allowedTools,
       replyModel: model,
       timeZone,

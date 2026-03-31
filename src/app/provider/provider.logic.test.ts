@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createEmptyGlobalMemory } from "../chat/shared.ts";
+import {
+  createEmptyGlobalMemory,
+  createEmptyThreadMemory,
+} from "../chat/shared.ts";
 
 import {
   applyConversationRateLimit,
   buildShortcutRawInputText,
   buildShortcutToolArguments,
+  buildPersonalMemoryReply,
   clampDecisionConfidence,
   determineMockExecutionState,
   extractIntroducedName,
@@ -65,6 +69,71 @@ test("provider-user retrieval can use shared global memory", () => {
   });
 
   assert.equal(result.identity.name?.[0]?.value, "Chris");
+});
+
+test("personal memory replies return stored name directly", () => {
+  const globalMemory = createEmptyGlobalMemory();
+  const threadMemory = createEmptyThreadMemory();
+  globalMemory.identity.name = [
+    {
+      key: "name",
+      value: "Chris",
+      confidence: 0.99,
+      updatedAt: "2026-03-31T10:00:00.000Z",
+    },
+  ];
+
+  const reply = buildPersonalMemoryReply({
+    content: "Do you know my name?",
+    threadMemory,
+    globalMemory,
+  });
+
+  assert.equal(reply, "Your name is Chris.");
+});
+
+test("personal memory replies summarize stored facts for broad self queries", () => {
+  const globalMemory = createEmptyGlobalMemory();
+  const threadMemory = createEmptyThreadMemory();
+  globalMemory.identity.name = [
+    {
+      key: "name",
+      value: "Chris",
+      confidence: 0.99,
+      updatedAt: "2026-03-31T10:00:00.000Z",
+    },
+  ];
+  globalMemory.work.profession = [
+    {
+      key: "profession",
+      value: "Engineer",
+      confidence: 0.9,
+      updatedAt: "2026-03-31T09:59:00.000Z",
+    },
+  ];
+
+  const reply = buildPersonalMemoryReply({
+    content: "What do you know about me?",
+    threadMemory,
+    globalMemory,
+  });
+
+  assert.match(reply ?? "", /Here is what I know so far:/);
+  assert.match(reply ?? "", /your name is Chris/);
+  assert.match(reply ?? "", /your profession is Engineer/);
+});
+
+test("personal memory replies admit when no stored name exists", () => {
+  const globalMemory = createEmptyGlobalMemory();
+  const threadMemory = createEmptyThreadMemory();
+
+  const reply = buildPersonalMemoryReply({
+    content: "What is my name?",
+    threadMemory,
+    globalMemory,
+  });
+
+  assert.equal(reply, "I do not know your name yet from stored memory.");
 });
 
 test("rate limiter allows requests under the rolling limit", () => {
