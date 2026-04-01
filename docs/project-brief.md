@@ -60,10 +60,12 @@ It should orchestrate conversation around that logic.
 ## Current Product Shape
 
 - Web chat interface with minimal branding.
-- OpenRouter-backed assistant responses.
+- Hosted conversation API with account creation and token-based access.
+- OpenRouter-backed assistant responses with cheaper-model routing and memory-selection support.
 - Per-browser chat continuity across page refreshes.
 - Multi-thread chat within a browser session.
 - Durable Object-backed storage for chat history.
+- Provider-user context storage for shared memory, thread lists, tool registry state, and channel continuity.
 - RedwoodSDK-native browser session handling.
 - Early sandbox transport simulation for a WhatsApp-style interface.
 - Shared conversation core for command-driven interaction.
@@ -84,7 +86,8 @@ It should orchestrate conversation around that logic.
 - RedwoodSDK app and routing power the web application.
 - OpenRouter is used for model completions.
 - Chat transcript persistence lives in a dedicated Durable Object.
-- Browser session state uses RedwoodSDK's documented durable session pattern.
+- Provider-user context Durable Objects hold the main conversation runtime state for the hosted API.
+- Browser session state uses RedwoodSDK's documented durable session pattern as the web-channel bridge and rendering/session layer.
 - The UI stores full thread history for display, while the model uses a mix of recent messages plus lightweight retrieved memory.
 - Shared conversation modules now handle command parsing, input parsing, and runtime context assembly before the UI layer.
 
@@ -94,14 +97,14 @@ Today’s codebase is a working foundation for the target architecture, not the 
 
 At the moment:
 
-- global memory is still browser-session scoped in important places
-- the executor-facing HTTP API is still documented direction rather than shipped runtime contract in some docs, even though an MVP slice now exists
+- the hosted API and provider-backed runtime path are real, shipped behavior
+- some top-level docs still lag behind that shipped runtime and describe older browser-session or pinned-tool assumptions
 - the web UI is still one of the main entry surfaces
 - the security model is still browser-session based rather than integration-authenticated multi-tenant service auth
 
 So the repo should currently be understood as:
 
-- a functioning conversation prototype
+- a functioning hosted conversation service with a web front end
 - with strong architectural direction
 - that is actively being extracted into an integration-agnostic service model
 
@@ -110,8 +113,13 @@ So the repo should currently be understood as:
 - Full conversation history is persisted for the user interface.
 - Only the last 3 exchanges are sent to the model for prompt context.
 - Each thread also maintains a generated memory document with a summary, keywords, and extracted facts.
-- Browser session state maintains a lightweight global user-memory document for stable profile facts.
-- Retrieval is keyword and fact based; there is no embeddings layer or vector database.
+- Shared provider-user memory stores stable profile facts and thread-summary nodes for hosted runtime use.
+- Memory retrieval is staged:
+  - load memory according to policy
+  - build a bounded candidate set
+  - use a cheaper model to select the smallest relevant subset
+  - pass that selected context to the main answer or routing model
+- There is no embeddings layer or vector database in the current design.
 - Current date, time, and timezone are included explicitly in model context.
 - The intended long-term rule is: normal conversations are captured into memory by default, while private threads are excluded from shared memory capture.
 - Providers may then choose how much of that captured memory they actually use.
@@ -183,6 +191,15 @@ Identity, storage, and memory-policy details for that executor model are defined
 ## Source of Truth
 
 This brief is the stable high-level description of the project.
+
+When docs disagree, prefer them in this order:
+
+1. `docs/current-mvp-spec.md` for current shipped behavior
+2. this brief for stable product framing
+3. architecture docs for intended model and constraints
+4. worklogs for historical decision context
+
+Worklogs are implementation history, not the current source of truth by default.
 
 Supporting architecture references:
 

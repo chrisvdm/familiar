@@ -165,13 +165,13 @@ There is also a dedicated async callback example:
   - returns `accepted` immediately
   - sends the final result back through `POST /api/v1/webhooks/executor`
 
-And there is a dedicated pinned tool example:
+And there is a dedicated shortcut tool example:
 
 - `examples/pinned-tool`
-  - enters a tool with `@tool-name`
-  - pins that tool for later messages in the thread
-  - exits only on `that's all for [tool-name]`
-  - switches immediately when another `@tool-name` is invoked
+  - invokes a tool with `@tool-name payload`
+  - applies that shortcut only to the current message
+  - can chain several tool invocations inside one message
+  - does not silently carry the shortcut into later unrelated messages
 
 If you are new to this, think of it like this:
 

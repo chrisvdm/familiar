@@ -14,6 +14,12 @@ Update it when the team adopts a new standing convention, documentation rule, or
 - Keep the project brief in `docs/project-brief.md` updated when the product direction or architecture materially changes.
 - Do not use chat history as the only source of truth for project decisions.
 - Write user-facing docs and product interactions so they are understandable to a new junior developer who may not already know technical terms or CLI conventions.
+- Write public-facing copy in plain, comfortable language that is easy to read without sounding like marketing copy.
+- Prefer clear everyday wording over abstract phrases like "handle the conversation" or other wording that forces the reader to infer what the system actually does.
+- Keep important technical terms when they add clarity, such as `API`, `tool`, `executor`, `webhook`, or `schema`, but explain behavior in natural language around them.
+- Avoid SaaS-style claims, vague positioning language, poetic flourishes, therapy-speak, and hype.
+- Avoid sounding overly cold or overly technical. The target tone is friendly, direct, and precise enough that a junior developer or AI agent can understand the meaning without guessing.
+- Reduce repetition across headings and body copy. Each section should explain one thing clearly instead of restating the same idea in slightly different words.
 
 ## Product Rules
 
@@ -36,6 +42,7 @@ Update it when the team adopts a new standing convention, documentation rule, or
 - If a change affects long-lived project assumptions, update `docs/project-brief.md`.
 - If a change creates a new standing convention, update this file too.
 - Keep commits scoped to coherent tasks when practical.
+- When docs disagree, prefer current MVP/spec and project-brief documents over older worklogs unless the worklog has been explicitly promoted into current docs.
 
 ## Current Conventions
 

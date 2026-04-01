@@ -49,7 +49,6 @@ Threads give *familiar* a place to keep:
 
 - the visible conversation
 - thread-local memory
-- the current pinned tool, when one exists
 
 Examples:
 
@@ -67,9 +66,9 @@ Examples include:
 - `:rename`
 - `:delete`
 
-## Pinned tool
+## Tool shortcut
 
-A user can make an explicit tool call with `@tool-name`.
+A user can make an explicit tool call with `@tool-name payload`.
 
 *familiar* still processes the whole user message for thread context and memory.
 
@@ -80,20 +79,18 @@ If a message contains explicit tool invocations, each invoked tool receives only
 - an explicit delimiter such as `@@` or `@end`
 - or the end of the message
 
-That pins the last-invoked tool for the current thread so later text is passed verbatim to the same executor path.
+The shortcut only applies inside that same message.
 
-The pinned tool ends when:
+It does not persist into later unrelated messages.
 
-- the user says `that's all for [tool-name]`
-- the user says `that's enough [tool-name]`
-- the user invokes another `@tool-name`
+If a user sends bare `@tool-name` with no payload, *familiar* should ask for clarification instead of assuming later messages still belong to that tool.
 
 Advanced shorthand:
 
 - `@@` ends the current captured tool segment inside the same message
 - `@end` does the same thing in a more readable form
 
-*familiar* does not silently exit the pinned tool state just because a message looks conversational.
+This means the explicit-invocation rule is message-scoped, not thread-scoped.
 
 > [!NOTE]
 > **Terminology**
