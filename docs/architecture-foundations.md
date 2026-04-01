@@ -221,18 +221,20 @@ Long-term note:
 
 ### Current implementation
 
-Today, familiar is still browser-session scoped.
+Today, the hosted runtime is mainly provider-user scoped, while the web UI still uses browser session as its channel bridge.
 
 That means:
 
 - each thread transcript is stored in a chat Durable Object
-- browser session state stores:
-  - active thread
+- provider-user context stores:
   - thread summaries
-  - global memory
+  - shared memory
+  - allowed tools
   - selected model
+  - channel-linked continuity
+- browser session still helps the web surface keep a stable local channel identity and rendering/session state
 
-So current global memory is effectively scoped to a browser session, not yet to a real executor/user identity.
+So the current implementation is no longer primarily browser-session scoped, but it is also not yet the final multi-tenant account model this document describes.
 
 ### Intended implementation
 

@@ -68,7 +68,7 @@ The easiest way to understand the product is to open the live examples:
 
 - Minimal Executor: the smallest working integration
 - Async Countdown: a delayed executor result delivered later by webhook
-- Pinned Tool: explicit tool calls that keep routing later text to the same tool
+- Shortcut Tool: explicit tool calls that apply only to the current message
 
 ## Learn by pattern
 

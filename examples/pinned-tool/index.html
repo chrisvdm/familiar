@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pinned Tool Example</title>
+    <title>Shortcut Tool Example</title>
     <style>
       :root {
         color-scheme: light;
@@ -199,17 +199,17 @@
       </nav>
 
       <section class="hero">
-        <h1>Pinned Tool Example</h1>
+        <h1>Shortcut Tool Example</h1>
         <p>
-          This example is for the `@tool-name` flow. It shows how familiar pins a
-          tool for the thread, passes later text straight through to the selected
-          tool, exits only on <code>that's all for [tool-name]</code>, and switches
-          immediately when another tool is invoked.
+          This example is for the <code>@tool-name payload</code> flow. It shows how
+          familiar captures explicit tool payloads inside one message, supports
+          chained invocations, and does not silently carry that shortcut into
+          later unrelated messages.
         </p>
         <div class="tags">
-          <span class="tag">pinned tool</span>
+          <span class="tag">tool shortcut</span>
           <span class="tag">verbatim capture</span>
-          <span class="tag">explicit exit</span>
+          <span class="tag">message scoped</span>
         </div>
       </section>
 
@@ -243,16 +243,16 @@
 
             <div class="examples">
               <button type="button" data-example="@notes.capture Capture these meeting notes verbatim">
-                Enter notes tool
+                Single shortcut
               </button>
-              <button type="button" data-example="We need to move the launch to next Tuesday and confirm the staging checklist">
-                Continue notes
+              <button type="button" data-example="@notes.capture Capture these meeting notes verbatim @@ this trailing text stays ordinary conversation">
+                Shortcut with end marker
               </button>
-              <button type="button" data-example="that's all for notes.capture">
-                Exit notes
+              <button type="button" data-example="Please file these. @notes.capture We need to move the launch to next Tuesday @ideas.capture Package this as a premium onboarding offer">
+                Chained shortcuts
               </button>
               <button type="button" data-example="@ideas.capture We should package this as a premium onboarding offer">
-                Switch to ideas
+                Different tool
               </button>
             </div>
 

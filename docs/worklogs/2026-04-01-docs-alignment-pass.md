@@ -32,3 +32,8 @@ That made the product feel less coherent in writing than it actually was in code
 
 - finish the remaining uncommitted docs work so the public docs surface catches up with the runtime as well as the internal docs now do
 - do a later pass over older worklogs and example docs to archive or annotate references to removed pinned-tool behavior
+
+## Subsequent Cleanup
+
+- updated the current example/docs surfaces to stop describing thread-persistent pinned-tool behavior as if it were current runtime behavior
+- kept the `/sandbox/pinned-tool` route name for compatibility, but changed the surrounding copy to describe the shipped message-scoped shortcut model instead

@@ -192,4 +192,4 @@ If you want a working reference instead of raw API calls, open the live examples
 
 - [Minimal Executor](/sandbox/demo-executor)
 - [Async Countdown](/sandbox/async-countdown)
-- [Pinned Tool](/sandbox/pinned-tool)
+- [Shortcut Tool](/sandbox/pinned-tool)

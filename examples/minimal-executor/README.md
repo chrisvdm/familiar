@@ -198,12 +198,12 @@ curl -X POST http://localhost:5173/api/v1/input \
 
 familiar should decide to call `todos.add`, extract `todo_items`, and the executor should return a completed result with the updated todo list.
 
-You can also make an explicit tool call that pins a tool for the thread:
+You can also make an explicit tool call with shortcut syntax inside one message:
 
 - `@todos.add buy milk and eggs`
 - `@todos.add book the dog groomer for Friday`
 
-In that pinned state, familiar bypasses its normal extraction step and passes the following text straight through to the tool payload until explicit exit or another pinned tool call.
+In that explicit-invocation form, familiar bypasses its normal extraction step for that message and passes the captured payload straight through to the tool input.
 
 ## Browser Demo
 
