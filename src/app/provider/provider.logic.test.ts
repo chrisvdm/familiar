@@ -144,6 +144,103 @@ test("personal memory replies summarize stored facts for broad self queries", ()
   assert.match(reply ?? "", /you work as an Engineer/);
 });
 
+test("personal memory replies handle follow-up recall prompts from recent context", () => {
+  const globalMemory = createEmptyGlobalMemory();
+  const threadMemory = createEmptyThreadMemory();
+  globalMemory.identity.name = [
+    {
+      key: "name",
+      value: "Chris",
+      confidence: 0.99,
+      updatedAt: "2026-03-31T10:00:00.000Z",
+    },
+  ];
+  globalMemory.family.partner_name = [
+    {
+      key: "partner_name",
+      value: "Sam",
+      confidence: 0.9,
+      updatedAt: "2026-03-31T09:59:00.000Z",
+    },
+  ];
+
+  const reply = buildPersonalMemoryReply({
+    content: "anything you have stored",
+    messages: [
+      {
+        id: "msg_user_1",
+        role: "user",
+        content: "what can you tell me about myself?",
+        createdAt: "2026-03-31T10:01:00.000Z",
+      },
+      {
+        id: "msg_assistant_1",
+        role: "assistant",
+        content: "I know that you go by Chris.",
+        createdAt: "2026-03-31T10:01:01.000Z",
+      },
+    ],
+    threadMemory,
+    globalMemory,
+  });
+
+  assert.match(reply ?? "", /you go by Chris/);
+  assert.match(reply ?? "", /partner name is Sam/);
+});
+
+test("personal detail follow-ups prefer human facts over work facts", () => {
+  const globalMemory = createEmptyGlobalMemory();
+  const threadMemory = createEmptyThreadMemory();
+  globalMemory.identity.name = [
+    {
+      key: "name",
+      value: "Chris",
+      confidence: 0.99,
+      updatedAt: "2026-03-31T10:00:00.000Z",
+    },
+  ];
+  globalMemory.preferences.interests = [
+    {
+      key: "interests",
+      value: "dogs",
+      confidence: 0.88,
+      updatedAt: "2026-03-31T09:58:00.000Z",
+    },
+  ];
+  globalMemory.work.profession = [
+    {
+      key: "profession",
+      value: "Engineer",
+      confidence: 0.9,
+      updatedAt: "2026-03-31T09:59:00.000Z",
+    },
+  ];
+
+  const reply = buildPersonalMemoryReply({
+    content: "personal details, but really tell me as much as possible",
+    messages: [
+      {
+        id: "msg_user_1",
+        role: "user",
+        content: "what can you tell me about myself?",
+        createdAt: "2026-03-31T10:01:00.000Z",
+      },
+      {
+        id: "msg_assistant_1",
+        role: "assistant",
+        content: "I know that you go by Chris and you work as an Engineer.",
+        createdAt: "2026-03-31T10:01:01.000Z",
+      },
+    ],
+    threadMemory,
+    globalMemory,
+  });
+
+  assert.match(reply ?? "", /you go by Chris/);
+  assert.match(reply ?? "", /you like dogs/);
+  assert.doesNotMatch(reply ?? "", /Engineer/);
+});
+
 test("personal memory replies admit when no stored name exists", () => {
   const globalMemory = createEmptyGlobalMemory();
   const threadMemory = createEmptyThreadMemory();

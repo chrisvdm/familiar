@@ -1,4 +1,5 @@
 import {
+  type ChatMessage,
   createEmptyGlobalMemory,
   flattenGlobalMemoryFacts,
   type GlobalMemory,
@@ -190,10 +191,16 @@ export const extractIntroducedName = (content: string) => {
 };
 
 const BROAD_PERSONAL_MEMORY_QUERY_PATTERN =
-  /\b(what do you know about me|who am i|tell me about myself|tell me what you know about me|summari[sz]e (me|what you know)|what do you remember about me|what do you know of me)\b/i;
+  /\b(what do you know about me|what can you tell me about (?:me|myself)|who am i|tell me about myself|tell me what you know about me|summari[sz]e (me|what you know)|what do you remember about me|what do you know of me)\b/i;
 
 const NAME_RECALL_QUERY_PATTERN =
   /\b(do you know my name|what(?:'s| is) my name|tell me my name|remember my name|what name do i go by|the name i call myself)\b/i;
+
+const PERSONAL_MEMORY_FOLLOW_UP_PATTERN =
+  /\b(anything (?:you have|you've) stored|anything you know|what else|tell me more|personal details|human me|about human me|as much as possible|everything you have stored)\b/i;
+
+const PERSONAL_MEMORY_CONTEXT_PATTERN =
+  /\b(what do you know about me|what can you tell me about (?:me|myself)|tell me about myself|what do you remember about me|do you know my name|what(?:'s| is) my name|your name is|you go by|i know that|i do not know your name yet)\b/i;
 
 const isBareNameRecallPrompt = (content: string) => {
   const trimmed = content.trim().replace(/[.?!]+$/, "");
@@ -240,6 +247,59 @@ const dedupeMemoryFacts = (facts: MemoryFact[]) => {
     return true;
   });
 };
+
+const getPersonalMemoryFacts = ({
+  threadMemory,
+  globalMemory,
+}: {
+  threadMemory: ThreadMemory;
+  globalMemory: GlobalMemory;
+}) =>
+  dedupeMemoryFacts([
+    ...(globalMemory.identity.name ?? []),
+    ...Object.values(globalMemory.identity)
+      .flat()
+      .filter((fact) => fact.key !== "name"),
+    ...Object.values(globalMemory.family).flat(),
+    ...Object.values(globalMemory.preferences.favorite).flat(),
+    ...globalMemory.preferences.likes,
+    ...globalMemory.preferences.dislikes,
+    ...globalMemory.preferences.interests,
+    ...globalMemory.preferences.fears,
+    ...Object.values(globalMemory.preferences.general).flat(),
+    ...threadMemory.facts.filter(
+      (fact) =>
+        ![
+          "profession",
+          "business",
+          "project",
+          "product",
+          "app",
+          "company",
+        ].includes(fact.key),
+    ),
+  ]);
+
+const getExtendedMemoryFacts = ({
+  threadMemory,
+  globalMemory,
+}: {
+  threadMemory: ThreadMemory;
+  globalMemory: GlobalMemory;
+}) =>
+  dedupeMemoryFacts([
+    ...getPersonalMemoryFacts({
+      threadMemory,
+      globalMemory,
+    }),
+    ...flattenGlobalMemoryFacts(globalMemory),
+    ...threadMemory.facts,
+  ]);
+
+const hasRecentPersonalMemoryContext = (messages: ChatMessage[]) =>
+  messages
+    .slice(-6)
+    .some((message) => PERSONAL_MEMORY_CONTEXT_PATTERN.test(message.content));
 
 const formatMemoryFactForReply = (fact: MemoryFact) => {
   switch (fact.key) {
@@ -300,16 +360,24 @@ const joinMemoryPhrases = (phrases: string[]) => {
 
 export const buildPersonalMemoryReply = ({
   content,
+  messages = [],
   threadMemory,
   globalMemory,
 }: {
   content: string;
+  messages?: ChatMessage[];
   threadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
 }) => {
   const isNameRecall =
     NAME_RECALL_QUERY_PATTERN.test(content) || isBareNameRecallPrompt(content);
-  const isBroadMemoryRecall = BROAD_PERSONAL_MEMORY_QUERY_PATTERN.test(content);
+  const isFollowUpMemoryRecall =
+    PERSONAL_MEMORY_FOLLOW_UP_PATTERN.test(content) &&
+    hasRecentPersonalMemoryContext(messages);
+  const isBroadMemoryRecall =
+    BROAD_PERSONAL_MEMORY_QUERY_PATTERN.test(content) || isFollowUpMemoryRecall;
+  const prefersPersonalDetails =
+    /\b(personal details|human me|about human me)\b/i.test(content);
 
   if (!isBroadMemoryRecall && !isNameRecall) {
     return null;
@@ -326,10 +394,17 @@ export const buildPersonalMemoryReply = ({
       : "I do not know your name yet.";
   }
 
-  const storedFacts = dedupeMemoryFacts([
-    ...flattenGlobalMemoryFacts(globalMemory),
-    ...threadMemory.facts,
-  ]).slice(0, 4);
+  const storedFacts = (
+    prefersPersonalDetails
+      ? getPersonalMemoryFacts({
+          threadMemory,
+          globalMemory,
+        })
+      : getExtendedMemoryFacts({
+          threadMemory,
+          globalMemory,
+        })
+  ).slice(0, 5);
 
   if (storedFacts.length === 0) {
     return "I do not know much about you yet.";

@@ -183,6 +183,7 @@ Identity, storage, and memory-policy details for that executor model are defined
 
 - Continue simplifying the executor API so it is easy for humans and AI-built systems to connect to.
 - Continue extracting orchestration logic out of the web UI and into the shared conversation core.
+- Make runtime state more first-class through durable event inspection, integration health, and operator-facing debugging surfaces.
 - Define stable identity semantics for `account`, `executor`, `end_user`, and `memory scope`.
 - Consider streaming assistant responses.
 - Revisit prompt-context strategy once lightweight memory quality is understood in longer conversations.
@@ -208,6 +209,7 @@ Supporting architecture references:
 - `docs/conversation-lifecycle.md`
 - `docs/data-model.md`
 - `docs/ai-integration-direction.md`
+- `docs/operability-roadmap.md`
 - `docs/provider-api-direction.md`
 - `docs/provider-api-spec.md`
 

@@ -369,6 +369,7 @@ const buildDirectReply = async ({
 
   const personalMemoryReply = buildPersonalMemoryReply({
     content,
+    messages,
     threadMemory,
     globalMemory,
   });
@@ -1176,6 +1177,7 @@ const decideConversationAction = async ({
 }) => {
   const personalMemoryReply = buildPersonalMemoryReply({
     content,
+    messages,
     threadMemory,
     globalMemory,
   });
