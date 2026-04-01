@@ -8,6 +8,8 @@ const DOC_ORDER = [
   "intro",
   "install-and-run",
   "quickstart",
+  "cookbook",
+  "cookbook-discord-mentions",
   "api-reference",
   "concepts",
   "integrations",
@@ -20,6 +22,11 @@ const toSlug = (path: string) =>
   path.split("/").at(-1)?.replace(/\.md$/, "") ?? "";
 
 const toLabel = (slug: string) =>
+  slug === "intro"
+    ? "Overview"
+    : slug === "cookbook-discord-mentions"
+      ? "Discord Mention Bridge"
+      :
   slug
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

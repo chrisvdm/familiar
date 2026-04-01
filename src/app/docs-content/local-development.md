@@ -96,6 +96,18 @@ TEXTY_EXECUTOR_CONFIG='{"demo_executor":{"token":"dev-token","baseUrl":"http://l
 
 After that, restart `npm run dev` if it is already running.
 
+## Step 6: Release the worker
+
+If you need to deploy this repo, use the project release script:
+
+```sh
+npm run release
+```
+
+Do not treat `npx wrangler deploy` as the normal release path for this repo.
+
+The release script exists to run the expected project checks and deployment steps in the right order.
+
 ## Local Mental Model
 
 When running locally:

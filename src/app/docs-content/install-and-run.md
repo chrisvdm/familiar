@@ -74,6 +74,20 @@ familiar init
 
 Until npm publish is live, use the browser or API path above.
 
+For local development or alternate hosted environments, the CLI helper in this repo already supports overriding the base URL with:
+
+```sh
+familiar init --host http://localhost:5173
+```
+
+or:
+
+```sh
+FAMILIAR_BASE_URL=http://localhost:5173 familiar whoami
+```
+
+That means local auth state should be treated as host-aware rather than assuming one global token for every environment.
+
 ## Contributor Docs
 
 If you want to work on the codebase itself rather than use the hosted product, go to:

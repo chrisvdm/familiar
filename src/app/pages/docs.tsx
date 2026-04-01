@@ -17,9 +17,6 @@ export const DocsPage = ({
     <>
       {activeDoc ? (
         <>
-          <p className="landing-section-label">
-            <em>familiar</em> docs
-          </p>
           <h1 className="docs-title">{activeDoc.label}</h1>
           <div className="docs-content">
             {renderMarkdown(getRenderableDocContent(activeDoc.content))}

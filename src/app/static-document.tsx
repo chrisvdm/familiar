@@ -15,10 +15,6 @@ export const StaticDocument: React.FC<{ children: React.ReactNode }> = ({
       <link rel="icon" href="/familiar-mark.svg" type="image/svg+xml" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
-        rel="stylesheet"
-      />
       <link rel="stylesheet" href={homeStyles} />
     </head>
     <body>{children}</body>

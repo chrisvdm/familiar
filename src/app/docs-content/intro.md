@@ -69,3 +69,9 @@ The easiest way to understand the product is to open the live examples:
 - Minimal Executor: the smallest working integration
 - Async Countdown: a delayed executor result delivered later by webhook
 - Pinned Tool: explicit tool calls that keep routing later text to the same tool
+
+## Learn by pattern
+
+If you want example-first integration guidance instead of route-by-route reference docs, open the cookbook:
+
+- [Cookbook](/docs/cookbook)

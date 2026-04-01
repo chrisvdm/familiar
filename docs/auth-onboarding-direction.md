@@ -165,6 +165,10 @@ That local state may eventually need to support:
 - token revocation and replacement
 - host-specific auth state for local, staging, or production hosts
 
+The CLI should be able to override the current host or base URL explicitly.
+
+That means the local auth/config model should be host-aware rather than assuming one global token file entry for every environment.
+
 The exact file format can stay flexible for now.
 
 The important rule is:
