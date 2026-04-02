@@ -77,6 +77,17 @@ type MemorySelectionIds = {
   snippetIds: string[];
 };
 
+type SelfMemoryRecallResponse = {
+  should_recall?: boolean;
+  focus?: "name" | "personal" | "broad" | "none";
+  reasoning?: string;
+};
+
+type SelfMemoryRecallIntent = {
+  shouldRecall: boolean;
+  focus: "name" | "personal" | "broad" | "none";
+};
+
 type MemoryContextCandidate<T> = {
   id: string;
   line: string;
@@ -232,11 +243,17 @@ const QUERY_ALIASES: Record<string, string[]> = {
   profession: ["job", "work", "business"],
 };
 
+const SELF_MEMORY_CONTEXT_PATTERN =
+  /\b(what do you know about me|what can you tell me about (?:me|myself)|tell me about myself|what do you remember about me|do you know my name|what(?:'s| is) my name|your name is|you go by|i know that|i do not know your name yet)\b/i;
+
 const MEMORY_EXTRACTION_SYSTEM_PROMPT =
   "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Do not infer gender, sex, or pronouns from a name, writing style, relationship terms, or any other indirect cue. Only store gender or pronouns if the user explicitly stated them. Ignore transient tasks, moods, and one-off requests.";
 
 const MEMORY_SELECTOR_SYSTEM_PROMPT =
   "You select the smallest useful subset of stored memory for another model. Return JSON only. Do not include markdown fences. Choose only memories that are explicitly relevant to the user's latest message. Prefer too little over too much. Never invent facts or ids. Use the provided ids exactly as given.";
+
+const SELF_MEMORY_RECALL_SYSTEM_PROMPT =
+  "You detect whether the user is asking this assistant to recall stored information about the user themselves. Return JSON only. Do not include markdown fences. Mark should_recall true for direct self-memory requests and natural follow-ups to an ongoing self-memory discussion. Use focus = name for name recall, personal for human or personal detail requests, broad for general self-summary requests, and none otherwise.";
 
 const clampConfidence = (value: number | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -428,6 +445,25 @@ const isBroadPersonalMemoryQuery = (query: string) =>
   /\b(what do you know about me|who am i|tell me about myself|summari[sz]e (me|what you know)|what do you remember about me|what do you know of me)\b/i.test(
     query,
   );
+
+const isNameRecallQuery = (query: string) =>
+  /\b(do you know my name|what(?:'s| is) my name|tell me my name|remember my name|what name do i go by|the name i call myself)\b/i.test(
+    query,
+  ) || /^(?:my name|name|about my name)$/i.test(query.trim().replace(/[.?!]+$/, ""));
+
+const shouldCheckSelfMemoryRecall = ({
+  userMessage,
+  messages,
+}: {
+  userMessage: string;
+  messages: ChatMessage[];
+}) =>
+  isNameRecallQuery(userMessage) ||
+  isPersonalMemoryQuery(userMessage) ||
+  /\b(anything (?:you have|you've) stored|anything you know|what else|tell me more|human me|personal details|as much as possible|everything you have stored|stored)\b/i.test(
+    userMessage,
+  ) ||
+  messages.slice(-6).some((message) => SELF_MEMORY_CONTEXT_PATTERN.test(message.content));
 
 const getMessagesForExtraction = (messages: ChatMessage[]) =>
   messages
@@ -864,6 +900,96 @@ const getTopRecentSnippets = (messages: ChatMessage[]) =>
     .filter((message) => message.role === "user" || message.role === "assistant")
     .slice(-MEMORY_SELECTOR_SNIPPET_LIMIT);
 
+const parseSelfMemoryRecallResponse = (
+  rawContent: string,
+): SelfMemoryRecallIntent | null => {
+  try {
+    const parsed = JSON.parse(rawContent) as SelfMemoryRecallResponse;
+    const focus =
+      parsed.focus === "name" ||
+      parsed.focus === "personal" ||
+      parsed.focus === "broad" ||
+      parsed.focus === "none"
+        ? parsed.focus
+        : "none";
+
+    return {
+      shouldRecall: parsed.should_recall === true,
+      focus,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const classifySelfMemoryRecallIntent = async ({
+  userMessage,
+  messages,
+  timeZone,
+}: {
+  userMessage: string;
+  messages: ChatMessage[];
+  timeZone?: string | null;
+}) => {
+  if (isNameRecallQuery(userMessage)) {
+    return {
+      shouldRecall: true,
+      focus: "name",
+    } satisfies SelfMemoryRecallIntent;
+  }
+
+  if (!shouldCheckSelfMemoryRecall({ userMessage, messages })) {
+    return {
+      shouldRecall: false,
+      focus: "none",
+    } satisfies SelfMemoryRecallIntent;
+  }
+
+  const recentMessages = messages
+    .slice(-6)
+    .map((message) => `- ${message.role}: ${message.content}`)
+    .join("\n");
+
+  try {
+    const rawContent = await callOpenRouter({
+      model: getMemorySelectorModel(),
+      timeZone,
+      messages: [
+        {
+          role: "system",
+          content: SELF_MEMORY_RECALL_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: [
+            "Recent conversation:",
+            recentMessages || "(none)",
+            "",
+            `Latest user message: ${userMessage}`,
+            "",
+            'Return strict JSON with this shape: {"should_recall":true,"focus":"name|personal|broad|none","reasoning":"string"}',
+          ].join("\n"),
+        },
+      ],
+    });
+
+    return (
+      parseSelfMemoryRecallResponse(rawContent) || {
+        shouldRecall: false,
+        focus: "none",
+      }
+    );
+  } catch {
+    return {
+      shouldRecall:
+        isBroadPersonalMemoryQuery(userMessage) || isPersonalMemoryQuery(userMessage),
+      focus: /\b(personal details|human me)\b/i.test(userMessage)
+        ? "personal"
+        : "broad",
+    } satisfies SelfMemoryRecallIntent;
+  }
+};
+
 const getRelevantSnippets = ({
   messages,
   queryTokens,
@@ -1010,6 +1136,112 @@ const buildSnippetCandidate = (
   line: `- sn_${index + 1}: (${message.role}) ${message.content}`,
   item: message,
 });
+
+const formatMemoryFactForReply = (fact: MemoryFact) => {
+  switch (fact.key) {
+    case "name":
+      return `you go by ${fact.value}`;
+    case "children_count":
+      return `you have ${fact.value} children`;
+    case "profession":
+      return `you work as ${
+        /^(a|an)\b/i.test(fact.value)
+          ? fact.value
+          : /^[aeiou]/i.test(fact.value)
+            ? `an ${fact.value}`
+            : `a ${fact.value}`
+      }`;
+    case "business":
+      return `your business is ${fact.value}`;
+    case "location":
+      return `you are in ${fact.value}`;
+    case "likes":
+    case "interest":
+    case "interests":
+      return `you like ${fact.value}`;
+    case "dislikes":
+      return `you dislike ${fact.value}`;
+    case "favorite":
+    case "favorite_food":
+    case "favorite_drink":
+    case "favorite_music":
+    case "favorite_movie":
+    case "favorite_color":
+    case "partner_name":
+    case "spouse_name":
+    case "wife_name":
+    case "husband_name":
+    case "dog_name":
+    case "cat_name":
+    case "pet_name":
+      return `your ${fact.key.replace(/_/g, " ")} is ${fact.value}`;
+    default:
+      return `${fact.key.replace(/_/g, " ")}: ${fact.value}`;
+  }
+};
+
+const joinMemoryPhrases = (phrases: string[]) => {
+  if (phrases.length === 0) {
+    return "";
+  }
+
+  if (phrases.length === 1) {
+    return phrases[0];
+  }
+
+  if (phrases.length === 2) {
+    return `${phrases[0]} and ${phrases[1]}`;
+  }
+
+  return `${phrases.slice(0, -1).join(", ")}, and ${phrases.at(-1)}`;
+};
+
+const getStoredName = ({
+  threadMemory,
+  globalMemory,
+}: {
+  threadMemory: ThreadMemory;
+  globalMemory: GlobalMemory;
+}) =>
+  [...(globalMemory.identity.name ?? []), ...threadMemory.facts.filter((fact) => fact.key === "name")]
+    .sort((left, right) => {
+      if (right.confidence !== left.confidence) {
+        return right.confidence - left.confidence;
+      }
+
+      return right.updatedAt.localeCompare(left.updatedAt);
+    })[0]?.value ?? null;
+
+const filterFactsForSelfMemoryFocus = ({
+  facts,
+  focus,
+}: {
+  facts: MemoryFact[];
+  focus: "personal" | "broad";
+}) =>
+  focus === "personal"
+    ? facts.filter(
+        (fact) =>
+          !["profession", "business", "project", "product", "app", "company"].includes(
+            fact.key,
+          ),
+      )
+    : facts;
+
+const dedupeReplyFacts = (facts: MemoryFact[]) => {
+  const seen = new Set<string>();
+
+  return facts.filter((fact) => {
+    const key = `${fact.key}:${fact.value.trim().toLowerCase()}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
 
 const selectCandidatesByIds = <T,>(
   candidates: MemoryContextCandidate<T>[],
@@ -1443,4 +1675,92 @@ export const buildMemoryContext = async ({
   }
 
   return sections.join("\n\n");
+};
+
+export const buildSelfMemoryRecallReply = async ({
+  userMessage,
+  messages,
+  threadMemory,
+  globalMemory,
+  timeZone,
+  classifyRecallIntent = classifySelfMemoryRecallIntent,
+  selectMemory = selectMemoryContextWithAi,
+}: {
+  userMessage: string;
+  messages: ChatMessage[];
+  threadMemory: ThreadMemory;
+  globalMemory: GlobalMemory;
+  timeZone?: string | null;
+  classifyRecallIntent?: typeof classifySelfMemoryRecallIntent;
+  selectMemory?: typeof selectMemoryContextWithAi;
+}) => {
+  const recallIntent = await classifyRecallIntent({
+    userMessage,
+    messages,
+    timeZone,
+  });
+
+  if (!recallIntent.shouldRecall || recallIntent.focus === "none") {
+    return null;
+  }
+
+  if (recallIntent.focus === "name") {
+    const storedName = getStoredName({
+      threadMemory,
+      globalMemory,
+    });
+
+    return storedName
+      ? `You go by ${storedName}.`
+      : "I do not know your name yet.";
+  }
+
+  const queryTokens = expandQueryTokens(tokenize(userMessage));
+  const globalFacts = flattenGlobalMemoryFacts(globalMemory);
+  const derivedFacts = deriveFactsFromMemory(globalFacts);
+  const selectorResult = await selectMemory({
+    userMessage,
+    threadFacts: dedupeFactList([
+      ...getRelevantFacts(threadMemory.facts, queryTokens),
+      ...getTopSelectorFacts(threadMemory.facts),
+    ]),
+    globalFacts: dedupeFactList([
+      ...getRelevantFacts(globalFacts, queryTokens),
+      ...getTopSelectorFacts(globalFacts),
+    ]),
+    derivedFacts: dedupeDerivedFactList([
+      ...getRelevantDerivedFacts(derivedFacts, queryTokens),
+      ...derivedFacts.slice(0, MEMORY_SELECTOR_FACT_LIMIT),
+    ]),
+    threadSummaries: dedupeThreadSummaryList([
+      ...getRelevantThreadSummaries({
+        summaries: globalMemory.threadSummaries,
+        queryTokens,
+      }),
+      ...getTopSelectorThreadSummaries(globalMemory.threadSummaries),
+    ]),
+    snippets: dedupeMessageList([
+      ...getRelevantSnippets({ messages, queryTokens }),
+      ...getTopRecentSnippets(messages),
+    ]),
+    timeZone,
+  });
+
+  const relevantFacts = filterFactsForSelfMemoryFocus({
+    facts: dedupeReplyFacts([
+      ...(selectorResult?.relevantGlobalFacts ?? []),
+      ...(selectorResult?.relevantThreadFacts ?? []),
+      ...globalFacts,
+      ...threadMemory.facts,
+    ]),
+    focus: recallIntent.focus,
+  }).slice(0, MEMORY_FACT_LIMIT);
+
+  if (relevantFacts.length === 0) {
+    return "I do not know much about you yet.";
+  }
+
+  return `I know that ${joinMemoryPhrases(
+    relevantFacts.map((fact) => formatMemoryFactForReply(fact)),
+  )}.`;
 };

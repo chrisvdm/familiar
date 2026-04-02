@@ -1,7 +1,11 @@
 import { env } from "cloudflare:workers";
 import { requestInfo } from "rwsdk/worker";
 
-import { buildMemoryContext, refreshMemories } from "../chat/chat.memory";
+import {
+  buildMemoryContext,
+  buildSelfMemoryRecallReply,
+  refreshMemories,
+} from "../chat/chat.memory";
 import {
   buildPromptContext,
   createDateTimeSystemPrompt,
@@ -48,7 +52,6 @@ import {
   applyConversationRateLimit,
   buildShortcutRawInputText,
   buildShortcutToolArguments,
-  buildPersonalMemoryReply,
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
@@ -367,11 +370,12 @@ const buildDirectReply = async ({
     return `Hi ${introducedName}, pleased to meet you.`;
   }
 
-  const personalMemoryReply = buildPersonalMemoryReply({
-    content,
+  const personalMemoryReply = await buildSelfMemoryRecallReply({
+    userMessage: content,
     messages,
     threadMemory,
     globalMemory,
+    timeZone,
   });
 
   if (personalMemoryReply) {
@@ -1175,11 +1179,12 @@ const decideConversationAction = async ({
   replyModel: string;
   timeZone?: string | null;
 }) => {
-  const personalMemoryReply = buildPersonalMemoryReply({
-    content,
+  const personalMemoryReply = await buildSelfMemoryRecallReply({
+    userMessage: content,
     messages,
     threadMemory,
     globalMemory,
+    timeZone,
   });
 
   if (personalMemoryReply) {
