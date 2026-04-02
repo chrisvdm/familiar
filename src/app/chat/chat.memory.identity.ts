@@ -1,6 +1,6 @@
 import type { ChatMessage, MemoryFact } from "./shared.ts";
 
-const EXPLICIT_IDENTITY_FACT_PATTERNS: Record<string, RegExp[]> = {
+const EXPLICIT_FACT_PATTERNS: Record<string, RegExp[]> = {
   gender: [
     /\b(?:i am|i'm)\s+(?:a\s+)?(woman|female|girl)\b/i,
     /\b(?:i am|i'm)\s+(?:a\s+)?(man|male|boy)\b/i,
@@ -11,18 +11,74 @@ const EXPLICIT_IDENTITY_FACT_PATTERNS: Record<string, RegExp[]> = {
     /\bi use\s+([a-z/ -]{2,40})\s+pronouns\b/i,
     /\b(?:my|the)\s+pronouns\s*[:=-]\s*([a-z/ -]{2,40})\b/i,
   ],
+  name: [
+    /\bmy name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\bi go by\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\bcall me\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  profession: [
+    /\bi work as\s+(?:a|an)\s+([a-z][a-z0-9 -]{1,60})\b/i,
+    /\bi am\s+(?:a|an)\s+([a-z][a-z0-9 -]{1,60})\b/i,
+    /\bi'm\s+(?:a|an)\s+([a-z][a-z0-9 -]{1,60})\b/i,
+    /\bmy job is\s+([a-z][a-z0-9 -]{1,60})\b/i,
+    /\bmy profession is\s+([a-z][a-z0-9 -]{1,60})\b/i,
+  ],
+  business: [
+    /\bi run\s+(?:a|an)\s+([a-z][a-z0-9 -]{1,60})\b/i,
+    /\bi own\s+(?:a|an)\s+([a-z][a-z0-9 -]{1,60})\b/i,
+    /\bmy business is\s+([a-z][a-z0-9 -]{1,60})\b/i,
+  ],
+  spouse_name: [
+    /\bmy spouse(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\bmy spouse is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  partner_name: [
+    /\bmy partner(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\bmy partner is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  wife_name: [
+    /\bmy wife(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\bmy wife is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  husband_name: [
+    /\bmy husband(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\bmy husband is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  dog_name: [
+    /\bmy dog(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}) is my dog\b/i,
+    /\bmy dog is named\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  cat_name: [
+    /\bmy cat(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}) is my cat\b/i,
+    /\bmy cat is named\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+  ],
+  pet_name: [
+    /\bmy pet(?:'s)? name is\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}) is my pet\b/i,
+    /\bmy pet is named\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
+    /\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}) is my pet dog\b/i,
+    /\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}) is my pet cat\b/i,
+  ],
 };
 
-const sanitizeIdentityValue = ({
+const SUSPICIOUS_NAME_VALUES = new Set(["familiar", "texty", "assistant", "bot"]);
+const SUSPICIOUS_PROFILE_PATTERN =
+  /\b(semantic(?:ly)?|message|assistant|system prompt|tool|shortcut|executor)\b/i;
+
+const sanitizeSupportedValue = ({
   key,
   value,
 }: {
   key: string;
   value: string;
 }) => {
-  const normalized = value.trim().toLowerCase();
+  const trimmed = value.trim();
 
   if (key === "gender") {
+    const normalized = trimmed.toLowerCase();
+
     if (["woman", "female", "girl"].includes(normalized)) {
       return "female";
     }
@@ -35,13 +91,28 @@ const sanitizeIdentityValue = ({
   }
 
   if (key === "pronouns") {
-    return normalized.replace(/\s+/g, "");
+    return trimmed.toLowerCase().replace(/\s+/g, "");
   }
 
-  return normalized;
+  if (key === "profession" || key === "business") {
+    return trimmed.toLowerCase();
+  }
+
+  return trimmed;
 };
 
-const explicitlySupportsIdentityFact = ({
+const getSourceMessages = ({
+  fact,
+  messagesById,
+}: {
+  fact: MemoryFact;
+  messagesById: Map<string, ChatMessage>;
+}) =>
+  (fact.sourceMessageIds ?? [])
+    .map((messageId) => messagesById.get(messageId))
+    .filter((message): message is ChatMessage => Boolean(message));
+
+const explicitlySupportsFact = ({
   key,
   value,
   sourceMessages,
@@ -50,13 +121,13 @@ const explicitlySupportsIdentityFact = ({
   value: string;
   sourceMessages: ChatMessage[];
 }) => {
-  const patterns = EXPLICIT_IDENTITY_FACT_PATTERNS[key];
+  const patterns = EXPLICIT_FACT_PATTERNS[key];
 
   if (!patterns || sourceMessages.length === 0) {
     return false;
   }
 
-  const normalizedValue = sanitizeIdentityValue({ key, value });
+  const normalizedValue = sanitizeSupportedValue({ key, value });
 
   return sourceMessages.some((message) => {
     if (message.role !== "user") {
@@ -73,10 +144,44 @@ const explicitlySupportsIdentityFact = ({
         return false;
       }
 
-      return sanitizeIdentityValue({ key, value: capturedValue }) === normalizedValue;
+      return (
+        sanitizeSupportedValue({
+          key,
+          value: capturedValue,
+        }) === normalizedValue
+      );
     });
   });
 };
+
+const isSuspiciousFactValue = ({ key, value }: { key: string; value: string }) => {
+  const normalized = value.trim().toLowerCase();
+
+  if (key === "name") {
+    return SUSPICIOUS_NAME_VALUES.has(normalized);
+  }
+
+  if (key === "profession" || key === "business") {
+    return SUSPICIOUS_PROFILE_PATTERN.test(normalized);
+  }
+
+  return false;
+};
+
+const EXPLICIT_ONLY_KEYS = new Set([
+  "gender",
+  "pronouns",
+  "name",
+  "profession",
+  "business",
+  "spouse_name",
+  "partner_name",
+  "wife_name",
+  "husband_name",
+  "dog_name",
+  "cat_name",
+  "pet_name",
+]);
 
 export const sanitizeExtractedMemoryFact = ({
   fact,
@@ -85,16 +190,18 @@ export const sanitizeExtractedMemoryFact = ({
   fact: MemoryFact;
   messagesById: Map<string, ChatMessage>;
 }) => {
-  if (fact.key !== "gender" && fact.key !== "pronouns") {
+  if (isSuspiciousFactValue({ key: fact.key, value: fact.value })) {
+    return null;
+  }
+
+  if (!EXPLICIT_ONLY_KEYS.has(fact.key)) {
     return fact;
   }
 
-  const sourceMessages = (fact.sourceMessageIds ?? [])
-    .map((messageId) => messagesById.get(messageId))
-    .filter((message): message is ChatMessage => Boolean(message));
+  const sourceMessages = getSourceMessages({ fact, messagesById });
 
   if (
-    !explicitlySupportsIdentityFact({
+    !explicitlySupportsFact({
       key: fact.key,
       value: fact.value,
       sourceMessages,
@@ -105,7 +212,7 @@ export const sanitizeExtractedMemoryFact = ({
 
   return {
     ...fact,
-    value: sanitizeIdentityValue({
+    value: sanitizeSupportedValue({
       key: fact.key,
       value: fact.value,
     }),

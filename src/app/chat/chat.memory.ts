@@ -136,6 +136,39 @@ const GLOBAL_MEMORY_KEYS = new Set([
   "dislikes",
 ]);
 
+const CANONICAL_SELF_RECALL_KEYS = new Set([
+  "name",
+  "location",
+  "children_count",
+  "child_name",
+  "children_names",
+  "sibling_count",
+  "sibling_name",
+  "siblings",
+  "spouse_name",
+  "partner_name",
+  "wife_name",
+  "husband_name",
+  "family_history",
+  "profession",
+  "business",
+  "dog_name",
+  "cat_name",
+  "pet_name",
+  "interest",
+  "interests",
+  "favorite",
+  "favorite_food",
+  "favorite_drink",
+  "favorite_music",
+  "favorite_movie",
+  "favorite_color",
+  "fear",
+  "fears",
+  "likes",
+  "dislikes",
+]);
+
 const looksLikePreference = (value: string) =>
   /\b(love|like|prefer|favorite|fan|enthusiast|hobby|hobbyist|phile|obsessed)\b/i.test(
     value,
@@ -1243,6 +1276,9 @@ const dedupeReplyFacts = (facts: MemoryFact[]) => {
   });
 };
 
+const filterCanonicalSelfRecallFacts = (facts: MemoryFact[]) =>
+  facts.filter((fact) => CANONICAL_SELF_RECALL_KEYS.has(fact.key));
+
 const selectCandidatesByIds = <T,>(
   candidates: MemoryContextCandidate<T>[],
   ids: string[],
@@ -1747,12 +1783,14 @@ export const buildSelfMemoryRecallReply = async ({
   });
 
   const relevantFacts = filterFactsForSelfMemoryFocus({
-    facts: dedupeReplyFacts([
-      ...(selectorResult?.relevantGlobalFacts ?? []),
-      ...(selectorResult?.relevantThreadFacts ?? []),
-      ...globalFacts,
-      ...threadMemory.facts,
-    ]),
+    facts: filterCanonicalSelfRecallFacts(
+      dedupeReplyFacts([
+        ...(selectorResult?.relevantGlobalFacts ?? []),
+        ...(selectorResult?.relevantThreadFacts ?? []),
+        ...globalFacts,
+        ...threadMemory.facts,
+      ]),
+    ),
     focus: recallIntent.focus,
   }).slice(0, MEMORY_FACT_LIMIT);
 

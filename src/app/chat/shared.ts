@@ -106,6 +106,27 @@ const MULTI_VALUE_KEYS = new Set([
   "favorite_color",
 ]);
 
+const FAMILY_MEMORY_KEYS = new Set([
+  "children_count",
+  "child_name",
+  "children_names",
+  "sibling_count",
+  "sibling_name",
+  "siblings",
+  "spouse_name",
+  "partner_name",
+  "wife_name",
+  "husband_name",
+  "family_history",
+  "dog_name",
+  "cat_name",
+  "pet_name",
+]);
+
+const SUSPICIOUS_NAME_VALUES = new Set(["familiar", "texty", "assistant", "bot"]);
+const SUSPICIOUS_PROFILE_PATTERN =
+  /\b(semantic(?:ly)?|message|assistant|system prompt|tool|shortcut|executor)\b/i;
+
 const formatFactLine = (fact: MemoryFact) =>
   `- \`${fact.key}\`: ${fact.value} (${Math.round(fact.confidence * 100)}%)`;
 
@@ -179,6 +200,54 @@ const normalizeFactGroup = (group: MemoryFactGroup | undefined): MemoryFactGroup
   Object.fromEntries(
     Object.entries(group ?? {})
       .map(([key, facts]) => [key, sortFacts(Array.isArray(facts) ? facts : [])])
+      .filter(([, facts]) => facts.length > 0),
+  );
+
+const isValidStructuredFact = ({
+  bucket,
+  fact,
+}: {
+  bucket: "identity" | "family" | "work";
+  fact: MemoryFact;
+}) => {
+  const normalizedValue = fact.value.trim().toLowerCase();
+
+  if (bucket === "family" && !FAMILY_MEMORY_KEYS.has(fact.key)) {
+    return false;
+  }
+
+  if (fact.key === "name" && SUSPICIOUS_NAME_VALUES.has(normalizedValue)) {
+    return false;
+  }
+
+  if (
+    (fact.key === "profession" || fact.key === "business") &&
+    SUSPICIOUS_PROFILE_PATTERN.test(normalizedValue)
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
+const sanitizeStructuredFactGroup = ({
+  bucket,
+  group,
+}: {
+  bucket: "identity" | "family" | "work";
+  group: MemoryFactGroup | undefined;
+}) =>
+  Object.fromEntries(
+    Object.entries(group ?? {})
+      .map(([key, facts]) => [
+        key,
+        sortFacts(Array.isArray(facts) ? facts : []).filter((fact) =>
+          isValidStructuredFact({
+            bucket,
+            fact,
+          }),
+        ),
+      ])
       .filter(([, facts]) => facts.length > 0),
   );
 
@@ -296,12 +365,14 @@ export const addFactToGlobalMemory = (
     return nextMemory;
   }
 
-  placeFactInGroup(
-    nextMemory.family,
-    fact.key,
-    fact,
-    isMultiValueFactKey(fact.key),
-  );
+  if (FAMILY_MEMORY_KEYS.has(fact.key)) {
+    placeFactInGroup(
+      nextMemory.family,
+      fact.key,
+      fact,
+      isMultiValueFactKey(fact.key),
+    );
+  }
 
   return nextMemory;
 };
@@ -587,10 +658,19 @@ export const normalizeGlobalMemory = (
   const updatedAt = memory?.updatedAt ?? new Date().toISOString();
   const structuredMemory: GlobalMemory = {
     ...createEmptyStructuredGlobalMemory(),
-    identity: normalizeFactGroup(memory?.identity),
-    family: normalizeFactGroup(memory?.family),
+    identity: sanitizeStructuredFactGroup({
+      bucket: "identity",
+      group: memory?.identity,
+    }),
+    family: sanitizeStructuredFactGroup({
+      bucket: "family",
+      group: memory?.family,
+    }),
     preferences: normalizePreferenceMemory(memory?.preferences),
-    work: normalizeFactGroup(memory?.work),
+    work: sanitizeStructuredFactGroup({
+      bucket: "work",
+      group: memory?.work,
+    }),
     threadSummaries,
     markdown: "",
     updatedAt,
