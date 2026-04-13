@@ -1078,7 +1078,7 @@ const callOpenRouter = async ({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": memoryEnv.OPENROUTER_SITE_URL || "http://localhost:5173",
-      "X-Title": memoryEnv.OPENROUTER_SITE_NAME || "Texty",
+      "X-Title": memoryEnv.OPENROUTER_SITE_NAME || "familiar",
     },
     body: JSON.stringify({
       model:

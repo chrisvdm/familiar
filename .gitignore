@@ -69,3 +69,4 @@ coverage
 
 # Wrangler
 .wrangler
+.devcontainer/kindling/

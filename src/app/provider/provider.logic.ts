@@ -166,8 +166,24 @@ const TOOL_SHORTCUT_PATTERN =
   /(?:^|\s)@(?:\[(.+?)\]|([A-Za-z0-9._-]+))(?=\s|$)/g;
 const TOOL_SHORTCUT_EXIT_PATTERN =
   /^that'?s (?:all(?: for)?|enough(?: for)?)\s+(@(?:\[(.+?)\]|([A-Za-z0-9._-]+))|(.+))$/i;
+const EXPLICIT_TOOL_REQUEST_PATTERN =
+  /^(?:(?:please|pls)\s+)?(?:use|run|call|invoke|send|post|message|dm|email|text|notify|share|publish|create|make|add|save|store|remember|update|edit|change|delete|remove|clear|fetch|search|look\s*up|check)\b/i;
+const EXPLICIT_TOOL_REQUEST_WITH_SUBJECT_PATTERN =
+  /^(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:use|run|call|invoke|send|post|message|dm|email|text|notify|share|publish|create|make|add|save|store|remember|update|edit|change|delete|remove|clear|fetch|search|look\s*up|check)\b/i;
+const EXPLICIT_TOOL_HELP_PATTERN =
+  /^(?:i want you to|i need you to|help me|please help me)\s+(?:use|run|call|invoke|send|post|message|dm|email|text|notify|share|publish|create|make|add|save|store|remember|update|edit|change|delete|remove|clear|fetch|search|look\s*up|check)\b/i;
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isExplicitToolRequest = (content: string) => {
+  const trimmed = content.trim();
+
+  return (
+    EXPLICIT_TOOL_REQUEST_PATTERN.test(trimmed) ||
+    EXPLICIT_TOOL_REQUEST_WITH_SUBJECT_PATTERN.test(trimmed) ||
+    EXPLICIT_TOOL_HELP_PATTERN.test(trimmed)
+  );
+};
 
 export const extractIntroducedName = (content: string) => {
   const match = content
@@ -188,6 +204,32 @@ export const extractIntroducedName = (content: string) => {
     .join(" ");
 
   return normalized || null;
+};
+
+export const hasExplicitToolUseIntent = ({
+  content,
+  tools,
+}: {
+  content: string;
+  tools: AllowedTool[];
+}) => {
+  if (!isExplicitToolRequest(content)) {
+    return false;
+  }
+
+  const normalizedContent = content.trim();
+
+  return tools
+    .filter((tool) => tool.status === "active")
+    .some((tool) => {
+      const escapedToolName = escapeRegex(tool.toolName.trim());
+      const toolMentionPattern = new RegExp(
+        `(?:^|[^A-Za-z0-9_])(?:@(?:\\[)?${escapedToolName}(?:\\])?|${escapedToolName})(?=$|[^A-Za-z0-9_])`,
+        "i",
+      );
+
+      return toolMentionPattern.test(normalizedContent);
+    });
 };
 
 const BROAD_PERSONAL_MEMORY_QUERY_PATTERN =

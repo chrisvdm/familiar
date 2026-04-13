@@ -21,6 +21,7 @@ import {
   getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
+  hasExplicitToolUseIntent,
   interpretPendingToolConfirmation,
   isToolShortcutExitInput,
   parseToolShortcutInvocation,
@@ -423,6 +424,78 @@ test("tool shortcut invocation resolves an active tool and keeps the raw remaind
 
   assert.equal(result?.tool.toolName, "todos.add");
   assert.equal(result?.remainder, "buy milk and eggs");
+});
+
+test("explicit tool intent requires both a request and a tool reference", () => {
+  const result = hasExplicitToolUseIntent({
+    content: "send this to discord",
+    tools: [
+      {
+        toolName: "discord",
+        description: "Send a Discord message",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result, true);
+});
+
+test("ordinary chat does not count as explicit tool intent", () => {
+  const result = hasExplicitToolUseIntent({
+    content: "hello there",
+    tools: [
+      {
+        toolName: "discord",
+        description: "Send a Discord message",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result, false);
+});
+
+test("tool mentions without a request do not count as explicit tool intent", () => {
+  const result = hasExplicitToolUseIntent({
+    content: "discord is where I hang out",
+    tools: [
+      {
+        toolName: "discord",
+        description: "Send a Discord message",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+            },
+          },
+        },
+        policy: {},
+        status: "active",
+      },
+    ],
+  });
+
+  assert.equal(result, false);
 });
 
 test("tool input mode defaults to processed", () => {

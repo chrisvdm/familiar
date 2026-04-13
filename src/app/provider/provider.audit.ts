@@ -15,7 +15,7 @@ type ProviderAuditEvent = {
 export const logProviderAudit = (event: ProviderAuditEvent) => {
   console.info(
     JSON.stringify({
-      scope: "texty.provider",
+      scope: "familiar.provider",
       at: new Date().toISOString(),
       ...event,
     }),
