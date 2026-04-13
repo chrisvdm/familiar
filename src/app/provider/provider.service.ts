@@ -2,10 +2,9 @@ import { env } from "cloudflare:workers";
 import { requestInfo } from "rwsdk/worker";
 
 import {
-  buildMemoryContext,
   buildSelfMemoryRecallReply,
-  refreshMemories,
 } from "../chat/chat.memory";
+import { createMemoryBackend } from "../memory/memory.factory";
 import {
   buildPromptContext,
   createDateTimeSystemPrompt,
@@ -63,6 +62,7 @@ import {
   getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
+  hasExplicitToolUseIntent,
   interpretPendingToolConfirmation,
   parseToolShortcutInvocation,
   parseToolShortcutInvocations,
@@ -158,7 +158,7 @@ class ProviderRateLimitError extends Error {
 }
 
 const SYSTEM_PROMPT =
-  "You are Texty, a concise conversational orchestration assistant. Return direct, useful replies without filler.";
+  "You are familiar, a concise conversational orchestration assistant. Return direct, useful replies without filler.";
 
 const TOOL_DECISION_PROMPT = [
   "Analyze the user input and determine the user's intent.",
@@ -389,7 +389,7 @@ const buildDirectReply = async ({
       {
         role: "system" as const,
         content:
-          "You are Texty. Reply directly to the user in a brief, natural, human-facing way. Do not describe tool-selection reasoning or internal decision logic.",
+          "You are familiar. Reply directly to the user in a brief, natural, human-facing way. Do not describe tool-selection reasoning or internal decision logic.",
       },
       ...(memoryContext
         ? [
@@ -626,7 +626,7 @@ const callOpenRouter = async ({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": env.OPENROUTER_SITE_URL || "http://localhost:5173",
-      "X-Title": env.OPENROUTER_SITE_NAME || "Texty",
+      "X-Title": env.OPENROUTER_SITE_NAME || "familiar",
     },
     body: JSON.stringify({
       model,
@@ -1107,22 +1107,7 @@ const getTodoHeuristicDecision = ({
       },
       confidence: 0.9,
       reasoning:
-        "The user directly stated task phrases, so Texty should extract todo_items and add them to the todo list.",
-    };
-  }
-
-  const implicitTodo = extractImplicitTodoCandidate(content);
-
-  if (implicitTodo) {
-    return {
-      action: "tool_call" as const,
-      tool_name: tool.toolName,
-      arguments: {
-        todo_items: splitTodoItemsFromText(implicitTodo),
-      },
-      confidence: 0.65,
-      reasoning:
-        "The user described likely personal tasks using implicit task language, so Texty should extract todo_items and confirm whether they belong on the todo list.",
+        "The user directly stated task phrases, so familiar should extract todo_items and add them to the todo list.",
     };
   }
 
@@ -1219,6 +1204,28 @@ const decideConversationAction = async ({
 
   if (todoHeuristicDecision) {
     return todoHeuristicDecision satisfies ConversationDecision;
+  }
+
+  if (
+    !hasExplicitToolUseIntent({
+      content,
+      tools,
+    })
+  ) {
+    const reply = await buildDirectReply({
+      content,
+      messages,
+      memoryContext,
+      threadMemory,
+      globalMemory,
+      replyModel,
+      timeZone,
+    });
+
+    return {
+      action: "direct_reply",
+      reply,
+    } satisfies ConversationDecision;
   }
 
   const candidateTools = getCandidateTools({
@@ -1600,7 +1607,10 @@ const refreshProviderMemories = async ({
   timeZone?: string | null;
 }) => {
   try {
-    const refreshed = await refreshMemories({
+    const memoryBackend = createMemoryBackend();
+    const refreshed = await memoryBackend.store({
+      userId: context.userId,
+      integrationId: context.providerId,
       threadId,
       messages: state.messages,
       previousThreadMemory: state.memory,
@@ -2048,14 +2058,19 @@ export const handleProviderConversationInput = async ({
     globalMemory: currentContext.globalMemory,
     isPrivate: thread.isTemporary,
   });
+  const memoryBackend = createMemoryBackend();
   const memoryContext =
     currentContext.memoryPolicy.mode === "external"
       ? input.context?.external_memories?.join("\n") || null
-      : await buildMemoryContext({
+      : await memoryBackend.retrieve({
+          userId: input.user_id ?? "",
+          integrationId: input.integration_id ?? "",
+          threadId,
           userMessage: content,
           messages: currentState.messages,
           threadMemory: currentState.memory,
           globalMemory: memoryScope,
+          policy: currentContext.memoryPolicy,
           timeZone,
         });
   const nextState = await appendMessagesToThread({

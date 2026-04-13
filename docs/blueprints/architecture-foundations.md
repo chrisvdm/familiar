@@ -1,0 +1,606 @@
+# familiar Architecture Foundations
+
+## Why This Document Exists
+
+familiar is no longer just a browser chat app.
+
+It is becoming a reusable conversational service that can sit in front of multiple execution systems such as:
+
+- automation backends
+- app-building systems
+- future provider systems
+
+That makes three topics especially important to define clearly:
+
+1. identity
+2. storage
+3. memory policy
+
+This document is the current reference for those decisions.
+
+Security, authentication, and tenancy requirements are defined separately in `docs/security-architecture.md`.
+
+Conversation flow details are defined in `docs/conversation-lifecycle.md`.
+Core entity definitions are defined in `docs/data-model.md`.
+Memory backend implementation and pluggable backend interface are defined in `docs/memory-backend.md`.
+
+## One-Sentence Goal
+
+familiar should become a reusable conversational control layer that sits in front of many different execution systems.
+
+That means:
+
+- familiar manages the conversation
+- executors perform the work
+
+## Core Roles
+
+### familiar
+
+familiar is the conversation layer.
+
+It should own:
+
+- threads
+- transcript history
+- user-facing responses
+- multimodal input normalization
+- memory retrieval and storage
+- current-turn reasoning
+- clarification loops
+- command handling
+- tool orchestration
+
+familiar should not own provider-specific business workflows.
+
+### Executor
+
+An executor is an external system that exposes capabilities to familiar.
+
+Examples:
+
+- Executor A
+- Executor B
+
+An executor should own:
+
+- tool definitions
+- workflow definitions
+- side effects
+- domain-specific validation
+- execution logs
+
+### End User
+
+The end user is the human using the executor through familiar.
+
+Examples:
+
+- Chris using Executor A
+- Sam using Executor B
+
+The executor is not the user.
+
+The executor is the system.
+The end user is the person.
+
+### Account
+
+An account owns billing and connected apps.
+
+For MVP, the important simplification is:
+
+- one account can own many integrations
+- one integration gets one runtime token
+- that token can be shared by the team working on that app
+- end users do not get integration tokens
+
+## Identity Model
+
+### `integration_id`
+
+`integration_id` identifies the configured familiar integration.
+
+Examples:
+
+- `integration_a`
+- `integration_b`
+
+Its purpose is to:
+
+- route execution through the correct integration
+- namespace tools
+- separate configuration and sync state per integration
+- support multiple integrations inside one familiar account
+
+### `user_id`
+
+`user_id` identifies the human within the integration context.
+
+Examples:
+
+- `chris_123`
+- `sam_42`
+
+`user_id` is integration-relative unless a higher-level shared identity is introduced later.
+
+That means this is valid:
+
+- `integration_id = integration_a`
+- `user_id = chris_123`
+
+and this is also valid:
+
+- `integration_id = integration_b`
+- `user_id = chris_123`
+
+Those may or may not refer to the same human in real life. familiar should not assume they are shared unless explicitly configured.
+
+### One executor can have many users
+
+Yes.
+
+That is the normal case.
+
+Examples:
+
+- Executor A may have thousands of users
+- Executor B may have thousands of users
+
+Each user may have:
+
+- different threads
+- different memory policy
+- different allowed tools
+
+## Storage Model
+
+familiar should eventually store data around four main entities.
+
+### 1. Thread
+
+A thread is one conversation.
+
+It should contain:
+
+- transcript/messages
+- thread-local memory
+- title
+- metadata
+
+Recommended key:
+
+- `thread_id`
+
+### 2. Executor user context
+
+This is the user-level record used by familiar for one executor/user pair.
+
+It should contain:
+
+- executor/user identity
+- selected model preferences
+- allowed tool catalog
+- memory policy
+- default behavior preferences
+
+Recommended key:
+
+- `(integration_id, user_id)`
+
+### 3. Global memory
+
+This is durable memory beyond one thread.
+
+It should contain:
+
+- identity facts
+- family facts
+- preferences
+- work facts
+- thread summary index
+
+This should not automatically be global across all integrations.
+
+### 4. Tool access / integration sync state
+
+This is the user-specific executor data that familiar needs in order to reason over tools.
+
+It should contain:
+
+- synced tools
+- schemas
+- policies
+- executor configuration metadata
+
+Long-term note:
+
+- the canonical tool registry should live at the integration level
+- user scope should control tool access, not duplicate the canonical tool definition itself
+
+## Current Implementation vs Intended Implementation
+
+### Current implementation
+
+Today, the hosted runtime is mainly provider-user scoped, while the web UI still uses browser session as its channel bridge.
+
+That means:
+
+- each thread transcript is stored in a chat Durable Object
+- provider-user context stores:
+  - thread summaries
+  - shared memory
+  - allowed tools
+  - selected model
+  - channel-linked continuity
+- browser session still helps the web surface keep a stable local channel identity and rendering/session state
+
+So the current implementation is no longer primarily browser-session scoped, but it is also not yet the final multi-tenant account model this document describes.
+
+### Intended implementation
+
+For the executor model, global memory should be scoped according to an explicit memory policy, not to a browser cookie.
+
+That is the direction this document defines.
+
+## Memory Policy
+
+Memory behavior must be configurable, but capture and retrieval should be treated as different things.
+
+familiar should use this default rule:
+
+- all non-private conversations are captured into memory
+- private threads are the exception
+
+After capture, executors decide how that stored memory may be retrieved and used.
+
+This is important because different executors want different retrieval behavior:
+
+- one provider may want no shared-memory retrieval
+- another may want strong long-term continuity
+- some users may want their own external RAG instead of familiar-managed retrieval
+
+So familiar should not force one memory-retrieval model on every provider.
+
+familiar should:
+
+- capture memory by default
+- allow private threads to opt out of shared memory capture
+- allow different providers to retrieve captured memory differently
+
+## Memory Capture Rule
+
+familiar should capture memory from all non-private conversations.
+
+That means:
+
+- text from web chat can be captured
+- text from WhatsApp can be captured
+- text from email can be captured
+- transcribed voice-note text can be captured
+
+Private threads are the explicit exception.
+
+If a thread is private:
+
+- it should not write into shared/global memory
+- it should not contribute to shared long-term memory
+
+This keeps capture simple and predictable:
+
+- normal conversations are remembered
+- private conversations are not added to shared memory
+
+## Memory Retrieval Rule
+
+Even if memory is captured, not every provider has to retrieve or use it.
+
+This is the key separation:
+
+- capture answers: "Should this be stored?"
+- retrieval answers: "What stored memory may be loaded for this provider/product?"
+- selection answers: "Which small subset of the loaded memory is actually relevant for this turn?"
+- usage answers: "How should the selected memory influence this turn?"
+
+So:
+
+- one provider may choose to ignore most or all captured memory
+- another may choose to use provider-level memory heavily
+- another provider may choose to use only thread memory
+- another provider may send its own external retrieved context
+
+This means familiar can preserve useful user context without forcing every provider to depend on it.
+
+## Memory Selection Rule
+
+For familiar-owned memory retrieval, the default runtime should be:
+
+1. determine the allowed memory scope from policy
+2. build a bounded candidate set from thread memory, shared memory, derived facts, memory-tree nodes, and a few recent snippets
+3. use a cheaper model to select the smallest relevant subset for the current message
+4. send only that selected context into the more expensive answer or routing model
+
+This is different from both:
+
+- dumping the whole memory tree into the prompt
+- relying only on keyword matching over stored facts
+
+The reason is simple:
+
+- the stored memory is already natural-language-heavy
+- the main problem is turn-level relevance, not just persistence
+- a small model is usually good enough to understand whether a memory node matters
+- the larger model should spend its context window on answering, not on reading every possible memory node
+
+Heuristic retrieval is still useful as fallback.
+
+If the cheap selector fails, returns invalid ids, or produces no useful match, familiar should fall back to deterministic or heuristic selection rather than failing the turn.
+
+The retrieve and store operations are implemented behind a `MemoryBackend` interface. The default implementation follows this pipeline exactly. Alternative backends (such as MemPalace) can be plugged in via environment variable. See `docs/memory-backend.md` for the interface contract and backend selection rules.
+
+This means the preferred shape is:
+
+- policy-scoped retrieval
+- bounded candidate generation
+- cheap-model semantic selection
+- expensive-model answer generation
+
+## Recommended Retrieval Modes
+
+### `none`
+
+No durable shared-memory retrieval.
+
+Use only:
+
+- the current request
+- current prompt context
+- maybe recent thread messages for rendering or immediate turn continuity
+
+Use this when:
+
+- the integration wants stateless or near-stateless behavior
+- loaded shared memory would be harmful to the task
+
+Example:
+
+- an integration running isolated build or planning sessions
+
+Important:
+
+- this mode affects retrieval
+- it does not change the default capture rule unless the conversation is private
+
+### `thread`
+
+Only thread-local memory is retrieved.
+
+Use this when:
+
+- continuity inside a thread is useful
+- cross-thread memory is not wanted
+
+This allows:
+
+- thread summary
+- thread facts
+- thread-local recall
+
+But it does not allow:
+
+- cross-thread personal memory
+
+### `provider_user`
+
+Shared memory is retrieved across all threads for one `(integration_id, user_id)` pair.
+
+Use this when:
+
+- the integration wants durable personal continuity
+- memory should stay inside that integration boundary
+
+Example:
+
+- an integration remembering a user’s family, preferences, and recurring operational context across all of that integration’s conversations
+
+### `custom_scope`
+
+Shared memory is retrieved using an explicit `memory_scope_id`.
+
+Use this when:
+
+- multiple integrations should intentionally share memory
+- or an integration wants several users/identities to share the same memory scope intentionally
+
+Example:
+
+- two connected systems both point to `memory_scope_id = chris-global`
+
+This is more flexible, but more dangerous.
+It should be explicit and never assumed.
+
+### `external`
+
+familiar does not rely on its own durable shared-memory source for retrieval.
+
+Instead, the integration supplies retrieved context for the turn.
+
+familiar may use that context for reasoning, but it should not automatically persist it as its own long-term memory unless policy explicitly allows it.
+
+Use this when:
+
+- the integration has its own RAG system
+- the user wants integration-managed retrieval
+- familiar should remain stateless with respect to long-term memory
+
+Example:
+
+- an integration sends retrieved project facts for the current turn from its own vector store
+
+## How Retrieval Policy Should Be Applied
+
+Each integration/user pair should have a memory configuration record.
+
+Example:
+
+```json
+{
+  "integration_id": "integration_b",
+  "user_id": "user_123",
+  "memory_policy": {
+    "mode": "none"
+  }
+}
+```
+
+Or:
+
+```json
+{
+  "integration_id": "integration_a",
+  "user_id": "user_123",
+  "memory_policy": {
+    "mode": "provider_user"
+  }
+}
+```
+
+Or:
+
+```json
+{
+  "integration_id": "integration_a",
+  "user_id": "user_123",
+  "memory_policy": {
+    "mode": "custom_scope",
+    "memory_scope_id": "chris-global"
+  }
+}
+```
+
+Or:
+
+```json
+{
+  "integration_id": "integration_b",
+  "user_id": "user_123",
+  "memory_policy": {
+    "mode": "external",
+    "external_context_source": "provider"
+  }
+}
+```
+
+## Practical Meaning of Each Retrieval Mode
+
+### If mode is `none`
+
+familiar should:
+
+- not read durable shared memory for response generation
+- still follow the default capture rule unless the thread is private
+- only use immediate conversational context and whatever thread continuity is allowed locally
+
+### If mode is `thread`
+
+familiar should:
+
+- read/write thread memory
+- not retrieve shared global user memory
+
+### If mode is `provider_user`
+
+familiar should:
+
+- read/write thread memory
+- read/write integration-scoped global memory
+- apply turn-level memory selection before injecting that memory into the main model
+
+### If mode is `custom_scope`
+
+familiar should:
+
+- read/write thread memory
+- read/write memory under the explicit `memory_scope_id`
+- apply turn-level memory selection before injecting that memory into the main model
+
+### If mode is `external`
+
+familiar should:
+
+- accept retrieved context from the provider
+- optionally apply the same turn-level selection step to that provider-supplied context if the payload is larger than the answer model should see directly
+- avoid treating it as familiar-owned long-term memory unless explicitly configured to persist it
+
+## Default Recommendation
+
+Start with these defaults:
+
+- Integration A: `none` or `thread`
+- Integration B: `provider_user`
+
+Only use `custom_scope` when there is a deliberate reason to share memory across systems.
+
+Only use `external` when the provider truly wants to own retrieval itself.
+
+## Why This Model Is Safer
+
+This model avoids three common mistakes:
+
+### 1. Assuming all integrations want the same memory retrieval behavior
+
+They do not.
+
+Some integrations benefit from shared retrieval.
+Some integrations are harmed by it.
+
+### 2. Assuming all user identities should share memory
+
+They should not.
+
+Memory sharing must be explicit.
+
+### 3. Forcing familiar to own all retrieval
+
+Sometimes the provider will have a better RAG layer.
+familiar must allow that.
+
+### 4. Treating retrieval as if loading and selection were the same step
+
+They are not.
+
+Loading defines the allowed memory scope.
+Selection defines what the answer model should actually see for this turn.
+
+If those are collapsed into one step, familiar either:
+
+- sends too much memory into the prompt
+- or uses brittle matching rules that miss relevant context
+
+## Short Version
+
+The simplest way to explain the rule set is:
+
+- familiar remembers normal conversations by default
+- private threads are not added to shared memory
+- providers decide how much of that remembered context they want to retrieve and use
+- familiar should usually narrow that retrieved memory with a cheap selector before the main model answers
+- some providers may ignore familiar memory and use their own RAG instead
+
+## Recommended Near-Term Implementation Path
+
+1. Move from browser-session global memory to explicit executor/user identity.
+2. Add an executor/user configuration record.
+3. Store `memory_policy` there.
+4. Route familiar memory retrieval and persistence through that policy.
+5. Add `external` context support in the conversation input API.
+
+## Source of Truth
+
+This document defines the current intended architecture for:
+
+- identity semantics
+- storage semantics
+- memory policy semantics
+
+If future implementation differs, update this document rather than relying on implied behavior.
