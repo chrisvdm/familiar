@@ -53,6 +53,8 @@ export const createProviderUserContext = ({
       toolSyncTimestamps: [],
     },
     idempotency: {},
+    lastSynthesis: null,
+    nextSynthesis: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -92,6 +94,18 @@ export const loadOrCreateProviderUserContext = async ({
   return created;
 };
 
+export const resetProviderUserContext = async ({
+  providerId,
+  userId,
+}: {
+  providerId: string;
+  userId: string;
+}) => {
+  const fresh = createProviderUserContext({ providerId, userId });
+  await saveProviderUserContext(fresh);
+  return fresh;
+};
+
 export const saveProviderUserContext = async (context: ProviderUserContext) => {
   const normalized: ProviderUserContext = {
     ...context,
@@ -102,6 +116,8 @@ export const saveProviderUserContext = async (context: ProviderUserContext) => {
     },
     threadChannels: context.threadChannels ?? {},
     idempotency: context.idempotency ?? {},
+    lastSynthesis: context.lastSynthesis ?? null,
+    nextSynthesis: context.nextSynthesis ?? null,
     updatedAt: new Date().toISOString(),
   };
 
@@ -111,4 +127,14 @@ export const saveProviderUserContext = async (context: ProviderUserContext) => {
   }).saveContext(normalized);
 
   return normalized;
+};
+
+export const deleteProviderUserContext = async ({
+  providerId,
+  userId,
+}: {
+  providerId: string;
+  userId: string;
+}) => {
+  await getProviderUserStub({ providerId, userId }).deleteContext();
 };

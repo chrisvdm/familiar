@@ -28,6 +28,8 @@ const createTestContext = (): ProviderUserContext => ({
     toolSyncTimestamps: [],
   },
   idempotency: {},
+  lastSynthesis: null,
+  nextSynthesis: null,
   createdAt: "2026-03-19T10:00:00.000Z",
   updatedAt: "2026-03-19T10:00:00.000Z",
 });

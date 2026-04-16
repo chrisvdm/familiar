@@ -56,6 +56,8 @@ export type ProviderUserContext = {
       createdAt: string;
     }
   >;
+  lastSynthesis: string | null;
+  nextSynthesis: string | null;
   createdAt: string;
   updatedAt: string;
 };

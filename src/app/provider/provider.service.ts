@@ -3,6 +3,7 @@ import { requestInfo } from "rwsdk/worker";
 
 import {
   buildSelfMemoryRecallReply,
+  synthesizeUserProfile,
 } from "../chat/chat.memory";
 import { createMemoryBackend } from "../memory/memory.factory";
 import {
@@ -1652,6 +1653,75 @@ const refreshProviderMemories = async ({
   }
 };
 
+const SYNTHESIS_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const MAX_SYNTHESIS_THREADS = 3;
+const MAX_SYNTHESIS_MESSAGES = 40;
+
+const isSynthesisDue = (context: ProviderUserContext): boolean => {
+  if (!context.nextSynthesis) {
+    return true;
+  }
+
+  return new Date(context.nextSynthesis) <= new Date();
+};
+
+const isCalibrationRequest = (message: string): boolean =>
+  /\b(analys[ei](?:se|ze|s)? (my|of my) (behaviour|behavior|speech|communication|personality|style|writing)|how (do|would) i (come across|sound)|what (kind of person|personality) (am i|do i have)|how i (communicate|talk|write)|calibrat(e|ing|ion))\b/i.test(
+    message,
+  );
+
+const runProfileSynthesis = async ({
+  context,
+  timeZone,
+}: {
+  context: ProviderUserContext;
+  timeZone?: string | null;
+}): Promise<ProviderUserContext> => {
+  try {
+    const recentThreads = [...context.threads]
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, MAX_SYNTHESIS_THREADS);
+
+    const allMessages: ChatMessage[] = [];
+
+    for (const thread of recentThreads) {
+      const session = await loadChatSession(thread.id);
+      allMessages.push(...session.messages);
+    }
+
+    const messages = allMessages
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, MAX_SYNTHESIS_MESSAGES);
+
+    const updatedMemory = await synthesizeUserProfile({
+      messages,
+      globalMemory: context.globalMemory,
+      timeZone,
+    });
+
+    const now = new Date().toISOString();
+    const nextSynthesis = new Date(Date.now() + SYNTHESIS_INTERVAL_MS).toISOString();
+
+    return await saveProviderUserContext({
+      ...context,
+      globalMemory: updatedMemory,
+      lastSynthesis: now,
+      nextSynthesis,
+    });
+  } catch (error) {
+    console.warn("Profile synthesis failed", error);
+    const now = new Date().toISOString();
+    const nextSynthesis = new Date(Date.now() + SYNTHESIS_INTERVAL_MS).toISOString();
+
+    return await saveProviderUserContext({
+      ...context,
+      lastSynthesis: now,
+      nextSynthesis,
+    });
+  }
+};
+
 export const syncProviderTools = async (
   input: NormalizedProviderToolSyncInput,
   requestId?: string,
@@ -2015,6 +2085,16 @@ export const handleProviderConversationInput = async ({
     };
   }
   context = await saveProviderUserContext(context);
+
+  // --GROK--: Run personality/style synthesis before memory retrieval so the current
+  // turn sees fresh results. Fires at most once per day (SYNTHESIS_INTERVAL_MS), or
+  // immediately when the user explicitly asks for a behavioural/style calibration.
+  if (
+    context.threads.length > 0 &&
+    (isSynthesisDue(context) || isCalibrationRequest(content))
+  ) {
+    context = await runProfileSynthesis({ context, timeZone });
+  }
 
   logProviderAudit({
     event: "provider.conversation.received",
