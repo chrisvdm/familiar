@@ -54,15 +54,21 @@ export type PreferenceMemory = {
   likes: MemoryFact[];
   dislikes: MemoryFact[];
   interests: MemoryFact[];
+  aspirations: MemoryFact[];
+  goals: MemoryFact[];
   fears: MemoryFact[];
+  dietary: MemoryFact[];
   general: Record<string, MemoryFact[]>;
 };
 
 export type GlobalMemory = {
   identity: MemoryFactGroup;
   family: MemoryFactGroup;
-  preferences: PreferenceMemory;
   work: MemoryFactGroup;
+  preferences: PreferenceMemory;
+  personality: MemoryFactGroup;
+  style: MemoryFactGroup;
+  dynamic: MemoryFactGroup;
   threadSummaries: GlobalThreadSummary[];
   markdown: string;
   updatedAt: string;
@@ -92,12 +98,14 @@ export const INITIAL_MESSAGE_COUNT = 0;
 const MULTI_VALUE_KEYS = new Set([
   "children_names",
   "siblings",
+  "language",
   "likes",
   "dislikes",
   "interest",
-  "interests",
+  "aspiration",
+  "goal",
+  "dietary",
   "fear",
-  "fears",
   "favorite",
   "favorite_food",
   "favorite_drink",
@@ -107,6 +115,7 @@ const MULTI_VALUE_KEYS = new Set([
 ]);
 
 const FAMILY_MEMORY_KEYS = new Set([
+  "relationship_status",
   "children_count",
   "child_name",
   "children_names",
@@ -192,7 +201,10 @@ const createEmptyPreferenceMemory = (): PreferenceMemory => ({
   likes: [],
   dislikes: [],
   interests: [],
+  aspirations: [],
+  goals: [],
   fears: [],
+  dietary: [],
   general: {},
 });
 
@@ -258,15 +270,21 @@ const normalizePreferenceMemory = (
   likes: sortFacts(preferences?.likes ?? []),
   dislikes: sortFacts(preferences?.dislikes ?? []),
   interests: sortFacts(preferences?.interests ?? []),
+  aspirations: sortFacts(preferences?.aspirations ?? []),
+  goals: sortFacts(preferences?.goals ?? []),
   fears: sortFacts(preferences?.fears ?? []),
+  dietary: sortFacts(preferences?.dietary ?? []),
   general: normalizeFactGroup(preferences?.general),
 });
 
 const createEmptyStructuredGlobalMemory = () => ({
   identity: {},
   family: {},
-  preferences: createEmptyPreferenceMemory(),
   work: {},
+  preferences: createEmptyPreferenceMemory(),
+  personality: {},
+  style: {},
+  dynamic: {},
 });
 
 const isMultiValueFactKey = (key: string) => MULTI_VALUE_KEYS.has(key);
@@ -298,13 +316,24 @@ export const addFactToGlobalMemory = (
       likes: [...memory.preferences.likes],
       dislikes: [...memory.preferences.dislikes],
       interests: [...memory.preferences.interests],
+      aspirations: [...memory.preferences.aspirations],
+      goals: [...memory.preferences.goals],
       fears: [...memory.preferences.fears],
+      dietary: [...memory.preferences.dietary],
       general: { ...memory.preferences.general },
     },
+    personality: { ...memory.personality },
+    style: { ...memory.style },
+    dynamic: { ...memory.dynamic },
   };
 
   if (
     fact.key === "name" ||
+    fact.key === "first_name" ||
+    fact.key === "last_name" ||
+    fact.key === "nickname" ||
+    fact.key === "age" ||
+    fact.key === "nationality" ||
     fact.key === "location" ||
     fact.key === "gender" ||
     fact.key === "pronouns"
@@ -313,7 +342,17 @@ export const addFactToGlobalMemory = (
     return nextMemory;
   }
 
-  if (fact.key === "profession" || fact.key === "business") {
+  if (fact.key === "language") {
+    placeFactInGroup(nextMemory.identity, fact.key, fact, true);
+    return nextMemory;
+  }
+
+  if (
+    fact.key === "profession" ||
+    fact.key === "employer" ||
+    fact.key === "industry" ||
+    fact.key === "business"
+  ) {
     placeFactInGroup(nextMemory.work, fact.key, fact);
     return nextMemory;
   }
@@ -345,9 +384,36 @@ export const addFactToGlobalMemory = (
     return nextMemory;
   }
 
+  if (fact.key === "aspiration") {
+    nextMemory.preferences.aspirations = mergeFactArray({
+      currentFacts: nextMemory.preferences.aspirations,
+      incomingFact: fact,
+      allowMultiple: true,
+    });
+    return nextMemory;
+  }
+
+  if (fact.key === "goal") {
+    nextMemory.preferences.goals = mergeFactArray({
+      currentFacts: nextMemory.preferences.goals,
+      incomingFact: fact,
+      allowMultiple: true,
+    });
+    return nextMemory;
+  }
+
   if (fact.key === "fear" || fact.key === "fears") {
     nextMemory.preferences.fears = mergeFactArray({
       currentFacts: nextMemory.preferences.fears,
+      incomingFact: fact,
+      allowMultiple: true,
+    });
+    return nextMemory;
+  }
+
+  if (fact.key === "dietary") {
+    nextMemory.preferences.dietary = mergeFactArray({
+      currentFacts: nextMemory.preferences.dietary,
       incomingFact: fact,
       allowMultiple: true,
     });
@@ -372,8 +438,36 @@ export const addFactToGlobalMemory = (
       fact,
       isMultiValueFactKey(fact.key),
     );
+    return nextMemory;
   }
 
+  return nextMemory;
+};
+
+export const addPersonalityFactToGlobalMemory = (
+  memory: GlobalMemory,
+  fact: MemoryFact,
+): GlobalMemory => {
+  const nextMemory: GlobalMemory = { ...memory, personality: { ...memory.personality } };
+  placeFactInGroup(nextMemory.personality, fact.key, fact, false);
+  return nextMemory;
+};
+
+export const addStyleFactToGlobalMemory = (
+  memory: GlobalMemory,
+  fact: MemoryFact,
+): GlobalMemory => {
+  const nextMemory: GlobalMemory = { ...memory, style: { ...memory.style } };
+  placeFactInGroup(nextMemory.style, fact.key, fact, false);
+  return nextMemory;
+};
+
+export const addDynamicFactToGlobalMemory = (
+  memory: GlobalMemory,
+  fact: MemoryFact,
+): GlobalMemory => {
+  const nextMemory: GlobalMemory = { ...memory, dynamic: { ...memory.dynamic } };
+  placeFactInGroup(nextMemory.dynamic, fact.key, fact, true);
   return nextMemory;
 };
 
@@ -408,8 +502,14 @@ export const flattenGlobalMemoryFacts = (memory: GlobalMemory) =>
     ...memory.preferences.likes,
     ...memory.preferences.dislikes,
     ...memory.preferences.interests,
+    ...memory.preferences.aspirations,
+    ...memory.preferences.goals,
     ...memory.preferences.fears,
+    ...memory.preferences.dietary,
     ...flattenFactGroup(memory.preferences.general),
+    ...flattenFactGroup(memory.personality),
+    ...flattenFactGroup(memory.style),
+    ...flattenFactGroup(memory.dynamic),
   ].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 const pruneFactArrayByThreadId = (facts: MemoryFact[], threadId: string) =>
@@ -439,9 +539,15 @@ export const pruneGlobalMemoryByThreadId = (
       likes: pruneFactArrayByThreadId(memory.preferences.likes, threadId),
       dislikes: pruneFactArrayByThreadId(memory.preferences.dislikes, threadId),
       interests: pruneFactArrayByThreadId(memory.preferences.interests, threadId),
+      aspirations: pruneFactArrayByThreadId(memory.preferences.aspirations, threadId),
+      goals: pruneFactArrayByThreadId(memory.preferences.goals, threadId),
       fears: pruneFactArrayByThreadId(memory.preferences.fears, threadId),
+      dietary: pruneFactArrayByThreadId(memory.preferences.dietary, threadId),
       general: pruneFactGroupByThreadId(memory.preferences.general, threadId),
     },
+    personality: pruneFactGroupByThreadId(memory.personality, threadId),
+    style: pruneFactGroupByThreadId(memory.style, threadId),
+    dynamic: pruneFactGroupByThreadId(memory.dynamic, threadId),
     threadSummaries: memory.threadSummaries.filter(
       (summary) => summary.threadId !== threadId,
     ),
@@ -562,6 +668,22 @@ ${
     : "_None yet._"
 }
 
+### Aspirations
+
+${
+  memory.preferences.aspirations.length > 0
+    ? memory.preferences.aspirations.map((fact) => formatFactLine(fact)).join("\n")
+    : "_None yet._"
+}
+
+### Goals
+
+${
+  memory.preferences.goals.length > 0
+    ? memory.preferences.goals.map((fact) => formatFactLine(fact)).join("\n")
+    : "_None yet._"
+}
+
 ### Fears
 
 ${
@@ -570,18 +692,19 @@ ${
     : "_None yet._"
 }
 
-### General
+### Dietary
 
 ${
-  Object.keys(memory.preferences.general).length > 0
-    ? Object.entries(memory.preferences.general)
-        .map(
-          ([bucket, facts]) =>
-            `#### ${bucket}\n\n${facts.map((fact) => formatFactLine(fact)).join("\n")}`,
-        )
-        .join("\n\n")
+  memory.preferences.dietary.length > 0
+    ? memory.preferences.dietary.map((fact) => formatFactLine(fact)).join("\n")
     : "_None yet._"
 }
+
+${formatFactGroupMarkdown("Personality", memory.personality)}
+
+${formatFactGroupMarkdown("Style", memory.style)}
+
+${formatFactGroupMarkdown("Dynamic", memory.dynamic)}
 
 ## Thread Summaries
 
@@ -666,11 +789,14 @@ export const normalizeGlobalMemory = (
       bucket: "family",
       group: memory?.family,
     }),
-    preferences: normalizePreferenceMemory(memory?.preferences),
     work: sanitizeStructuredFactGroup({
       bucket: "work",
       group: memory?.work,
     }),
+    preferences: normalizePreferenceMemory(memory?.preferences),
+    personality: normalizeFactGroup(memory?.personality),
+    style: normalizeFactGroup(memory?.style),
+    dynamic: normalizeFactGroup(memory?.dynamic),
     threadSummaries,
     markdown: "",
     updatedAt,
@@ -680,8 +806,8 @@ export const normalizeGlobalMemory = (
     const migrated = addFactToGlobalMemory(structuredMemory, legacyFact);
     structuredMemory.identity = migrated.identity;
     structuredMemory.family = migrated.family;
-    structuredMemory.preferences = migrated.preferences;
     structuredMemory.work = migrated.work;
+    structuredMemory.preferences = migrated.preferences;
   }
 
   return {
