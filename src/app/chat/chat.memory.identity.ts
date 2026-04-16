@@ -112,46 +112,37 @@ const getSourceMessages = ({
     .map((messageId) => messagesById.get(messageId))
     .filter((message): message is ChatMessage => Boolean(message));
 
-const explicitlySupportsFact = ({
+const extractSupportedValue = ({
   key,
-  value,
   sourceMessages,
 }: {
   key: string;
-  value: string;
   sourceMessages: ChatMessage[];
-}) => {
+}): string | null => {
   const patterns = EXPLICIT_FACT_PATTERNS[key];
 
   if (!patterns || sourceMessages.length === 0) {
-    return false;
+    return null;
   }
 
-  const normalizedValue = sanitizeSupportedValue({ key, value });
-
-  return sourceMessages.some((message) => {
+  for (const message of sourceMessages) {
     if (message.role !== "user") {
-      return false;
+      continue;
     }
 
     const content = message.content.trim();
 
-    return patterns.some((pattern) => {
+    for (const pattern of patterns) {
       const match = content.match(pattern);
       const capturedValue = match?.[1]?.trim();
 
-      if (!capturedValue) {
-        return false;
+      if (capturedValue) {
+        return sanitizeSupportedValue({ key, value: capturedValue });
       }
+    }
+  }
 
-      return (
-        sanitizeSupportedValue({
-          key,
-          value: capturedValue,
-        }) === normalizedValue
-      );
-    });
-  });
+  return null;
 };
 
 const isSuspiciousFactValue = ({ key, value }: { key: string; value: string }) => {
@@ -200,21 +191,17 @@ export const sanitizeExtractedMemoryFact = ({
 
   const sourceMessages = getSourceMessages({ fact, messagesById });
 
-  if (
-    !explicitlySupportsFact({
-      key: fact.key,
-      value: fact.value,
-      sourceMessages,
-    })
-  ) {
+  const extractedValue = extractSupportedValue({
+    key: fact.key,
+    sourceMessages,
+  });
+
+  if (!extractedValue) {
     return null;
   }
 
   return {
     ...fact,
-    value: sanitizeSupportedValue({
-      key: fact.key,
-      value: fact.value,
-    }),
+    value: extractedValue,
   };
 };

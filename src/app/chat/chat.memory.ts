@@ -3,7 +3,10 @@ import { sanitizeExtractedMemoryFact } from "./chat.memory.identity.ts";
 import { createDateTimeSystemPrompt, DEFAULT_MODEL } from "./conversation.runtime.ts";
 
 import {
+  addDynamicFactToGlobalMemory,
   addFactToGlobalMemory,
+  addPersonalityFactToGlobalMemory,
+  addStyleFactToGlobalMemory,
   buildGlobalMemoryMarkdown,
   buildThreadMemoryMarkdown,
   type ChatMessage,
@@ -42,6 +45,7 @@ type OpenRouterResponse = {
 type RawMemoryFact = {
   key?: string;
   value?: string;
+  pair?: [string, string];
   confidence?: number;
   source_message_ids?: string[];
 };
@@ -51,6 +55,9 @@ type MemoryExtraction = {
   thread_keywords?: string[];
   thread_facts?: RawMemoryFact[];
   profile_facts?: RawMemoryFact[];
+  personality_observations?: RawMemoryFact[];
+  style_observations?: RawMemoryFact[];
+  dynamic_facts?: RawMemoryFact[];
 };
 
 type DerivedMemoryFact = {
@@ -66,6 +73,7 @@ type MemorySelectorResponse = {
   global_fact_ids?: string[];
   derived_fact_ids?: string[];
   thread_summary_ids?: string[];
+  thread_drill_ids?: string[];
   snippet_ids?: string[];
 };
 
@@ -74,6 +82,7 @@ type MemorySelectionIds = {
   globalFactIds: string[];
   derivedFactIds: string[];
   threadSummaryIds: string[];
+  threadDrillIds: string[];
   snippetIds: string[];
 };
 
@@ -103,6 +112,20 @@ const MEMORY_SELECTOR_SNIPPET_LIMIT = 5;
 const MEMORY_SELECTOR_THREAD_SUMMARY_LIMIT = 6;
 const GLOBAL_MEMORY_KEYS = new Set([
   "name",
+  "first_name",
+  "last_name",
+  "nickname",
+  "age",
+  "nationality",
+  "language",
+  "location",
+  "gender",
+  "pronouns",
+  "profession",
+  "employer",
+  "industry",
+  "business",
+  "relationship_status",
   "children_count",
   "child_name",
   "children_names",
@@ -114,31 +137,40 @@ const GLOBAL_MEMORY_KEYS = new Set([
   "wife_name",
   "husband_name",
   "family_history",
-  "profession",
-  "business",
-  "location",
   "dog_name",
   "cat_name",
   "pet_name",
   "interest",
-  "interests",
-  "preference",
-  "preferences",
+  "aspiration",
+  "goal",
+  "fear",
+  "dietary",
   "favorite",
   "favorite_food",
   "favorite_drink",
   "favorite_music",
   "favorite_movie",
   "favorite_color",
-  "fear",
-  "fears",
   "likes",
   "dislikes",
 ]);
 
 const CANONICAL_SELF_RECALL_KEYS = new Set([
   "name",
+  "first_name",
+  "last_name",
+  "nickname",
+  "age",
+  "nationality",
+  "language",
   "location",
+  "gender",
+  "pronouns",
+  "profession",
+  "employer",
+  "industry",
+  "business",
+  "relationship_status",
   "children_count",
   "child_name",
   "children_names",
@@ -150,21 +182,20 @@ const CANONICAL_SELF_RECALL_KEYS = new Set([
   "wife_name",
   "husband_name",
   "family_history",
-  "profession",
-  "business",
   "dog_name",
   "cat_name",
   "pet_name",
   "interest",
-  "interests",
+  "aspiration",
+  "goal",
+  "fear",
+  "dietary",
   "favorite",
   "favorite_food",
   "favorite_drink",
   "favorite_music",
   "favorite_movie",
   "favorite_color",
-  "fear",
-  "fears",
   "likes",
   "dislikes",
 ]);
@@ -215,18 +246,7 @@ const isPlausibleFamilyText = (value: string) => {
 
   return /^[a-zA-Z0-9][a-zA-Z0-9 ,&'-]{1,99}$/.test(normalized);
 };
-const NUMBER_WORDS: Record<string, number> = {
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-};
+
 const STOP_WORDS = new Set([
   "about",
   "after",
@@ -280,7 +300,7 @@ const SELF_MEMORY_CONTEXT_PATTERN =
   /\b(what do you know about me|what can you tell me about (?:me|myself)|tell me about myself|what do you remember about me|do you know my name|what(?:'s| is) my name|your name is|you go by|i know that|i do not know your name yet)\b/i;
 
 const MEMORY_EXTRACTION_SYSTEM_PROMPT =
-  "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Do not infer gender, sex, or pronouns from a name, writing style, relationship terms, or any other indirect cue. Only store gender or pronouns if the user explicitly stated them. Ignore transient tasks, moods, and one-off requests.";
+  "You extract lightweight durable memory for a personal chat app. Return JSON only. Do not include markdown fences. Capture thread summary, keywords, thread facts, and stable user profile facts. Never invent facts. Prefer facts the user stated directly. Fact values must be atomic — extract only the specific value (e.g. for 'my name is alice and I want to dance', the name value is 'alice', not 'alice and'). Do not copy surrounding clauses or conjunctions into a fact value. Do not infer gender, sex, or pronouns from a name, writing style, relationship terms, or any other indirect cue. Only store gender or pronouns if the user explicitly stated them. Ignore transient tasks, moods, and one-off requests.";
 
 const MEMORY_SELECTOR_SYSTEM_PROMPT =
   "You select the smallest useful subset of stored memory for another model. Return JSON only. Do not include markdown fences. Choose only memories that are explicitly relevant to the user's latest message. Prefer too little over too much. Never invent facts or ids. Use the provided ids exactly as given.";
@@ -408,6 +428,7 @@ const parseMemorySelectorResponse = (
       globalFactIds: normalizeIds(parsed.global_fact_ids),
       derivedFactIds: normalizeIds(parsed.derived_fact_ids),
       threadSummaryIds: normalizeIds(parsed.thread_summary_ids),
+      threadDrillIds: normalizeIds(parsed.thread_drill_ids),
       snippetIds: normalizeIds(parsed.snippet_ids),
     };
   } catch {
@@ -416,28 +437,6 @@ const parseMemorySelectorResponse = (
 };
 
 
-const createHeuristicFact = ({
-  key,
-  value,
-  confidence,
-  timestamp,
-  threadId,
-  messageId,
-}: {
-  key: string;
-  value: string;
-  confidence: number;
-  timestamp: string;
-  threadId: string;
-  messageId: string;
-}): MemoryFact => ({
-  key,
-  value,
-  confidence,
-  updatedAt: timestamp,
-  sourceThreadId: threadId,
-  sourceMessageIds: [messageId],
-});
 
 const tokenize = (input: string) =>
   Array.from(
@@ -469,7 +468,13 @@ const scoreTextAgainstQuery = (text: string, queryTokens: string[]) => {
   );
 };
 
+const isPersonalMemoryDeclaration = (query: string) =>
+  /^(my name is|i am|i'm|my .+ is|i have|i work|i live|i want|i like|i love|i hate)\b/i.test(
+    query.trim(),
+  );
+
 const isPersonalMemoryQuery = (query: string) =>
+  !isPersonalMemoryDeclaration(query) &&
   /\b(my|me|i am|i'm|name|family|kids|children|wife|husband|partner|job|work|profession|bio|remember)\b/i.test(
     query,
   );
@@ -517,8 +522,8 @@ const toMemoryFact = ({
   timestamp: string;
   threadId: string;
 }): MemoryFact | null => {
-  const rawKey = rawFact.key?.trim() ?? "";
-  const value = rawFact.value?.trim() ?? "";
+  const rawKey = (rawFact.pair?.[0] ?? rawFact.key)?.trim() ?? "";
+  const value = (rawFact.pair?.[1] ?? rawFact.value)?.trim() ?? "";
 
   if (!rawKey || !value) {
     return null;
@@ -556,14 +561,13 @@ const mergeThreadSummaries = (
 
 const sanitizeGlobalFact = (fact: MemoryFact) => {
   if (!GLOBAL_MEMORY_KEYS.has(fact.key)) {
-    if (fact.key === "gender" || fact.key === "pronouns") {
-      return fact;
-    }
-
     return null;
   }
 
-  if (fact.key === "name" && !isPlausibleName(fact.value)) {
+  if (
+    (fact.key === "name" || fact.key === "first_name" || fact.key === "last_name" || fact.key === "nickname") &&
+    !isPlausibleName(fact.value)
+  ) {
     return null;
   }
 
@@ -636,149 +640,7 @@ const promoteThreadFactsToGlobalFacts = (facts: MemoryFact[]) =>
     .map((fact) => sanitizeGlobalFact(fact))
     .filter((fact): fact is MemoryFact => fact !== null);
 
-const parseCount = (rawValue: string) => {
-  const normalized = rawValue.trim().toLowerCase();
-  const numericValue = Number.parseInt(normalized, 10);
 
-  if (!Number.isNaN(numericValue)) {
-    return numericValue;
-  }
-
-  return NUMBER_WORDS[normalized] ?? null;
-};
-
-const extractProfileFactsHeuristically = ({
-  messages,
-  threadId,
-  timestamp,
-}: {
-  messages: ChatMessage[];
-  threadId: string;
-  timestamp: string;
-}) => {
-  const heuristicFacts: MemoryFact[] = [];
-
-  for (const message of messages) {
-    if (message.role !== "user") {
-      continue;
-    }
-
-    const content = message.content.trim();
-
-    const nameMatch = content.match(
-      /\bmy name is ([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i,
-    );
-
-    if (nameMatch) {
-      heuristicFacts.push(
-        createHeuristicFact({
-          key: "name",
-          value: nameMatch[1].trim(),
-          confidence: 0.98,
-          timestamp,
-          threadId,
-          messageId: message.id,
-        }),
-      );
-    }
-
-    const childrenMatch = content.match(
-      /\bi have (\d+|one|two|three|four|five|six|seven|eight|nine|ten) (kids|children)\b/i,
-    );
-
-    if (childrenMatch) {
-      const count = parseCount(childrenMatch[1]);
-
-      if (count !== null) {
-        heuristicFacts.push(
-          createHeuristicFact({
-            key: "children_count",
-            value: String(count),
-            confidence: 0.96,
-            timestamp,
-            threadId,
-            messageId: message.id,
-          }),
-        );
-      }
-    }
-
-    const professionMatch = content.match(
-      /\b(?:i work as|i am|i'm) an? ([a-z][a-z0-9 -]{1,60})\b/i,
-    );
-
-    if (
-      professionMatch &&
-      !/\b(tired|hungry|busy|ready|excited|sad|happy|stressed)\b/i.test(
-        professionMatch[1],
-      )
-    ) {
-      heuristicFacts.push(
-        createHeuristicFact({
-          key: "profession",
-          value: professionMatch[1].trim(),
-          confidence: 0.88,
-          timestamp,
-          threadId,
-          messageId: message.id,
-        }),
-      );
-    }
-
-    const businessMatch = content.match(
-      /\bi (run|own) an? ([a-z][a-z0-9 -]{1,60})\b/i,
-    );
-
-    if (businessMatch) {
-      heuristicFacts.push(
-        createHeuristicFact({
-          key: "business",
-          value: businessMatch[2].trim(),
-          confidence: 0.86,
-          timestamp,
-          threadId,
-          messageId: message.id,
-        }),
-      );
-    }
-
-    const favoriteColorMatch = content.match(
-      /\b(?:my )?favo(?:u)?rite colo(?:u)?r is ([a-z][a-z -]{1,30})\b/i,
-    );
-
-    if (favoriteColorMatch) {
-      heuristicFacts.push(
-        createHeuristicFact({
-          key: "favorite_color",
-          value: favoriteColorMatch[1].trim().toLowerCase(),
-          confidence: 0.98,
-          timestamp,
-          threadId,
-          messageId: message.id,
-        }),
-      );
-    }
-
-    const fearMatch = content.match(
-      /\b(?:i am|i'm) afraid of ([a-z][a-z -]{1,40})\b/i,
-    ) ?? content.match(/\bmy fear is ([a-z][a-z -]{1,40})\b/i);
-
-    if (fearMatch) {
-      heuristicFacts.push(
-        createHeuristicFact({
-          key: "fear",
-          value: fearMatch[1].trim().toLowerCase(),
-          confidence: 0.96,
-          timestamp,
-          threadId,
-          messageId: message.id,
-        }),
-      );
-    }
-  }
-
-  return mergeFactLists(heuristicFacts).slice(0, MEMORY_FACT_LIMIT);
-};
 
 const getRelevantFacts = (facts: MemoryFact[], queryTokens: string[]) =>
   facts
@@ -1307,8 +1169,9 @@ const buildMemorySelectorPrompt = ({
     "",
     "Select the smallest set of relevant memory ids for answering this message well.",
     "Return strict JSON with this shape:",
-    '{"reasoning":"string","thread_fact_ids":["tf_1"],"global_fact_ids":["gf_1"],"derived_fact_ids":["df_1"],"thread_summary_ids":["ts_1"],"snippet_ids":["sn_1"]}',
+    '{"reasoning":"string","thread_fact_ids":["tf_1"],"global_fact_ids":["gf_1"],"derived_fact_ids":["df_1"],"thread_summary_ids":["ts_1"],"thread_drill_ids":["ts_1"],"snippet_ids":["sn_1"]}',
     "If a category has nothing useful, return an empty array for that category.",
+    "Use thread_drill_ids to list any thread_summary_ids whose full message history would significantly improve your answer — only when a summary alone is not enough.",
     "",
     "Thread facts:",
     threadFactCandidates.map((candidate) => candidate.line).join("\n") || "(none)",
@@ -1388,6 +1251,13 @@ const selectMemoryContextWithAi = async ({
       return null;
     }
 
+    // --GROK--: drillThreadIds maps the ts_N candidate ids back to real threadId strings
+    // so callers can fetch full message history for those threads.
+    const drillSummaries = selectCandidatesByIds(
+      threadSummaryCandidates,
+      selection.threadDrillIds,
+    );
+
     return {
       relevantThreadFacts: selectCandidatesByIds(
         threadFactCandidates,
@@ -1405,6 +1275,7 @@ const selectMemoryContextWithAi = async ({
         threadSummaryCandidates,
         selection.threadSummaryIds,
       ),
+      drillThreadIds: drillSummaries.map((s) => s.threadId),
       relevantSnippets: selectCandidatesByIds(snippetCandidates, selection.snippetIds),
     };
   } catch (error) {
@@ -1437,6 +1308,17 @@ ${flattenGlobalMemoryFacts(globalMemory).map((fact) => `- ${fact.key}: ${fact.va
 Conversation slice:
 ${getMessagesForExtraction(messages)}
 
+Rules:
+- profile_facts use pair format: ["key", "value"]. Each element must be a single atomic string.
+  Example: "my name is alice and i want to dance" → { "pair": ["name", "Alice"], ... }
+- Only extract facts the user stated directly. Never infer.
+- Skip transient information: moods, one-off tasks, questions, greetings.
+- Extract name facts from any phrasing where the user identifies themselves: "my name is X" or "I am X" → first_name (or name if full name given); "my last name is X" / "my surname is X" → last_name; "call me X" / "everyone calls me X" → nickname. Values must be the name only — no surrounding words.
+- Use grammatical tense and mood to determine the right key for everything else: current or past reality ("I am a", "I work as", "I was") → use the most specific matching key; enjoyment or preference ("I like", "I enjoy", "I love") → use interest or likes; aspiration, dream, or desire to become or achieve ("I want to be", "I'd like to be", "I hope to", "I wish I could") → use aspiration.
+- Valid profile_facts keys: name, first_name, last_name, nickname, age, nationality, language, location, gender, pronouns, profession, employer, industry, business, relationship_status, children_count, child_name, children_names, sibling_count, sibling_name, siblings, spouse_name, partner_name, wife_name, husband_name, family_history, dog_name, cat_name, pet_name, interest, aspiration, goal, fear, dietary, favorite, favorite_food, favorite_drink, favorite_music, favorite_movie, favorite_color, likes, dislikes. Use no other keys.
+- Confidence scale: 0.95 = user stated it explicitly and unambiguously; 0.8 = stated clearly but with some context-dependence; 0.6 = mentioned in passing or slightly indirect; 0.4 = uncertain or easily retracted.
+- dynamic_facts: identity-defining traits that do not fit any profile_facts key. Use only for stable characteristics central to who the person is — things that would appear in a biography (e.g. religion, philosophy, sport, skill, belief). Also use for composite passion-level interests when multiple signals converge on a label: cultural interest + language learning + lifestyle mentions → a label like "japanophile"; deep film knowledge + regular watching → "cinephile". Do not use for moods, tasks, or one-off events. Keys are free-form snake_case.
+
 Return strict JSON with this shape:
 {
   "thread_summary": "string",
@@ -1445,15 +1327,21 @@ Return strict JSON with this shape:
     {
       "key": "string",
       "value": "string",
-      "confidence": 0.0,
+      "confidence": 0.95,
       "source_message_ids": ["message-id"]
     }
   ],
   "profile_facts": [
     {
-      "key": "string",
-      "value": "string",
-      "confidence": 0.0,
+      "pair": ["key", "value"],
+      "confidence": 0.95,
+      "source_message_ids": ["message-id"]
+    }
+  ],
+  "dynamic_facts": [
+    {
+      "pair": ["key", "value"],
+      "confidence": 0.95,
       "source_message_ids": ["message-id"]
     }
   ]
@@ -1499,27 +1387,26 @@ Return strict JSON with this shape:
   };
 
   const extractedProfileFacts = (extraction.profile_facts ?? [])
+    .filter((rawFact) => Array.isArray(rawFact.pair) && rawFact.pair.length === 2)
     .map((rawFact) => toMemoryFact({ rawFact, timestamp, threadId }))
-    .filter((fact): fact is MemoryFact => fact !== null)
-    .map((fact) => sanitizeExtractedMemoryFact({ fact, messagesById }))
     .filter((fact): fact is MemoryFact => fact !== null)
     .map((fact) => sanitizeGlobalFact(fact))
     .filter((fact): fact is MemoryFact => fact !== null)
     .slice(0, MEMORY_FACT_LIMIT);
-  const heuristicProfileFacts = extractProfileFactsHeuristically({
-    messages,
-    threadId,
-    timestamp,
-  });
+  const extractedDynamicFacts = (extraction.dynamic_facts ?? [])
+    .filter((rawFact) => Array.isArray(rawFact.pair) && rawFact.pair.length === 2)
+    .map((rawFact) => toMemoryFact({ rawFact, timestamp, threadId }))
+    .filter((fact): fact is MemoryFact => fact !== null)
+    .slice(0, MEMORY_FACT_LIMIT);
   const promotedThreadFacts = promoteThreadFactsToGlobalFacts(threadFacts);
   let nextGlobalMemoryFacts = globalMemory;
 
-  for (const fact of mergeFactLists(
-    extractedProfileFacts,
-    heuristicProfileFacts,
-    promotedThreadFacts,
-  )) {
+  for (const fact of mergeFactLists(extractedProfileFacts, promotedThreadFacts)) {
     nextGlobalMemoryFacts = addFactToGlobalMemory(nextGlobalMemoryFacts, fact);
+  }
+
+  for (const fact of extractedDynamicFacts) {
+    nextGlobalMemoryFacts = addDynamicFactToGlobalMemory(nextGlobalMemoryFacts, fact);
   }
 
   const nextGlobalMemory: GlobalMemory = {
@@ -1549,18 +1436,131 @@ Return strict JSON with this shape:
   };
 };
 
+const SYNTHESIS_SYSTEM_PROMPT =
+  "You synthesize a user's personality and communication style from conversation history. Return JSON only. Do not include markdown fences. Infer traits only when there is consistent evidence across multiple messages — never from a single mention. Accurate observation is the goal; do not filter for positive traits.";
+
+export const synthesizeUserProfile = async ({
+  messages,
+  globalMemory,
+  timeZone,
+}: {
+  messages: ChatMessage[];
+  globalMemory: GlobalMemory;
+  timeZone?: string | null;
+}): Promise<GlobalMemory> => {
+  const userMessages = messages
+    .filter((message) => message.role === "user")
+    .slice(-30);
+
+  if (userMessages.length < 3) {
+    return globalMemory;
+  }
+
+  const messageBlock = userMessages
+    .map((message) => `- ${message.content}`)
+    .join("\n");
+
+  const synthesisPrompt = `Review these user messages and infer their personality and communication style.
+
+User messages:
+${messageBlock}
+
+Return strict JSON with this shape:
+{
+  "personality_observations": [
+    {
+      "pair": ["key", "value"],
+      "confidence": 0.6,
+      "source_message_ids": []
+    }
+  ],
+  "style_observations": [
+    {
+      "pair": ["key", "value"],
+      "confidence": 0.7,
+      "source_message_ids": []
+    }
+  ]
+}
+
+Rules:
+- personality_observations: observable traits inferred from behaviour patterns across multiple messages. Keys are free-form snake_case (e.g. practical, curious, methodical, direct, impulsive). Only include traits with consistent evidence. Confidence 0.5–0.75.
+- style_observations: observable writing style traits. Keys: verbosity (concise/verbose), tone (casual/formal/technical), humor (dry/playful/none), format (prose/bullets/mixed). Confidence 0.5–0.8.
+- If there is insufficient evidence for a trait, omit it — do not guess.
+- Return empty arrays if evidence is thin.`;
+
+  const rawContent = await callOpenRouter({
+    timeZone,
+    messages: [
+      {
+        role: "system",
+        content: SYNTHESIS_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: synthesisPrompt,
+      },
+    ],
+  });
+
+  const extraction = parseExtraction(rawContent) ?? {};
+  const timestamp = new Date().toISOString();
+  const syntheticThreadId = "synthesis";
+
+  // --GROK--: Synthesis replaces the personality and style buckets entirely — the full
+  // picture is rebuilt from recent messages on each synthesis run.
+  let nextMemory: GlobalMemory = {
+    ...globalMemory,
+    personality: {},
+    style: {},
+  };
+
+  for (const rawFact of extraction.personality_observations ?? []) {
+    if (!Array.isArray(rawFact.pair) || rawFact.pair.length !== 2) {
+      continue;
+    }
+
+    const fact = toMemoryFact({ rawFact, timestamp, threadId: syntheticThreadId });
+
+    if (fact) {
+      nextMemory = addPersonalityFactToGlobalMemory(nextMemory, fact);
+    }
+  }
+
+  for (const rawFact of extraction.style_observations ?? []) {
+    if (!Array.isArray(rawFact.pair) || rawFact.pair.length !== 2) {
+      continue;
+    }
+
+    const fact = toMemoryFact({ rawFact, timestamp, threadId: syntheticThreadId });
+
+    if (fact) {
+      nextMemory = addStyleFactToGlobalMemory(nextMemory, fact);
+    }
+  }
+
+  nextMemory.markdown = buildGlobalMemoryMarkdown({
+    memory: nextMemory,
+    threadSummaries: nextMemory.threadSummaries,
+  });
+
+  return nextMemory;
+};
+
 export const buildMemoryContext = async ({
   userMessage,
   messages,
   threadMemory,
   globalMemory,
   timeZone,
+  getThreadHistory,
 }: {
   userMessage: string;
   messages: ChatMessage[];
   threadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
   timeZone?: string | null;
+  getThreadHistory?: (threadId: string) => Promise<ChatMessage[]>;
 }) => {
   const queryTokens = expandQueryTokens(tokenize(userMessage));
   const isBroadSelfQuery = isBroadPersonalMemoryQuery(userMessage);
@@ -1644,6 +1644,19 @@ export const buildMemoryContext = async ({
       ? selectorResult.relevantSnippets.slice(0, MEMORY_SNIPPET_LIMIT)
       : heuristicRelevantSnippets;
 
+  // --GROK--: Drill-deeper path — if the AI selector flagged thread IDs for full history
+  // and a getThreadHistory callback was provided, fetch those messages now.
+  const drillThreadIds = selectorResult?.drillThreadIds ?? [];
+  const drillHistories: { threadId: string; messages: ChatMessage[] }[] =
+    getThreadHistory && drillThreadIds.length > 0
+      ? await Promise.all(
+          drillThreadIds.map(async (threadId) => ({
+            threadId,
+            messages: await getThreadHistory(threadId),
+          })),
+        )
+      : [];
+
   const threadLines = [
     threadMemory.summary ? `Summary: ${threadMemory.summary}` : "",
     ...relevantThreadFacts.map((fact) => `Fact: ${fact.key} = ${fact.value}`),
@@ -1673,6 +1686,10 @@ export const buildMemoryContext = async ({
       }`,
   );
 
+  const drillLines = drillHistories.flatMap(({ messages: historyMessages }) =>
+    historyMessages.map((m) => `History (${m.role}): ${m.content}`),
+  );
+
   const sections = [
     createMemoryContextSection({
       title: "Thread memory",
@@ -1689,6 +1706,10 @@ export const buildMemoryContext = async ({
     createMemoryContextSection({
       title: "Memory tree",
       lines: summaryLines,
+    }),
+    createMemoryContextSection({
+      title: "Thread history",
+      lines: drillLines,
     }),
     createMemoryContextSection({
       title: "Memory guardrail",
