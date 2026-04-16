@@ -316,6 +316,12 @@
       const notesStreamEl = document.getElementById("notesStream");
       const ideasStreamEl = document.getElementById("ideasStream");
       const payloadViewEl = document.getElementById("payloadView");
+      const demoWindowState = window.__textyDemoState || (window.__textyDemoState = {
+        threadIdByIdentity: {}
+      });
+
+      const getDemoIdentityKey = () =>
+        (integrationIdEl.value || "pinned_tool") + "::" + (userIdEl.value || "demo_user");
 
       const renderJson = (element, value) => {
         element.textContent = JSON.stringify(value, null, 2);
@@ -377,6 +383,8 @@
 
         submitButton.disabled = true;
 
+        const identityKey = getDemoIdentityKey();
+
         try {
           const response = await fetch("__PLAYGROUND_PATH__", {
             method: "POST",
@@ -389,6 +397,7 @@
               user_id: userIdEl.value,
               texty_base_url: textyBaseUrlEl.value,
               integration_id: integrationIdEl.value,
+              thread_id: demoWindowState.threadIdByIdentity[identityKey] || null,
             }),
           });
 
@@ -397,6 +406,10 @@
           renderConversation(payload.transcript || { user: userText, assistant: "" });
           renderEntries(notesStreamEl, payload.captured?.notes, "No notes captured yet.");
           renderEntries(ideasStreamEl, payload.captured?.ideas, "No ideas captured yet.");
+
+          if (payload.thread_id) {
+            demoWindowState.threadIdByIdentity[identityKey] = payload.thread_id;
+          }
         } catch (error) {
           renderJson(payloadViewEl, {
             ok: false,

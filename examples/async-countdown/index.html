@@ -301,9 +301,15 @@
       const chatLogEl = document.getElementById("chatLog");
       const countdownsEl = document.getElementById("countdowns");
       const payloadViewEl = document.getElementById("payloadView");
+      const demoWindowState = window.__textyDemoState || (window.__textyDemoState = {
+        threadIdByIdentity: {}
+      });
       let messageHistory = [];
       let latestRun = null;
       let pollHandle = null;
+
+      const getDemoIdentityKey = () =>
+        (integrationIdEl.value || "async_countdown") + "::" + (userIdEl.value || "demo_user");
 
       const renderJson = (element, value) => {
         element.textContent = JSON.stringify(value, null, 2);
@@ -460,6 +466,8 @@
         stopPolling();
         submitButton.disabled = true;
 
+        const identityKey = getDemoIdentityKey();
+
         try {
           const response = await fetch("__PLAYGROUND_PATH__", {
             method: "POST",
@@ -472,6 +480,7 @@
               user_id: userIdEl.value,
               texty_base_url: textyBaseUrlEl.value,
               integration_id: integrationIdEl.value,
+              thread_id: demoWindowState.threadIdByIdentity[identityKey] || null,
               mode: "__PLAYGROUND_MODE__",
             }),
           });
@@ -490,6 +499,10 @@
             threadId: payload.task?.thread_id || null,
             completionAppended: false,
           };
+
+          if (payload.task?.thread_id) {
+            demoWindowState.threadIdByIdentity[identityKey] = payload.task.thread_id;
+          }
 
           if (
             payload.ok &&

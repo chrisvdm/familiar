@@ -524,7 +524,8 @@
       const playgroundPath = "__PLAYGROUND_PATH__";
       const playgroundMode = "__PLAYGROUND_MODE__";
       const demoWindowState = window.__textyDemoState || (window.__textyDemoState = {
-        todosByIdentity: {}
+        todosByIdentity: {},
+        threadIdByIdentity: {}
       });
 
       const getDemoIdentityKey = () =>
@@ -678,12 +679,14 @@
           return;
         }
 
+        const identityKey = getDemoIdentityKey();
         const payload = {
           token: tokenEl.value,
           text: userText,
           user_id: userIdEl.value,
           texty_base_url: textyBaseUrlEl.value,
-          integration_id: integrationIdEl.value
+          integration_id: integrationIdEl.value,
+          thread_id: demoWindowState.threadIdByIdentity[identityKey] || null
         };
 
         renderJson(payloadEl, {
@@ -713,6 +716,10 @@
             const mergedTodos = mergeTodos(result.body.todos || []);
 
             storeTodos(mergedTodos);
+
+            if (result.body.task && result.body.task.thread_id) {
+              demoWindowState.threadIdByIdentity[identityKey] = result.body.task.thread_id;
+            }
 
             appendBubble({
               label: "familiar",

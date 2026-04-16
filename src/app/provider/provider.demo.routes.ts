@@ -14,6 +14,7 @@ import {
   handleProviderConversationInput,
   syncProviderTools,
 } from "./provider.service";
+import { deleteProviderUserContext, loadProviderUserContext, resetProviderUserContext } from "./provider.storage";
 import {
   BUILT_IN_COUNTDOWN_CHANNEL_ID,
   BUILT_IN_COUNTDOWN_PROVIDER_ID,
@@ -48,9 +49,10 @@ const buildSyncBody = (userId: string) => ({
   })),
 });
 
-const buildInputBody = (userId: string, text: string) => ({
+const buildInputBody = (userId: string, text: string, threadId?: string | null) => ({
   integration_id: DEMO_EXECUTOR_ID,
   user_id: userId,
+  ...(threadId ? { thread_id: threadId } : {}),
   input: {
     kind: "text" as const,
     text,
@@ -107,9 +109,10 @@ const buildPinnedToolSyncBody = (userId: string) => ({
   })),
 });
 
-const buildCountdownInputBody = (userId: string, text: string) => ({
+const buildCountdownInputBody = (userId: string, text: string, threadId?: string | null) => ({
   integration_id: COUNTDOWN_EXECUTOR_ID,
   user_id: userId,
+  ...(threadId ? { thread_id: threadId } : {}),
   input: {
     kind: "text" as const,
     text,
@@ -120,9 +123,10 @@ const buildCountdownInputBody = (userId: string, text: string) => ({
   },
 });
 
-const buildPinnedToolInputBody = (userId: string, text: string) => ({
+const buildPinnedToolInputBody = (userId: string, text: string, threadId?: string | null) => ({
   integration_id: PINNED_TOOL_EXECUTOR_ID,
   user_id: userId,
+  ...(threadId ? { thread_id: threadId } : {}),
   input: {
     kind: "text" as const,
     text,
@@ -316,7 +320,7 @@ export const providerDemoRoutes = [
       );
     }
 
-    let payload: { token?: string; user_id?: string; text?: string };
+    let payload: { token?: string; user_id?: string; text?: string; thread_id?: string | null };
 
     try {
       payload = (await request.json()) as typeof payload;
@@ -336,6 +340,7 @@ export const providerDemoRoutes = [
     const token = String(payload.token || "").trim();
     const userId = String(payload.user_id || DEMO_USER_ID).trim();
     const text = String(payload.text || "").trim();
+    const threadId = typeof payload.thread_id === "string" ? payload.thread_id : null;
 
     if (!token || token !== DEMO_TOKEN) {
       return unauthorized();
@@ -354,27 +359,16 @@ export const providerDemoRoutes = [
       );
     }
 
-    if (!isCountdownRequest(text)) {
-      return Response.json({
-        ...buildAsyncCountdownState({
-          userId,
-        }),
-        assistant_reply:
-          "This demo only supports countdown requests. Try asking me to start a 10 second countdown.",
-        task: {
-          thread_id: null,
-          action: "direct_reply",
-          execution_state: null,
-          execution_id: null,
-          reasoning: null,
-        },
-      });
-    }
-
     try {
+      const existingContext = await loadProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
+
+      if (!existingContext || existingContext.threads.length === 0) {
+        await resetProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
+      }
+
       const syncResult = await syncProviderTools(buildSyncBody(userId));
       const textyResult = await handleProviderConversationInput({
-        input: buildInputBody(userId, text),
+        input: buildInputBody(userId, text, threadId),
         providerConfig: {
           token: DEMO_TOKEN,
         },
@@ -395,6 +389,7 @@ export const providerDemoRoutes = [
           sync_status: 200,
           sync_response: syncResult,
           input_status: 200,
+          input_request: buildInputBody(userId, text, threadId),
           input_response: textyResult,
         },
       });
@@ -532,7 +527,7 @@ export const providerDemoRoutes = [
       );
     }
 
-    let payload: { token?: string; user_id?: string; text?: string };
+    let payload: { token?: string; user_id?: string; text?: string; thread_id?: string | null };
 
     try {
       payload = (await request.json()) as typeof payload;
@@ -552,6 +547,7 @@ export const providerDemoRoutes = [
     const token = String(payload.token || "").trim();
     const userId = String(payload.user_id || DEMO_USER_ID).trim();
     const text = String(payload.text || "").trim();
+    const threadId = typeof payload.thread_id === "string" ? payload.thread_id : null;
 
     if (!token || token !== DEMO_TOKEN) {
       return unauthorized();
@@ -571,23 +567,35 @@ export const providerDemoRoutes = [
     }
 
     try {
+      const existingContext = await loadProviderUserContext({ providerId: COUNTDOWN_EXECUTOR_ID, userId });
+
+      if (!existingContext || existingContext.threads.length === 0) {
+        await resetProviderUserContext({ providerId: COUNTDOWN_EXECUTOR_ID, userId });
+      }
+
       const syncResult = await syncProviderTools(buildCountdownSyncBody(userId));
       const textyResult = await handleProviderConversationInput({
-        input: buildCountdownInputBody(userId, text),
+        input: buildCountdownInputBody(userId, text, threadId),
         providerConfig: {
           token: DEMO_TOKEN,
           baseUrl: `${new URL(request.url).origin}/sandbox/async-countdown`,
         },
       });
 
+      const countdownState = buildAsyncCountdownState({
+        userId,
+        syncResult,
+        inputResult: textyResult,
+      });
+
       return Response.json({
-        ...buildAsyncCountdownState({
-          userId,
-          syncResult,
-          inputResult: textyResult,
-        }),
+        ...countdownState,
         assistant_reply: extractAssistantReply(textyResult),
         task: extractTask(textyResult),
+        observed: {
+          ...countdownState.observed,
+          input_request: buildCountdownInputBody(userId, text, threadId),
+        },
       });
     } catch (error) {
       return Response.json(
@@ -814,7 +822,7 @@ export const providerDemoRoutes = [
       );
     }
 
-    let payload: { token?: string; user_id?: string; text?: string };
+    let payload: { token?: string; user_id?: string; text?: string; thread_id?: string | null };
 
     try {
       payload = (await request.json()) as typeof payload;
@@ -834,6 +842,7 @@ export const providerDemoRoutes = [
     const token = String(payload.token || "").trim();
     const userId = String(payload.user_id || DEMO_USER_ID).trim();
     const text = String(payload.text || "").trim();
+    const threadId = typeof payload.thread_id === "string" ? payload.thread_id : null;
 
     if (!token || token !== DEMO_TOKEN) {
       return unauthorized();
@@ -853,9 +862,15 @@ export const providerDemoRoutes = [
     }
 
     try {
+      const existingContext = await loadProviderUserContext({ providerId: PINNED_TOOL_EXECUTOR_ID, userId });
+
+      if (!existingContext || existingContext.threads.length === 0) {
+        await resetProviderUserContext({ providerId: PINNED_TOOL_EXECUTOR_ID, userId });
+      }
+
       const syncResult = await syncProviderTools(buildPinnedToolSyncBody(userId));
       const textyResult = await handleProviderConversationInput({
-        input: buildPinnedToolInputBody(userId, text),
+        input: buildPinnedToolInputBody(userId, text, threadId),
         providerConfig: {
           token: DEMO_TOKEN,
           baseUrl: `${new URL(request.url).origin}/sandbox/pinned-tool`,
@@ -868,6 +883,7 @@ export const providerDemoRoutes = [
           integration_id: PINNED_TOOL_EXECUTOR_ID,
           user_id: userId,
         },
+        thread_id: textyResult.thread_id ?? null,
         transcript: {
           user: text,
           assistant: textyResult.response?.content ?? "",
@@ -888,6 +904,7 @@ export const providerDemoRoutes = [
           sync_status: 200,
           sync_response: syncResult,
           input_status: 200,
+          input_request: buildPinnedToolInputBody(userId, text, threadId),
           input_response: textyResult,
           delivered_channel_messages: getDeliveredMessages({
             store: pinnedToolDeliveredChannelMessages,
@@ -958,5 +975,62 @@ export const providerDemoRoutes = [
     return Response.json(result, {
       status: result.state === "failed" ? 400 : 200,
     });
+  }),
+  route("/sandbox/demo-executor/debug", async ({ request }) => {
+    const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
+    const context = await loadProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
+
+    return Response.json({
+      integration_id: DEMO_EXECUTOR_ID,
+      user_id: userId,
+      context: context ?? null,
+    });
+  }),
+  route("/sandbox/async-countdown/debug", async ({ request }) => {
+    const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
+    const context = await loadProviderUserContext({ providerId: COUNTDOWN_EXECUTOR_ID, userId });
+
+    return Response.json({
+      integration_id: COUNTDOWN_EXECUTOR_ID,
+      user_id: userId,
+      context: context ?? null,
+    });
+  }),
+  route("/sandbox/pinned-tool/debug", async ({ request }) => {
+    const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
+    const context = await loadProviderUserContext({ providerId: PINNED_TOOL_EXECUTOR_ID, userId });
+
+    return Response.json({
+      integration_id: PINNED_TOOL_EXECUTOR_ID,
+      user_id: userId,
+      context: context ?? null,
+    });
+  }),
+  route("/sandbox/demo-executor/reset", async ({ request }) => {
+    if (request.method !== "POST") {
+      return Response.json({ error: "Method not allowed." }, { status: 405 });
+    }
+
+    const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
+    await deleteProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
+    return Response.json({ ok: true, reset: true, integration_id: DEMO_EXECUTOR_ID, user_id: userId });
+  }),
+  route("/sandbox/async-countdown/reset", async ({ request }) => {
+    if (request.method !== "POST") {
+      return Response.json({ error: "Method not allowed." }, { status: 405 });
+    }
+
+    const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
+    await deleteProviderUserContext({ providerId: COUNTDOWN_EXECUTOR_ID, userId });
+    return Response.json({ ok: true, reset: true, integration_id: COUNTDOWN_EXECUTOR_ID, user_id: userId });
+  }),
+  route("/sandbox/pinned-tool/reset", async ({ request }) => {
+    if (request.method !== "POST") {
+      return Response.json({ error: "Method not allowed." }, { status: 405 });
+    }
+
+    const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
+    await deleteProviderUserContext({ providerId: PINNED_TOOL_EXECUTOR_ID, userId });
+    return Response.json({ ok: true, reset: true, integration_id: PINNED_TOOL_EXECUTOR_ID, user_id: userId });
   }),
 ];
