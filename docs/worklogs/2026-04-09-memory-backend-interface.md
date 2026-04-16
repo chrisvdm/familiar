@@ -167,7 +167,81 @@ src/app/
 
 ### Follow-on: Drill-Deeper Retrieval (separate worklog)
 
-- [ ] Update `selectMemoryContextWithAi` selector prompt to emit `thread_drill_ids[]`
-- [ ] Update `MemorySelectorResponse` type to include `thread_drill_ids`
-- [ ] Extend `DefaultMemoryBackend.retrieve` to call `getThreadHistory` for selected thread IDs and append full history as a new context section
+- [x] Update `selectMemoryContextWithAi` selector prompt to emit `thread_drill_ids[]`
+- [x] Update `MemorySelectorResponse` type to include `thread_drill_ids`
+- [x] Extend `DefaultMemoryBackend.retrieve` to call `getThreadHistory` for selected thread IDs and append full history as a new context section
 - [ ] Update MemPalace adapter `retrieve` to do the same via its HTTP call
+
+## Implemented: Drill-Deeper Retrieval (2026-04-13)
+
+We completed the drill-deeper retrieval path across four change points.
+
+**`MemorySelectorResponse` and `MemorySelectionIds`** gained a `thread_drill_ids` / `threadDrillIds` field. `parseMemorySelectorResponse` maps the raw JSON field through the same `normalizeIds` path as the other id arrays.
+
+**`buildMemorySelectorPrompt`** now includes `thread_drill_ids` in the JSON shape it asks the AI to return, plus an instruction: use it only when a summary alone is not enough to answer the question and full message history would significantly improve the answer. This keeps the field intentional rather than noisy.
+
+**`selectMemoryContextWithAi`** resolves the drill candidate ids (e.g. `ts_2`) back to real `GlobalThreadSummary.threadId` strings and includes `drillThreadIds: string[]` in its return value.
+
+**`buildMemoryContext`** accepts a new optional `getThreadHistory?: (threadId: string) => Promise<ChatMessage[]>` callback. After the selector runs, it calls this for each drill thread ID in parallel, then appends a `"Thread history"` section to the context string containing the full message history as `History (role): content` lines. If no callback is provided (or the selector emits no drill IDs), the section is omitted — zero behavioural change for existing callers.
+
+**`DefaultMemoryBackend.retrieve`** passes `getThreadHistory` to `buildMemoryContext`, delegating to `this.getThreadHistory` with the correct `userId` / `integrationId` scoping from the retrieve params. The `loadChatSession` call inside `DefaultMemoryBackend.getThreadHistory` reads directly from the `ChatSessionDO`.
+
+**MemPalace adapter** — `retrieve` still delegates to `this.fallback.retrieve(params)` on error, which is `DefaultMemoryBackend.retrieve`. The MemPalace HTTP path does not yet pass a drill callback — the server-side MemPalace retrieve endpoint is expected to handle drilling internally. This is noted as a remaining gap.
+
+### MemPalace and drill-deeper
+
+MemPalace controls its own retrieval server-side. It does not participate in the `getThreadHistory` callback path — this is by design, not a gap.
+
+### Manual verification
+
+Verification was unblocked by the sandbox fixes in `docs/worklogs/2026-04-14-demo-sandbox-fixes.md`. The `/sandbox/demo-executor/debug` endpoint now exposes the live `ProviderUserContext` including `globalMemory` after each turn, making it straightforward to confirm that the `"Thread history"` section appears in retrieval when the AI selector emits drill IDs.
+
+## Removed heuristic profile fact extraction
+
+We identified the root cause of the `"alice and"` extraction bug. The `extractProfileFactsHeuristically` function ran in parallel with the AI extraction and fed its results into the same `mergeFactLists` call. Its name-matching regex `/\bmy name is ([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b/i` matched `"Alice and"` from `"my name is alice and i want to dance"` because `and` satisfies `[A-Z][a-z]+` (case-insensitive) and the word boundary falls cleanly after it.
+
+The AI pair extraction was working correctly — it was the heuristic overwriting or competing with it that produced the bad value.
+
+We removed `extractProfileFactsHeuristically`, `createHeuristicFact`, `parseCount`, and `NUMBER_WORDS` from `chat.memory.ts`. The extraction pipeline now relies solely on the AI pair format schema for profile facts. The call site in `refreshMemories` was simplified to merge only `extractedProfileFacts` and `promotedThreadFacts`.
+
+This aligns with the design intent: the pair schema gives the model clear structural constraints — if it returns a conjunct phrase inside a `pair` element, that is a model compliance failure, not a regex problem, and can be addressed by prompt tuning rather than layering more heuristics on top.
+
+## Global Memory v2: structured keys, style bucket, dynamic bucket
+
+We identified several problems with the global memory key set and proposed a design to address them. This section records the RFC discussion and implementation.
+
+**Problems with the prior key set:**
+- `interest` and `interests` were duplicate keys routing to the same array
+- `fear` and `fears` were duplicate keys
+- `preference` / `preferences` were too vague to surface usefully
+- No coverage for age, nationality, language, employer, industry, relationship_status, goal, dietary
+- Unknown keys (e.g. `religion`, `philosophy`) were silently dropped by `sanitizeGlobalFact`
+- No mechanism to store conversational style observations
+- Aspiration was added but `goal` (shorter-term objective) was missing
+
+**Design decisions recorded:**
+- Dynamic keys should be identity-defining traits central to who the person is — things that would appear in a biography, not a diary entry (religion, philosophy, sport, skill, belief qualify; moods and one-off events do not)
+- Style is seeded empty and inferred from conversation patterns by the extraction model
+- `goal` (short-term objective) and `aspiration` (longer-term dream) are kept as distinct keys
+- `dietary` is multi-value (a user can have multiple restrictions)
+- `language` is multi-value (a user can speak multiple languages)
+
+**`GlobalMemory` now has two new top-level buckets:**
+- `style: MemoryFactGroup` — free-form keys inferred from how the user communicates (verbosity, tone, humor, format, etc.)
+- `dynamic: MemoryFactGroup` — identity-defining traits with free-form keys that do not fit any static category
+
+**`PreferenceMemory` additions:** `goals: MemoryFact[]`, `dietary: MemoryFact[]`
+
+**Key set changes:**
+- Removed: `interests`, `fears`, `preference`, `preferences` (routing for `interest`/`fear` retained)
+- Added to static: `age`, `nationality`, `language`, `employer`, `industry`, `relationship_status`, `goal`, `dietary`, `gender`, `pronouns` (were special-cased, now in the set)
+- `gender` / `pronouns` special-case in `sanitizeGlobalFact` removed (now in `GLOBAL_MEMORY_KEYS`)
+
+**Extraction prompt additions:**
+- `style_observations` section: pair format, confidence 0.5–0.8, inferred from writing style
+- `dynamic_facts` section: pair format, free-form keys, biography-worthy traits only
+- Updated valid key list and confidence scale guidance
+
+**New helpers in `shared.ts`:** `addStyleFactToGlobalMemory`, `addDynamicFactToGlobalMemory`
+
+**`refreshMemories` pipeline** now processes three extraction sections: `profile_facts` → `addFactToGlobalMemory`, `style_observations` → `addStyleFactToGlobalMemory`, `dynamic_facts` → `addDynamicFactToGlobalMemory`.

@@ -74,6 +74,48 @@ Useful pages:
 - `http://localhost:5173/sandbox/async-countdown`
 - `http://localhost:5173/sandbox/pinned-tool`
 
+## Sandbox debug and reset routes
+
+Each sandbox has two utility routes for inspecting and resetting state during development.
+
+### Inspect memory
+
+Returns the full stored context for a sandbox user — global memory facts, threads, and allowed tools.
+
+```text
+GET /sandbox/demo-executor/debug
+GET /sandbox/async-countdown/debug
+GET /sandbox/pinned-tool/debug
+```
+
+Optional query param: `?user_id=<id>` — defaults to `demo_user`.
+
+Example:
+
+```sh
+curl http://localhost:5173/sandbox/demo-executor/debug
+```
+
+### Reset memory
+
+Clears the stored context for a sandbox user. The next message will start with a clean slate.
+
+```text
+POST /sandbox/demo-executor/reset
+POST /sandbox/async-countdown/reset
+POST /sandbox/pinned-tool/reset
+```
+
+Optional query param: `?user_id=<id>` — defaults to `demo_user`.
+
+Example:
+
+```sh
+curl -X POST http://localhost:5173/sandbox/demo-executor/reset
+```
+
+Use this when a sandbox has accumulated stale memory from previous test sessions and you want a clean start without restarting the worker.
+
 ## Step 5: Run a local example executor
 
 For the smallest useful executor:
