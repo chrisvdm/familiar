@@ -2,7 +2,6 @@ import { env } from "cloudflare:workers";
 import { requestInfo } from "rwsdk/worker";
 
 import {
-  buildSelfMemoryRecallReply,
   synthesizeUserProfile,
 } from "../chat/chat.memory";
 import { createMemoryBackend } from "../memory/memory.factory";
@@ -55,7 +54,6 @@ import {
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
-  extractIntroducedName,
   extractPendingToolConfirmationRemainder,
   extractToolStringValue,
   getRawToolStringFieldName,
@@ -352,37 +350,15 @@ const buildDirectReply = async ({
   content,
   messages,
   memoryContext,
-  threadMemory,
-  globalMemory,
   replyModel,
   timeZone,
 }: {
   content: string;
   messages: ChatMessage[];
   memoryContext: string | null;
-  threadMemory: ChatSessionState["memory"];
-  globalMemory: GlobalMemory;
   replyModel: string;
   timeZone?: string | null;
 }) => {
-  const introducedName = extractIntroducedName(content);
-
-  if (introducedName) {
-    return `Hi ${introducedName}, pleased to meet you.`;
-  }
-
-  const personalMemoryReply = await buildSelfMemoryRecallReply({
-    userMessage: content,
-    messages,
-    threadMemory,
-    globalMemory,
-    timeZone,
-  });
-
-  if (personalMemoryReply) {
-    return personalMemoryReply;
-  }
-
   return callOpenRouter({
     model: replyModel,
     timeZone,
@@ -1150,8 +1126,6 @@ const decideConversationAction = async ({
   content,
   messages,
   memoryContext,
-  threadMemory,
-  globalMemory,
   tools,
   replyModel,
   timeZone,
@@ -1159,34 +1133,15 @@ const decideConversationAction = async ({
   content: string;
   messages: ChatMessage[];
   memoryContext: string | null;
-  threadMemory: ChatSessionState["memory"];
-  globalMemory: GlobalMemory;
   tools: AllowedTool[];
   replyModel: string;
   timeZone?: string | null;
 }) => {
-  const personalMemoryReply = await buildSelfMemoryRecallReply({
-    userMessage: content,
-    messages,
-    threadMemory,
-    globalMemory,
-    timeZone,
-  });
-
-  if (personalMemoryReply) {
-    return {
-      action: "direct_reply",
-      reply: personalMemoryReply,
-    } satisfies ConversationDecision;
-  }
-
   if (tools.filter((tool) => tool.status === "active").length === 0) {
     const reply = await buildDirectReply({
       content,
       messages,
       memoryContext,
-      threadMemory,
-      globalMemory,
       replyModel,
       timeZone,
     });
@@ -1217,8 +1172,6 @@ const decideConversationAction = async ({
       content,
       messages,
       memoryContext,
-      threadMemory,
-      globalMemory,
       replyModel,
       timeZone,
     });
@@ -1298,8 +1251,6 @@ const decideConversationAction = async ({
       content,
       messages,
       memoryContext,
-      threadMemory,
-      globalMemory,
       replyModel,
       timeZone,
     });
@@ -2389,8 +2340,6 @@ export const handleProviderConversationInput = async ({
       content,
       messages: currentState.messages,
       memoryContext,
-      threadMemory: currentState.memory,
-      globalMemory: memoryScope,
       tools: currentContext.allowedTools,
       replyModel: model,
       timeZone,
