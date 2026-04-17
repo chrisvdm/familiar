@@ -22,6 +22,7 @@ dist
 # IDEs and editors
 .vscode/
 .idea/
+*.code-workspace
 *.suo
 *.ntvs*
 *.njsproj
