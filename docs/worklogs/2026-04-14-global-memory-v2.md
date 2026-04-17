@@ -94,6 +94,47 @@ src/app/provider/provider.idempotency.test.ts      — lastSynthesis/nextSynthes
 5. Force synthesis by asking "analyse my communication style" — check debug output again; `personality` and `style` should be populated
 6. Send another message — synthesis should not re-run (check `nextSynthesis` in debug output is ~24h in the future)
 
+## Fixed memory retrieval — removed buildSelfMemoryRecallReply
+
+We traced the "I do not know your name yet." response to `buildSelfMemoryRecallReply`, a function that intercepted messages before the LLM using regex-gated heuristics (`isNameRecallQuery`, `shouldCheckSelfMemoryRecall`, `isPersonalMemoryDeclaration`). Two bugs compounded: `isPersonalMemoryDeclaration` had a `^` anchor that rejected messages with a greeting prefix ("Hello my name is alice"), and when no name was stored the function returned a hardcoded string instead of passing through to the LLM.
+
+We removed `buildSelfMemoryRecallReply` entirely along with all its helpers and call sites. The LLM now handles all memory-informed responses using context injected by `buildMemoryContext`.
+
+## Established hard rule: no NLP heuristics on user language
+
+We identified that the root cause of multiple bugs across both extraction and retrieval was the same pattern: functions that used regex or verb lists to interpret what the user meant before the LLM saw the message. Each "shortcut" introduced edge cases worse than the problem it solved.
+
+We established a hard rule: no regex, pattern matching, or heuristic functions that detect user intent from message content. The LLM handles natural language. Legitimate regex use is limited to structural parsing (empty check, exact tool name matching, JSON extraction, URL parsing).
+
+This rule is recorded in the project memory and applies to all future work.
+
+## Removed all dead code
+
+Following the removal of `buildSelfMemoryRecallReply` and `extractIntroducedName`, we audited and removed all functions that had no remaining call sites:
+
+- `parseSelfMemoryRecallResponse`, `classifySelfMemoryRecallIntent`
+- `formatMemoryFactForReply`, `joinMemoryPhrases`, `getStoredName`
+- `filterFactsForSelfMemoryFocus`, `dedupeReplyFacts`, `filterCanonicalSelfRecallFacts`
+- `extractIntroducedName` (from `provider.logic.ts`) and its tests
+
+455 lines removed. TypeScript confirmed clean.
+
+## Added worklog verification tests
+
+We established a convention: each worklog gets a test file named `<module>.<worklog-slug>.test.ts` with a comment linking back to the worklog doc. The worklog is not closeable until those tests pass.
+
+We created `src/app/chat/chat.memory.global-memory-v2.test.ts` with 10 tests covering the worklog's original goals: lowercase name acceptance, greeting prefix handling, rejection of non-declared names, aspiration routing to `preferences.aspirations`, and `first_name`/`last_name`/`nickname` routing to `identity`. All pass.
+
+## Filed out-of-scope discoveries as GitHub issues
+
+Tasks discovered during this worklog that were out of scope were filed as `backlog` issues on the repo:
+
+- [#1](https://github.com/chrisvdm/familiar/issues/1) Memory audit pass: staleness, gap fill, confidence decay
+- [#2](https://github.com/chrisvdm/familiar/issues/2) Remove `getTodoHeuristicDecision`
+- [#3](https://github.com/chrisvdm/familiar/issues/3) Remove `hasExplicitToolUseIntent` verb-list heuristic
+- [#4](https://github.com/chrisvdm/familiar/issues/4) Composite interest extraction ("japanophile" type facts)
+- [#5](https://github.com/chrisvdm/familiar/issues/5) E2E test harness with memory assertions and vector similarity response verification
+
 ## Future improvement: memory audit pass
 
 We identified that the periodic synthesis should eventually be extended into a full memory audit — not just personality/style, but all stored facts. The audit would:
