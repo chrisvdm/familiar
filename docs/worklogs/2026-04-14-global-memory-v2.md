@@ -144,3 +144,69 @@ We identified that the periodic synthesis should eventually be extended into a f
 - **Confidence decay**: optionally lower confidence on facts that haven't been reinforced in a long time.
 
 The complication with extending audit to profile facts is that explicit declarations ("my name is X") should be trusted even when not repeated. The model would need to return a diff (remove/update specific keys) rather than a full rebuild. The synthesis infrastructure (`lastSynthesis`/`nextSynthesis`, `runProfileSynthesis`) is the right foundation to build this on.
+
+## Verification surfaced two bugs
+
+Manual verification against the demo sandbox revealed two failures.
+
+### Bug 1: Synthesis never populates personality and style
+
+Tracing the flow: on the first conversation turn after a memory reset, `nextSynthesis` is null so `isSynthesisDue` returns true and `runProfileSynthesis` fires. But the current message has not been saved yet at that point in the handler, so the loaded session has 0 messages. `synthesizeUserProfile` returns early (`userMessages.length < 3`) without producing any results — but `runProfileSynthesis` still advances `nextSynthesis` 24 hours forward.
+
+All subsequent turns see `nextSynthesis` in the future and skip synthesis. The `isCalibrationRequest` function exists to force a re-run on demand, but it is a regex pattern matching natural language intent — a direct violation of the no-NLP-heuristics rule. It was also tested and found to match `"analyse my communication style"` but not `"analyze my communication style"` (US spelling), confirming fragility.
+
+Root cause: timestamps advance even when synthesis aborted due to insufficient data, burning the synthesis slot on a no-op.
+
+### Bug 2: Pet species not stored; LLM second-guesses when challenged
+
+The user mentioned owning a goldfish named Albert. The memory stored `pet_name: Albert` correctly, but the species (goldfish) was not extracted — there is no `pet_type` key in the schema. On first mention the LLM recalled "goldfish" correctly because it was in the recent conversation context (last 3 exchanges). When challenged with "are you sure I have a pet goldfish?", the LLM looked at the stored memory, saw only `pet_name: Albert` with no species, and capitulated — apologising for an "assumption" and asking what kind of pet Albert is.
+
+Additionally, `pet_name: Albert` appeared in both `family.pet_name` and `dynamic.pet_name` — a duplication caused by the fact landing in `dynamic` before the `family` routing path was in place.
+
+## Refined direction after ideation
+
+We discussed two approaches to the pet retrieval failure: fixing the thread keyword extraction, or changing how facts are stored (sentence-based: `pets: "has a pet goldfish named Albert"` vs atomic key-value pairs). We agreed:
+
+- **Thread keywords are the right fix for now** — the goldfish failure was a retrieval failure, not a storage failure. The thread summarizer captured themes but missed entity mentions (names, animals, objects). If "goldfish" and "Albert" had been keywords, the retrieval system would have known to drill into that thread.
+- **Sentence-based fact storage is worth exploring later** as a separate worklog — it would make complex entities more natural and reduce the need for keys like `pet_type`. Deferred to backlog.
+- **Personality and style synthesis is not a priority** — the basics of fact storage and retrieval need to work first. The synthesis timing bug is deferred.
+
+## RFC: Fix thread keyword extraction and dynamic bucket deduplication
+
+### 2000ft view
+
+The thread summarizer generates keywords that capture conversation themes but misses concrete entity mentions — names, animals, objects, places mentioned in passing. This means the AI retriever cannot surface relevant threads for entity-based queries ("do I have a pet?"). The fix is to update the thread summarization prompt to explicitly extract all named entities and concrete nouns as keywords alongside thematic keywords.
+
+A secondary fix: `pet_name` is landing in both `family` and `dynamic` — a bucket duplication caused by the `dynamic` fallback catching keys that already have an explicit route. The `dynamic` fallback should only fire for keys with no other home.
+
+### Behavior spec
+
+GIVEN a user mentions "I have a pet goldfish named Albert" in a conversation  
+WHEN the thread summary is generated  
+THEN the keywords include "Albert", "goldfish", and "pet"
+
+GIVEN thread keywords include "goldfish"  
+WHEN the user later asks "do I have a pet goldfish?"  
+THEN the retriever surfaces that thread and the LLM has context to answer confidently
+
+GIVEN a fact with key `pet_name` is added to global memory  
+WHEN `addFactToGlobalMemory` routes it  
+THEN it lands in `family` only — not in `dynamic` as well
+
+### Implementation breakdown
+
+`[MODIFY] src/app/chat/chat.memory.ts`
+- Update the thread summarization prompt to extract named entities and concrete nouns as keywords (names of people, places, animals, objects) in addition to thematic keywords
+
+`[MODIFY] src/app/chat/shared.ts`
+- Audit `addFactToGlobalMemory` dynamic fallback — ensure it only fires for keys not already handled by identity/work/family/preferences routes
+
+### Deferred to backlog
+
+- Personality/style synthesis timing fix — filed as part of ongoing synthesis work
+- Sentence-based fact storage (`pets: "has a pet goldfish named Albert"`) — worth a dedicated worklog when basics are solid
+
+### Invariants
+
+- Thread keywords must include all entity mentions from the conversation, not only thematic terms
+- A fact key must not appear in more than one bucket
