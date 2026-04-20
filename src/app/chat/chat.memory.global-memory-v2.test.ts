@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { sanitizeExtractedMemoryFact } from "./chat.memory.identity.ts";
 import {
+  addDynamicFactToGlobalMemory,
   addFactToGlobalMemory,
   createEmptyGlobalMemory,
   type ChatMessage,
@@ -162,4 +163,62 @@ test("nickname fact is stored in identity bucket", () => {
   );
 
   assert.equal(next.identity.nickname?.[0]?.value, "ace");
+});
+
+// --- Dynamic bucket deduplication ---
+
+test("pet_name fact routes to family bucket via addFactToGlobalMemory", () => {
+  const memory = createEmptyGlobalMemory();
+
+  const next = addFactToGlobalMemory(
+    memory,
+    createFact({ key: "pet_name", value: "Albert", sourceMessageIds: ["msg_1"] }),
+  );
+
+  assert.equal(next.family.pet_name?.[0]?.value, "Albert");
+});
+
+test("pet_name fact does not appear in dynamic bucket after addFactToGlobalMemory", () => {
+  const memory = createEmptyGlobalMemory();
+
+  const next = addFactToGlobalMemory(
+    memory,
+    createFact({ key: "pet_name", value: "Albert", sourceMessageIds: ["msg_1"] }),
+  );
+
+  assert.equal(next.dynamic.pet_name, undefined);
+});
+
+test("addDynamicFactToGlobalMemory stores a truly novel key in the dynamic bucket", () => {
+  const memory = createEmptyGlobalMemory();
+
+  const next = addDynamicFactToGlobalMemory(
+    memory,
+    createFact({ key: "philosophy", value: "stoicism", sourceMessageIds: ["msg_1"] }),
+  );
+
+  assert.equal(next.dynamic.philosophy?.[0]?.value, "stoicism");
+});
+
+test("addDynamicFactToGlobalMemory does not touch family bucket for novel keys", () => {
+  const memory = createEmptyGlobalMemory();
+
+  const next = addDynamicFactToGlobalMemory(
+    memory,
+    createFact({ key: "philosophy", value: "stoicism", sourceMessageIds: ["msg_1"] }),
+  );
+
+  assert.deepEqual(next.family, {});
+});
+
+// --- Thread keyword entity coverage ---
+
+test("entity names and species survive keyword deduplication", () => {
+  const raw = ["Albert", "goldfish", "pet", "Albert", "conversation"];
+  const deduped = Array.from(new Set(raw.map((v) => v.trim()).filter(Boolean)));
+
+  assert.ok(deduped.includes("Albert"), "personal name keyword preserved");
+  assert.ok(deduped.includes("goldfish"), "species keyword preserved");
+  assert.ok(deduped.includes("pet"), "thematic keyword preserved");
+  assert.equal(deduped.filter((v) => v === "Albert").length, 1, "duplicates removed");
 });

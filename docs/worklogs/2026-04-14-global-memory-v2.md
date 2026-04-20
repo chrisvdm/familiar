@@ -210,3 +210,23 @@ THEN it lands in `family` only — not in `dynamic` as well
 
 - Thread keywords must include all entity mentions from the conversation, not only thematic terms
 - A fact key must not appear in more than one bucket
+
+## Implemented RFC: thread keyword extraction and dynamic deduplication
+
+We made two targeted changes.
+
+**Thread keyword extraction (`src/app/chat/chat.memory.ts`)**: Added an explicit rule to the extraction prompt instructing the model to include all named entities — personal names, pet names, animal species, place names, object names — as keywords alongside thematic words. The rule uses the "Albert"/"goldfish" example directly so the model understands the failure mode we are fixing.
+
+**Dynamic bucket deduplication (`src/app/chat/chat.memory.ts`)**: The loop that adds `extractedDynamicFacts` to global memory now filters out any fact whose key is in `GLOBAL_MEMORY_KEYS` before calling `addDynamicFactToGlobalMemory`. Keys like `pet_name` that already have an explicit route through `addFactToGlobalMemory` are silently dropped from the dynamic pass. The filter is a single inline predicate added to the existing loop.
+
+TypeScript reported clean (`npm run types`).
+
+## Added worklog verification tests for RFC fixes
+
+We appended five tests to `src/app/chat/chat.memory.global-memory-v2.test.ts`:
+
+- `pet_name` routes to `family` via `addFactToGlobalMemory`
+- `pet_name` does not appear in `dynamic` after `addFactToGlobalMemory`
+- A novel key (`philosophy`) lands in `dynamic` via `addDynamicFactToGlobalMemory`
+- `addDynamicFactToGlobalMemory` with a novel key does not touch `family`
+- Entity names and species survive keyword deduplication (inline dedup logic check)

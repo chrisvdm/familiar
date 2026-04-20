@@ -1037,6 +1037,7 @@ Rules:
 - Use grammatical tense and mood to determine the right key for everything else: current or past reality ("I am a", "I work as", "I was") → use the most specific matching key; enjoyment or preference ("I like", "I enjoy", "I love") → use interest or likes; aspiration, dream, or desire to become or achieve ("I want to be", "I'd like to be", "I hope to", "I wish I could") → use aspiration.
 - Valid profile_facts keys: name, first_name, last_name, nickname, age, nationality, language, location, gender, pronouns, profession, employer, industry, business, relationship_status, children_count, child_name, children_names, sibling_count, sibling_name, siblings, spouse_name, partner_name, wife_name, husband_name, family_history, dog_name, cat_name, pet_name, interest, aspiration, goal, fear, dietary, favorite, favorite_food, favorite_drink, favorite_music, favorite_movie, favorite_color, likes, dislikes. Use no other keys.
 - Confidence scale: 0.95 = user stated it explicitly and unambiguously; 0.8 = stated clearly but with some context-dependence; 0.6 = mentioned in passing or slightly indirect; 0.4 = uncertain or easily retracted.
+- thread_keywords must include all named entities mentioned in the conversation (personal names, pet names, animal species, place names, object names) as well as thematic topic words. Entity mentions take priority — if a name like "Albert" or a species like "goldfish" was mentioned, it must appear as a keyword.
 - dynamic_facts: identity-defining traits that do not fit any profile_facts key. Use only for stable characteristics central to who the person is — things that would appear in a biography (e.g. religion, philosophy, sport, skill, belief). Also use for composite passion-level interests when multiple signals converge on a label: cultural interest + language learning + lifestyle mentions → a label like "japanophile"; deep film knowledge + regular watching → "cinephile". Do not use for moods, tasks, or one-off events. Keys are free-form snake_case.
 
 Return strict JSON with this shape:
@@ -1125,7 +1126,7 @@ Return strict JSON with this shape:
     nextGlobalMemoryFacts = addFactToGlobalMemory(nextGlobalMemoryFacts, fact);
   }
 
-  for (const fact of extractedDynamicFacts) {
+  for (const fact of extractedDynamicFacts.filter((f) => !GLOBAL_MEMORY_KEYS.has(f.key))) {
     nextGlobalMemoryFacts = addDynamicFactToGlobalMemory(nextGlobalMemoryFacts, fact);
   }
 
