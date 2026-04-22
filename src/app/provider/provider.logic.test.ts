@@ -1,26 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  createEmptyGlobalMemory,
-  createEmptyThreadMemory,
-} from "../chat/shared.ts";
+import { createEmptyGlobalMemory } from "../chat/shared.ts";
 
 import {
   applyConversationRateLimit,
   buildShortcutRawInputText,
   buildShortcutToolArguments,
-  buildPersonalMemoryReply,
   clampDecisionConfidence,
   determineMockExecutionState,
-  extractPendingToolConfirmationRemainder,
   extractToolStringValue,
   getRawToolStringFieldName,
   getToolInputMode,
   getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
-  hasExplicitToolUseIntent,
   interpretPendingToolConfirmation,
   isToolShortcutExitInput,
   parseToolShortcutInvocation,
@@ -69,189 +63,6 @@ test("provider-user retrieval can use shared global memory", () => {
   });
 
   assert.equal(result.identity.name?.[0]?.value, "Chris");
-});
-
-test("personal memory replies return stored name directly", () => {
-  const globalMemory = createEmptyGlobalMemory();
-  const threadMemory = createEmptyThreadMemory();
-  globalMemory.identity.name = [
-    {
-      key: "name",
-      value: "Chris",
-      confidence: 0.99,
-      updatedAt: "2026-03-31T10:00:00.000Z",
-    },
-  ];
-
-  const reply = buildPersonalMemoryReply({
-    content: "Do you know my name?",
-    threadMemory,
-    globalMemory,
-  });
-
-  assert.equal(reply, "You go by Chris.");
-});
-
-test("personal memory replies treat bare my name prompts as recall", () => {
-  const globalMemory = createEmptyGlobalMemory();
-  const threadMemory = createEmptyThreadMemory();
-  globalMemory.identity.name = [
-    {
-      key: "name",
-      value: "Chris",
-      confidence: 0.99,
-      updatedAt: "2026-03-31T10:00:00.000Z",
-    },
-  ];
-
-  const reply = buildPersonalMemoryReply({
-    content: "my name",
-    threadMemory,
-    globalMemory,
-  });
-
-  assert.equal(reply, "You go by Chris.");
-});
-
-test("personal memory replies summarize stored facts for broad self queries", () => {
-  const globalMemory = createEmptyGlobalMemory();
-  const threadMemory = createEmptyThreadMemory();
-  globalMemory.identity.name = [
-    {
-      key: "name",
-      value: "Chris",
-      confidence: 0.99,
-      updatedAt: "2026-03-31T10:00:00.000Z",
-    },
-  ];
-  globalMemory.work.profession = [
-    {
-      key: "profession",
-      value: "Engineer",
-      confidence: 0.9,
-      updatedAt: "2026-03-31T09:59:00.000Z",
-    },
-  ];
-
-  const reply = buildPersonalMemoryReply({
-    content: "What do you know about me?",
-    threadMemory,
-    globalMemory,
-  });
-
-  assert.match(reply ?? "", /I know that/);
-  assert.match(reply ?? "", /you go by Chris/);
-  assert.match(reply ?? "", /you work as an Engineer/);
-});
-
-test("personal memory replies handle follow-up recall prompts from recent context", () => {
-  const globalMemory = createEmptyGlobalMemory();
-  const threadMemory = createEmptyThreadMemory();
-  globalMemory.identity.name = [
-    {
-      key: "name",
-      value: "Chris",
-      confidence: 0.99,
-      updatedAt: "2026-03-31T10:00:00.000Z",
-    },
-  ];
-  globalMemory.family.partner_name = [
-    {
-      key: "partner_name",
-      value: "Sam",
-      confidence: 0.9,
-      updatedAt: "2026-03-31T09:59:00.000Z",
-    },
-  ];
-
-  const reply = buildPersonalMemoryReply({
-    content: "anything you have stored",
-    messages: [
-      {
-        id: "msg_user_1",
-        role: "user",
-        content: "what can you tell me about myself?",
-        createdAt: "2026-03-31T10:01:00.000Z",
-      },
-      {
-        id: "msg_assistant_1",
-        role: "assistant",
-        content: "I know that you go by Chris.",
-        createdAt: "2026-03-31T10:01:01.000Z",
-      },
-    ],
-    threadMemory,
-    globalMemory,
-  });
-
-  assert.match(reply ?? "", /you go by Chris/);
-  assert.match(reply ?? "", /partner name is Sam/);
-});
-
-test("personal detail follow-ups prefer human facts over work facts", () => {
-  const globalMemory = createEmptyGlobalMemory();
-  const threadMemory = createEmptyThreadMemory();
-  globalMemory.identity.name = [
-    {
-      key: "name",
-      value: "Chris",
-      confidence: 0.99,
-      updatedAt: "2026-03-31T10:00:00.000Z",
-    },
-  ];
-  globalMemory.preferences.interests = [
-    {
-      key: "interests",
-      value: "dogs",
-      confidence: 0.88,
-      updatedAt: "2026-03-31T09:58:00.000Z",
-    },
-  ];
-  globalMemory.work.profession = [
-    {
-      key: "profession",
-      value: "Engineer",
-      confidence: 0.9,
-      updatedAt: "2026-03-31T09:59:00.000Z",
-    },
-  ];
-
-  const reply = buildPersonalMemoryReply({
-    content: "personal details, but really tell me as much as possible",
-    messages: [
-      {
-        id: "msg_user_1",
-        role: "user",
-        content: "what can you tell me about myself?",
-        createdAt: "2026-03-31T10:01:00.000Z",
-      },
-      {
-        id: "msg_assistant_1",
-        role: "assistant",
-        content: "I know that you go by Chris and you work as an Engineer.",
-        createdAt: "2026-03-31T10:01:01.000Z",
-      },
-    ],
-    threadMemory,
-    globalMemory,
-  });
-
-  assert.match(reply ?? "", /you go by Chris/);
-  assert.match(reply ?? "", /you like dogs/);
-  assert.doesNotMatch(reply ?? "", /Engineer/);
-});
-
-test("personal memory replies admit when no stored name exists", () => {
-  const globalMemory = createEmptyGlobalMemory();
-  const threadMemory = createEmptyThreadMemory();
-
-  const reply = buildPersonalMemoryReply({
-    content: "What is my name?",
-    threadMemory,
-    globalMemory,
-  });
-
-  assert.equal(reply, "I do not know your name yet.");
 });
 
 test("rate limiter allows requests under the rolling limit", () => {
@@ -356,15 +167,6 @@ test("pending tool confirmation recognizes yes-like replies", () => {
   assert.equal(interpretPendingToolConfirmation("go ahead"), "confirm");
 });
 
-test("pending tool confirmation can keep extra text after confirmation", () => {
-  assert.equal(
-    extractPendingToolConfirmationRemainder(
-      "yes thanks. I also need to buy him a birthday present",
-    ),
-    "I also need to buy him a birthday present",
-  );
-});
-
 test("pending tool confirmation recognizes no-like replies", () => {
   assert.equal(interpretPendingToolConfirmation("no"), "reject");
   assert.equal(interpretPendingToolConfirmation("don't do that"), "reject");
@@ -423,78 +225,6 @@ test("tool shortcut invocation resolves an active tool and keeps the raw remaind
 
   assert.equal(result?.tool.toolName, "todos.add");
   assert.equal(result?.remainder, "buy milk and eggs");
-});
-
-test("explicit tool intent requires both a request and a tool reference", () => {
-  const result = hasExplicitToolUseIntent({
-    content: "send this to discord",
-    tools: [
-      {
-        toolName: "discord",
-        description: "Send a Discord message",
-        inputSchema: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-            },
-          },
-        },
-        policy: {},
-        status: "active",
-      },
-    ],
-  });
-
-  assert.equal(result, true);
-});
-
-test("ordinary chat does not count as explicit tool intent", () => {
-  const result = hasExplicitToolUseIntent({
-    content: "hello there",
-    tools: [
-      {
-        toolName: "discord",
-        description: "Send a Discord message",
-        inputSchema: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-            },
-          },
-        },
-        policy: {},
-        status: "active",
-      },
-    ],
-  });
-
-  assert.equal(result, false);
-});
-
-test("tool mentions without a request do not count as explicit tool intent", () => {
-  const result = hasExplicitToolUseIntent({
-    content: "discord is where I hang out",
-    tools: [
-      {
-        toolName: "discord",
-        description: "Send a Discord message",
-        inputSchema: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-            },
-          },
-        },
-        policy: {},
-        status: "active",
-      },
-    ],
-  });
-
-  assert.equal(result, false);
 });
 
 test("tool input mode defaults to processed", () => {

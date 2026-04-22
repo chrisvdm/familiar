@@ -54,14 +54,12 @@ import {
   clampDecisionConfidence,
   CONVERSATION_RATE_LIMIT_MAX_REQUESTS,
   CONVERSATION_RATE_LIMIT_WINDOW_MS,
-  extractPendingToolConfirmationRemainder,
   extractToolStringValue,
   getRawToolStringFieldName,
   getToolInputMode,
   getMissingRequiredToolArgumentFields,
   getToolDecisionConfidenceAction,
   hasMeaningfulToolArgumentValue,
-  hasExplicitToolUseIntent,
   interpretPendingToolConfirmation,
   parseToolShortcutInvocation,
   parseToolShortcutInvocations,
@@ -162,9 +160,10 @@ const SYSTEM_PROMPT =
 const TOOL_DECISION_PROMPT = [
   "Analyze the user input and determine the user's intent.",
   "Based on the intent, determine which tool is best suited to handle the request.",
-  "Return strict JSON only. No markdown fences.",
-  "Return a JSON object with exactly this structure:",
-  '{"tool":"string|none","arguments":{},"reasoning":"string","follow_up":"string|null","confidence":0.0}',
+  "Return strict JSON only. No markdown fences. No function call syntax. No code blocks.",
+  "Your entire response must be a single JSON object with exactly these five keys: tool, arguments, reasoning, follow_up, confidence.",
+  'Tool call example: {"tool":"todos.add","arguments":{"todo_items":["buy milk"]},"reasoning":"User wants to add a todo item.","follow_up":null,"confidence":0.9}',
+  'No-tool example: {"tool":"none","arguments":{},"reasoning":"User is making a statement, not requesting an action.","follow_up":null,"confidence":0.0}',
   "Use tool = none when the user is not clearly asking to use one of the available tools.",
   "Do not call a tool for ordinary statements or facts unless the user is clearly asking to save, update, send, create, delete, or run something.",
   "If the request is missing required details for a tool, still choose the tool if appropriate, fill in the information you do have, and return a follow_up question for the missing information.",
@@ -586,10 +585,12 @@ const callOpenRouter = async ({
   messages,
   model,
   timeZone,
+  jsonMode = false,
 }: {
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   model: string;
   timeZone?: string | null;
+  jsonMode?: boolean;
 }) => {
   const apiKey = env.OPENROUTER_API_KEY;
 
@@ -607,6 +608,7 @@ const callOpenRouter = async ({
     },
     body: JSON.stringify({
       model,
+      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
       messages: [
         {
           role: "system",
@@ -678,25 +680,38 @@ const callDecisionModel = async ({
   stage?: "routing" | "extraction";
 }) => {
   if (providerEnv.AI && shouldUseWorkersAiRouting()) {
+    const cfModel = stage === "extraction" ? getCloudflareExtractionModel() : getCloudflareRoutingModel();
     try {
       const payload = await providerEnv.AI.run(
-        stage === "extraction"
-          ? getCloudflareExtractionModel()
-          : getCloudflareRoutingModel(),
+        cfModel,
         {
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: "system",
+              content: SYSTEM_PROMPT,
+            },
+            {
+              role: "system",
+              content: createDateTimeSystemPrompt({ timeZone }),
+            },
+            ...messages,
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              type: "object",
+              properties: {
+                tool: { type: "string" },
+                arguments: { type: "object" },
+                reasoning: { type: "string" },
+                follow_up: { type: "string" },
+                confidence: { type: "number" },
+              },
+              required: ["tool", "arguments", "reasoning", "confidence"],
+            },
           },
-          {
-            role: "system",
-            content: createDateTimeSystemPrompt({ timeZone }),
-          },
-          ...messages,
-        ],
-        max_tokens: 300,
-        temperature: 0.1,
+          max_tokens: 300,
+          temperature: 0.1,
         },
       );
 
@@ -711,12 +726,10 @@ const callDecisionModel = async ({
   }
 
   return callOpenRouter({
-    model:
-      stage === "extraction"
-        ? getOpenRouterExtractionModel()
-        : getOpenRouterRoutingModel(),
+    model: stage === "extraction" ? getOpenRouterExtractionModel() : getOpenRouterRoutingModel(),
     timeZone,
     messages,
+    jsonMode: true,
   });
 };
 
@@ -998,11 +1011,6 @@ const normalizeToolExecutionInput = ({
   };
 };
 
-const getSingleActiveTool = (tools: AllowedTool[]) => {
-  const activeTools = tools.filter((tool) => tool.status === "active");
-  return activeTools.length === 1 ? activeTools[0] : null;
-};
-
 const TODO_LEADING_VERB_PATTERN =
   /^(call|email|buy|send|pay|book|schedule|cancel|renew|reply|write|pick up|pickup|drop off|follow up|text|message|plan|order|get|wash|clean|groom|feed|walk|take|make|finish|submit|check|review|prepare)\b/i;
 
@@ -1062,35 +1070,6 @@ const extractImplicitTodoCandidate = (content: string) => {
   return null;
 };
 
-const getTodoHeuristicDecision = ({
-  tool,
-  content,
-}: {
-  tool: AllowedTool | null;
-  content: string;
-}) => {
-  if (tool?.toolName !== "todos.add") {
-    return null;
-  }
-
-  const explicitTodo = extractExplicitTodoCandidate(content);
-
-  if (explicitTodo) {
-    return {
-      action: "tool_call" as const,
-      tool_name: tool.toolName,
-      arguments: {
-        todo_items: splitTodoItemsFromText(explicitTodo),
-      },
-      confidence: 0.9,
-      reasoning:
-        "The user directly stated task phrases, so familiar should extract todo_items and add them to the todo list.",
-    };
-  }
-
-  return null;
-};
-
 const buildToolConfirmationQuestion = ({
   tool,
 }: {
@@ -1138,36 +1117,6 @@ const decideConversationAction = async ({
   timeZone?: string | null;
 }) => {
   if (tools.filter((tool) => tool.status === "active").length === 0) {
-    const reply = await buildDirectReply({
-      content,
-      messages,
-      memoryContext,
-      replyModel,
-      timeZone,
-    });
-
-    return {
-      action: "direct_reply",
-      reply,
-    } satisfies ConversationDecision;
-  }
-
-  const singleActiveTool = getSingleActiveTool(tools);
-  const todoHeuristicDecision = getTodoHeuristicDecision({
-    tool: singleActiveTool,
-    content,
-  });
-
-  if (todoHeuristicDecision) {
-    return todoHeuristicDecision satisfies ConversationDecision;
-  }
-
-  if (
-    !hasExplicitToolUseIntent({
-      content,
-      tools,
-    })
-  ) {
     const reply = await buildDirectReply({
       content,
       messages,
@@ -2210,37 +2159,6 @@ export const handleProviderConversationInput = async ({
         action = "tool_call";
         executionState = execution.state;
         executionId = execution.executionId;
-
-        const confirmationRemainder =
-          pendingTool?.toolName === "todos.add"
-            ? extractPendingToolConfirmationRemainder(content)
-            : "";
-
-        if (confirmationRemainder && pendingTool) {
-          const followOnDecision = getTodoHeuristicDecision({
-            tool: pendingTool,
-            content: confirmationRemainder,
-          });
-
-          if (followOnDecision?.action === "tool_call") {
-            const followOnExecution = await executeProviderTool({
-              providerConfig,
-              providerId: input.integration_id,
-              userId: input.user_id,
-              threadId,
-              toolName: followOnDecision.tool_name,
-              args: followOnDecision.arguments,
-              executorPayloadTemplate: pendingTool.executorPayload,
-              channel: input.channel,
-              requestId,
-            });
-
-            assistantContent = `${execution.message} ${followOnExecution.message}`.trim();
-            executionState =
-              execution.state === "failed" ? execution.state : followOnExecution.state;
-            executionId = followOnExecution.executionId;
-          }
-        }
 
         logProviderAudit({
           event: "provider.tool.executed",

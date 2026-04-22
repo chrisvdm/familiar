@@ -20,7 +20,7 @@ type ProviderAuthSuccess = {
 
 export type ProviderAuthResult = ProviderAuthFailure | ProviderAuthSuccess;
 
-const DEFAULT_CONFIG_LABEL = "TEXTY_EXECUTOR_CONFIG or TEXTY_INTEGRATION_CONFIG";
+const DEFAULT_CONFIG_LABEL = "TEXTY_EXECUTOR_CONFIG";
 
 type ProviderAuditLogger = (event: {
   event: string;
