@@ -130,7 +130,7 @@ export const Home = () => (
           </div>
           <div className="hero-snippet">
             <p className="hero-snippet-label">Create an account and get started</p>
-            <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.dev/api/v1/accounts \\
+            <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \\
   -H "Content-Type: application/json" \\
   -d '{}'`}</pre>
             <div className="hero-actions">

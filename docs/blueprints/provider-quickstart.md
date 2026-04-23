@@ -43,7 +43,7 @@ Long term, explicit `integration_id` will matter again once one account can mana
 ## Step 1: Create an account and get a token
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.dev/api/v1/accounts \
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -60,7 +60,7 @@ That token is the main machine credential in the current MVP.
 familiar makes model calls on behalf of your integration. You must supply an OpenRouter API key so those calls are charged to your account, not the operator's.
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
+curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{"ai_api_key": "sk-or-v1-..."}'
@@ -77,7 +77,7 @@ Get an OpenRouter key at https://openrouter.ai/keys.
 Tell familiar which tools the current setup should use.
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.dev/api/v1/tools/sync \
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -112,7 +112,7 @@ Current MVP shortcut:
 Send a normal message into familiar.
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.dev/api/v1/input \
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -194,7 +194,7 @@ familiar will return that execution state in the conversation response and, when
 When the task actually finishes, call familiar back:
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.dev/api/v1/webhooks/executor \
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{

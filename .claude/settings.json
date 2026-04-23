@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ':*)",
+      "Bash(git commit -m ' *)",
+      "Bash(gh issue create --label backlog --title 'toolcall_id: store ToolCall records and send id to executor' --body ' *)",
+      "Bash(node --import tsx/esm --test src/app/provider/provider.toolcall-trigger-fix.test.ts)",
+      "Bash(node --experimental-strip-types --experimental-specifier-resolution=node --test \"src/app/provider/provider.toolcall-trigger-fix.test.ts\")",
+      "Bash(gh issue *)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "WebSearch",
+      "Bash(grep -v \"^$\")",
+      "Bash(curl -s --max-time 3 http://localhost:5173/api/v1/account)",
+      "Bash(curl -s http://localhost:5173/api/v1/account -H 'Authorization: Bearer fam_0e389a637876551eff3038037c6b88988989d83bc357c346')",
+      "Bash(curl -s -X POST http://localhost:5173/api/v1/input -H 'Authorization: Bearer fam_0e389a637876551eff3038037c6b88988989d83bc357c346' -H 'Content-Type: application/json' -d '{ *)"
+    ]
+  }
+}

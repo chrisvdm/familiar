@@ -19,7 +19,7 @@ type CreateAccountResponse = {
 };
 
 const curlExample = (token: string) =>
-  `curl -X POST https://familiar.chrsvdmrw.dev/api/v1/tools/sync \\
+  `curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \\
   -H "Authorization: Bearer ${token}" \\
   -H "Content-Type: application/json" \\
   -d '{

@@ -13,7 +13,7 @@ Use one of these working paths today.
 Open:
 
 ```text
-https://familiar.chrsvdmrw.dev/setup
+https://familiar.chrsvdmrw.workers.dev/setup
 ```
 
 That page creates an account and shows your first API token once.
@@ -21,7 +21,7 @@ That page creates an account and shows your first API token once.
 ### Through the API
 
 ```sh
-curl -X POST https://familiar.chrsvdmrw.dev/api/v1/accounts \
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{}'
 ```

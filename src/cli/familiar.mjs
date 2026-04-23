@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const DEFAULT_BASE_URL =
-  process.env.FAMILIAR_BASE_URL?.trim() || "https://familiar.chrsvdmrw.dev";
+  process.env.FAMILIAR_BASE_URL?.trim() || "https://familiar.chrsvdmrw.workers.dev";
 const CONFIG_DIR = path.join(os.homedir(), ".codex", "familiar");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 
@@ -196,6 +196,7 @@ const runPortal = async ({ host, token, port }) => {
   let stopping = false;
 
   const registerUrl = async (tunnelUrl) => {
+    print(`Registering ${tunnelUrl} with ${baseHost}...`);
     try {
       await patchJson({
         url: `${baseHost}/api/v1/integration`,
@@ -205,7 +206,8 @@ const runPortal = async ({ host, token, port }) => {
       print(`Registered: ${tunnelUrl}`);
       print(`Ready. Keeping tunnel alive — press Ctrl-C to stop.`);
     } catch (err) {
-      printError(`Failed to register URL with familiar: ${err.message}`);
+      const detail = err.cause?.message ?? err.cause ?? err.message;
+      printError(`Failed to register URL with familiar: ${detail}`);
     }
   };
 
