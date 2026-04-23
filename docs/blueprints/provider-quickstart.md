@@ -55,7 +55,24 @@ This returns:
 
 That token is the main machine credential in the current MVP.
 
-## Step 2: Sync Allowed Tools
+## Step 2: Set your AI provider key
+
+familiar makes model calls on behalf of your integration. You must supply an OpenRouter API key so those calls are charged to your account, not the operator's.
+
+```shell
+curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"ai_api_key": "sk-or-v1-..."}'
+```
+
+This returns the integration record with `ai_api_key_set: true` and the key prefix. The full key is never returned by any endpoint.
+
+To clear a key later, send `{"ai_api_key": null}`.
+
+Get an OpenRouter key at https://openrouter.ai/keys.
+
+## Step 3: Sync Allowed Tools
 
 Tell familiar which tools the current setup should use.
 
@@ -90,7 +107,7 @@ Current MVP shortcut:
 - you can also send `tools` directly on `POST /api/v1/input`
 - that is useful while setup/admin flows are still evolving
 
-## Step 3: Send Conversation Input
+## Step 4: Send Conversation Input
 
 Send a normal message into familiar.
 
@@ -123,7 +140,7 @@ Important input rule:
 - if your product supports voice notes or speech input, transcribe or otherwise normalize that upstream before calling `/api/v1/input`
 - large transcription blocks are fine as long as they arrive as plain `input.text`
 
-## Step 4: Expose `/tools/execute`
+## Step 5: Expose `/tools/execute`
 
 If familiar decides that a tool should run, it will call:
 
@@ -155,7 +172,7 @@ Important:
 - shortcut-forced tool mode may also include `context.raw_input_text`
 - async executors may receive `context.executor_result_webhook_url` and can call it later when work finishes
 
-### Step 5: Send an async result back to familiar
+### Step 6: Send an async result back to familiar
 
 If your executor launches work and returns `accepted` or `in_progress`, keep the first response short and user-facing, for example:
 

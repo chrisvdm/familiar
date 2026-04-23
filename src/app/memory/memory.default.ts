@@ -16,6 +16,7 @@ export class DefaultMemoryBackend implements MemoryBackend {
       threadMemory: params.threadMemory,
       globalMemory: params.globalMemory,
       timeZone: params.timeZone,
+      aiApiKey: params.aiApiKey,
       // --GROK--: passes the drill-deeper callback so buildMemoryContext can fetch
       // full thread message history when the AI selector emits thread_drill_ids.
       getThreadHistory: async (threadId) => {
@@ -36,6 +37,7 @@ export class DefaultMemoryBackend implements MemoryBackend {
       previousThreadMemory: params.previousThreadMemory,
       globalMemory: params.globalMemory,
       timeZone: params.timeZone,
+      aiApiKey: params.aiApiKey,
     });
   }
 

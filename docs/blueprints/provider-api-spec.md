@@ -580,11 +580,14 @@ Recommended familiar error codes:
 - `invalid_request`
 - `unauthenticated`
 - `forbidden`
+- `configuration_required`
 - `not_found`
 - `conflict`
 - `rate_limited`
 - `provider_execution_failed`
 - `internal_error`
+
+`configuration_required` is returned by `POST /api/v1/input` when the authenticated account has not yet stored an AI provider key. The caller should direct the account holder to set one via `PATCH /api/v1/integration`.
 
 ## Idempotency Rules
 

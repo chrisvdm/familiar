@@ -22,6 +22,7 @@ const sharedDeps = {
   updateAccountIntegrationBaseUrl: async () => ({
     id: "setup_123",
     baseUrl: "https://executor.example",
+    aiApiKey: null,
     createdAt: "2026-03-25T10:00:00.000Z",
     updatedAt: "2026-03-25T10:05:00.000Z",
   }),
@@ -94,6 +95,7 @@ test("get account endpoint resolves account from bearer token", async () => {
       integration: {
         id: "setup_123",
         baseUrl: "https://executor.example",
+        aiApiKey: null,
         createdAt: "2026-03-25T10:00:00.000Z",
         updatedAt: "2026-03-25T10:05:00.000Z",
       },
@@ -153,6 +155,7 @@ test("current integration endpoint returns stored executor base url", async () =
       integration: {
         id: "setup_123",
         baseUrl: "https://executor.example",
+        aiApiKey: null,
         createdAt: "2026-03-25T10:00:00.000Z",
         updatedAt: "2026-03-25T10:05:00.000Z",
       },
@@ -181,6 +184,8 @@ test("current integration endpoint returns stored executor base url", async () =
     integration: {
       id: "setup_123",
       base_url: "https://executor.example",
+      ai_api_key_set: false,
+      ai_api_key_prefix: null,
       created_at: "2026-03-25T10:00:00.000Z",
       updated_at: "2026-03-25T10:05:00.000Z",
     },
@@ -194,6 +199,7 @@ test("current integration endpoint updates the executor base url", async () => {
         accountId: string;
         integrationId: string;
         baseUrl: string | null;
+        aiApiKey: string | null;
       }
     | undefined;
 
@@ -207,6 +213,7 @@ test("current integration endpoint updates the executor base url", async () => {
       return {
         id: input.integrationId,
         baseUrl: input.baseUrl,
+        aiApiKey: input.aiApiKey,
         createdAt: "2026-03-25T10:00:00.000Z",
         updatedAt: "2026-03-25T10:10:00.000Z",
       };
@@ -251,12 +258,15 @@ test("current integration endpoint updates the executor base url", async () => {
     accountId: "acct_123",
     integrationId: "setup_123",
     baseUrl: "https://executor.example",
+    aiApiKey: null,
   });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     integration: {
       id: "setup_123",
       base_url: "https://executor.example",
+      ai_api_key_set: false,
+      ai_api_key_prefix: null,
       created_at: "2026-03-25T10:00:00.000Z",
       updated_at: "2026-03-25T10:10:00.000Z",
     },

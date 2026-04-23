@@ -155,6 +155,15 @@ const createAccount = async ({ host, shouldPersist }) => {
   if (shouldPersist) {
     print(`Stored token at: ${CONFIG_PATH}`);
   }
+
+  print(``);
+  print(`Next step: set your AI provider key so familiar can make model calls on your behalf.`);
+  print(`  familiar set-key <your-openrouter-key>`);
+  print(`  -- or --`);
+  print(`  curl -X PATCH ${host}/api/v1/integration \\`);
+  print(`    -H "Authorization: Bearer ${payload.token.value}" \\`);
+  print(`    -H "Content-Type: application/json" \\`);
+  print(`    -d '{"ai_api_key": "sk-or-v1-..."}'`);
 };
 
 const showAccount = async ({ host, token }) => {

@@ -1,6 +1,6 @@
 import type { ProviderConfig } from "./provider.types";
 
-type ProviderAuthErrorCode = "unauthenticated" | "forbidden";
+type ProviderAuthErrorCode = "unauthenticated" | "forbidden" | "configuration_required";
 
 type ProviderAuthFailure = {
   ok: false;

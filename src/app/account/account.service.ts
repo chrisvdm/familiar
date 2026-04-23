@@ -21,6 +21,7 @@ type AccountRegistryStub = {
     integrationId: string;
     accountId: string;
     baseUrl: string | null;
+    aiApiKey: string | null;
   }) => Promise<{ value: FamiliarIntegrationConfig } | { error: string }>;
   authenticateToken: (input: {
     tokenHash: string;
@@ -126,6 +127,7 @@ export const createAccountWithInitialToken = async ({
     id: setupId,
     accountId: account.id,
     baseUrl: null,
+    aiApiKey: null,
     createdAt: account.createdAt,
     updatedAt: account.createdAt,
   };
@@ -165,15 +167,18 @@ export const updateAccountIntegrationBaseUrl = async ({
   accountId,
   integrationId,
   baseUrl,
+  aiApiKey,
 }: {
   accountId: string;
   integrationId: string;
   baseUrl: string | null;
+  aiApiKey: string | null;
 }) => {
   const result = await getAccountRegistryStub().updateIntegration({
     accountId,
     integrationId,
     baseUrl,
+    aiApiKey,
   });
 
   if ("error" in result) {

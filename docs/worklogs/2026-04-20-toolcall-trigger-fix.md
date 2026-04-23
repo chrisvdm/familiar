@@ -53,3 +53,15 @@ We created `src/app/provider/provider.toolcall-trigger-fix.test.ts` with 8 tests
 - One test confirming `interpretPendingToolConfirmation` (confirm/reject/unknown) is unaffected
 
 All 8 pass.
+
+## Manual verification — passed
+
+Tested against the minimal-executor sandbox:
+
+- **Implicit tool calls**: natural language ("buy dog food") routed correctly to `todos.add` and executed. `execution.state: completed`.
+- **Explicit @mention calls**: `@TodoList Add dogfood` style still resolved correctly via the shortcut path.
+- **Memory**: name and pet fact storage and recall working as expected after the gate removal. No regression from global-memory-v2 fixes.
+
+Routing model flow in local dev: Cloudflare Llama 3.1 8B throws on `json_schema` mode (error 5024) and falls back to OpenRouter `gpt-4o-mini` with `response_format: json_object`, which returns valid JSON. Production Cloudflare Workers AI behaviour may differ.
+
+Worklog closed.

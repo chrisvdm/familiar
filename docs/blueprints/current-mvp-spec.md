@@ -189,7 +189,50 @@ Rules:
 - bearer token is the lookup key
 - no account id needs to be sent
 
-### 3. Send conversation input
+### 3. Set AI provider key
+
+`PATCH /api/v1/integration`
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "ai_api_key": "sk-or-v1-abc123..."
+}
+```
+
+Response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "ai_api_key_set": true,
+    "ai_api_key_prefix": "sk-or-v1",
+    "base_url": null,
+    "created_at": "2026-03-25T10:00:00.000Z",
+    "updated_at": "2026-03-25T10:00:00.000Z"
+  }
+}
+```
+
+Rules:
+
+- this step is required before sending conversation input
+- familiar will not process messages until an AI provider key is stored
+- only OpenRouter keys are accepted: the key must start with `sk-or-v1-`
+- the full key is never returned; `ai_api_key_prefix` is the first vendor-prefix segment
+- sending `null` clears the stored key
+- omitting `ai_api_key` from the payload leaves the existing key unchanged
+
+### 4. Send conversation input
 
 `POST /api/v1/input`
 
@@ -254,7 +297,7 @@ Behavior:
 - decide direct reply, clarification, or tool call
 - persist the conversation state
 
-### 4. Sync tools
+### 5. Sync tools
 
 `POST /api/v1/tools/sync`
 
@@ -298,7 +341,7 @@ Rules:
 - response may still include `integration_id` as the resolved backing setup id
 - compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 
-### 5. Thread endpoints
+### 6. Thread endpoints
 
 Required thread/runtime endpoints:
 
@@ -316,7 +359,7 @@ The short explanation:
 - mutate or delete threads
 - inspect shared memory and thread memory for debugging/admin visibility
 
-### 6. Async executor callback
+### 7. Async executor callback
 
 `POST /api/v1/webhooks/executor`
 
@@ -367,8 +410,20 @@ Useful error categories:
 - `unauthenticated`
 - `forbidden`
 - `invalid_request`
+- `configuration_required`
 - `method_not_allowed`
 - `rate_limited`
+
+`configuration_required` is returned when an authenticated account has not yet set an AI provider key. The error message explains how to fix it:
+
+```json
+{
+  "error": {
+    "code": "configuration_required",
+    "message": "No AI provider key configured. Set one via PATCH /api/v1/integration with your OpenRouter key."
+  }
+}
+```
 
 ## CLI MVP
 

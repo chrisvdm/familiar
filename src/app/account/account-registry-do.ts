@@ -54,6 +54,7 @@ export class AccountRegistryDurableObject extends DurableObject {
     integrationId: string;
     accountId: string;
     baseUrl: string | null;
+    aiApiKey: string | null;
   }) {
     const state = await this.loadState();
     const account = state.accounts[input.accountId];
@@ -72,12 +73,14 @@ export class AccountRegistryDurableObject extends DurableObject {
       ? {
           ...existing,
           baseUrl: input.baseUrl,
+          aiApiKey: input.aiApiKey,
           updatedAt: now,
         }
       : {
           id: input.integrationId,
           accountId: input.accountId,
           baseUrl: input.baseUrl,
+          aiApiKey: input.aiApiKey,
           createdAt: now,
           updatedAt: now,
         };
@@ -132,6 +135,7 @@ export class AccountRegistryDurableObject extends DurableObject {
       id: account.defaultSetupId,
       accountId: account.id,
       baseUrl: null,
+      aiApiKey: null,
       createdAt: account.createdAt,
       updatedAt: account.createdAt,
     };

@@ -16,6 +16,7 @@ type AuthResult =
       providerConfig: {
         token: string;
         baseUrl?: string;
+        aiApiKey?: string;
       };
       accountId?: string;
     }
@@ -101,6 +102,7 @@ export type ConversationEndpointDeps = {
     providerConfig: {
       token: string;
       baseUrl?: string;
+      aiApiKey?: string;
     };
     requestId?: string;
   }) => Promise<Record<string, unknown>>;

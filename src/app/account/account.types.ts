@@ -8,6 +8,7 @@ export type FamiliarIntegrationConfig = {
   id: string;
   accountId: string;
   baseUrl: string | null;
+  aiApiKey: string | null;
   createdAt: string;
   updatedAt: string;
 };

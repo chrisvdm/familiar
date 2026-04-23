@@ -56,9 +56,10 @@ A new integration should have one clear first success path:
 1. install the CLI
 2. create or sign in to a familiar account
 3. get an API token for the current familiar setup
-4. publish tool definitions into the hosted registry behind that token
-5. send conversation input
-6. let familiar trigger the correct target with schema-valid arguments
+4. set an AI provider key via `PATCH /api/v1/integration` — familiar will not process messages without one
+5. publish tool definitions into the hosted registry behind that token
+6. send conversation input
+7. let familiar trigger the correct target with schema-valid arguments
 
 Everything else should be optional or advanced.
 

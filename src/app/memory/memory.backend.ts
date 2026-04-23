@@ -13,6 +13,7 @@ export type MemoryRetrieveParams = {
   globalMemory: GlobalMemory;
   policy: MemoryPolicy;
   timeZone?: string | null;
+  aiApiKey?: string;
 };
 
 export type MemoryStoreParams = {
@@ -23,6 +24,7 @@ export type MemoryStoreParams = {
   previousThreadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
   timeZone?: string | null;
+  aiApiKey?: string;
 };
 
 export type MemoryStoreResult = {

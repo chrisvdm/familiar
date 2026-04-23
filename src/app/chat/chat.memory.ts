@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { sanitizeExtractedMemoryFact } from "./chat.memory.identity.ts";
 import { createDateTimeSystemPrompt, DEFAULT_MODEL } from "./conversation.runtime.ts";
+import { callOpenRouter as callOpenRouterClient, type OpenRouterMessage } from "../provider/openrouter.client.ts";
 
 import {
   addDynamicFactToGlobalMemory,
@@ -26,21 +27,6 @@ const memoryEnv = env as typeof env & {
   OPENROUTER_API_KEY?: string;
 };
 
-type OpenRouterMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
-};
-
-type OpenRouterResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
-};
 
 type RawMemoryFact = {
   key?: string;
@@ -750,12 +736,14 @@ const callOpenRouter = async ({
   messages,
   model,
   timeZone,
+  aiApiKey,
 }: {
   messages: OpenRouterMessage[];
   model?: string;
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
-  const apiKey = memoryEnv.OPENROUTER_API_KEY;
+  const apiKey = aiApiKey || memoryEnv.OPENROUTER_API_KEY;
 
   if (!apiKey) {
     throw new Error(
@@ -763,39 +751,16 @@ const callOpenRouter = async ({
     );
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": memoryEnv.OPENROUTER_SITE_URL || "http://localhost:5173",
-      "X-Title": memoryEnv.OPENROUTER_SITE_NAME || "familiar",
-    },
-    body: JSON.stringify({
-      model:
-        model ||
-        memoryEnv.OPENROUTER_MEMORY_MODEL ||
-        memoryEnv.OPENROUTER_MODEL ||
-        DEFAULT_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: createDateTimeSystemPrompt({ timeZone }),
-        },
-        ...messages,
-      ],
-    }),
+  const content = await callOpenRouterClient({
+    apiKey,
+    model: model || memoryEnv.OPENROUTER_MEMORY_MODEL || memoryEnv.OPENROUTER_MODEL || DEFAULT_MODEL,
+    siteUrl: memoryEnv.OPENROUTER_SITE_URL || "http://localhost:5173",
+    siteName: memoryEnv.OPENROUTER_SITE_NAME || "familiar",
+    messages: [
+      { role: "system", content: createDateTimeSystemPrompt({ timeZone }) },
+      ...messages,
+    ],
   });
-
-  const payload = (await response.json()) as OpenRouterResponse;
-
-  if (!response.ok) {
-    throw new Error(
-      payload.error?.message || "OpenRouter returned an unexpected error.",
-    );
-  }
-
-  const content = payload.choices?.[0]?.message?.content?.trim();
 
   if (!content) {
     throw new Error("OpenRouter did not return a response message.");
@@ -917,6 +882,7 @@ const selectMemoryContextWithAi = async ({
   threadSummaries,
   snippets,
   timeZone,
+  aiApiKey,
 }: {
   userMessage: string;
   threadFacts: MemoryFact[];
@@ -925,6 +891,7 @@ const selectMemoryContextWithAi = async ({
   threadSummaries: GlobalThreadSummary[];
   snippets: ChatMessage[];
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
   const threadFactCandidates = threadFacts.map(buildThreadFactCandidate);
   const globalFactCandidates = globalFacts.map(buildGlobalFactCandidate);
@@ -946,6 +913,7 @@ const selectMemoryContextWithAi = async ({
     const rawContent = await callOpenRouter({
       model: getMemorySelectorModel(),
       timeZone,
+      aiApiKey,
       messages: [
         {
           role: "system",
@@ -1010,12 +978,14 @@ export const refreshMemories = async ({
   previousThreadMemory,
   globalMemory,
   timeZone,
+  aiApiKey,
 }: {
   threadId: string;
   messages: ChatMessage[];
   previousThreadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
   const messagesById = new Map(messages.map((message) => [message.id, message]));
   const extractionPrompt = `Previous thread summary: ${
@@ -1070,6 +1040,7 @@ Return strict JSON with this shape:
 
   const rawContent = await callOpenRouter({
     timeZone,
+    aiApiKey,
     messages: [
       {
         role: "system",
@@ -1164,10 +1135,12 @@ export const synthesizeUserProfile = async ({
   messages,
   globalMemory,
   timeZone,
+  aiApiKey,
 }: {
   messages: ChatMessage[];
   globalMemory: GlobalMemory;
   timeZone?: string | null;
+  aiApiKey?: string;
 }): Promise<GlobalMemory> => {
   const userMessages = messages
     .filter((message) => message.role === "user")
@@ -1212,6 +1185,7 @@ Rules:
 
   const rawContent = await callOpenRouter({
     timeZone,
+    aiApiKey,
     messages: [
       {
         role: "system",
@@ -1274,6 +1248,7 @@ export const buildMemoryContext = async ({
   threadMemory,
   globalMemory,
   timeZone,
+  aiApiKey,
   getThreadHistory,
 }: {
   userMessage: string;
@@ -1281,6 +1256,7 @@ export const buildMemoryContext = async ({
   threadMemory: ThreadMemory;
   globalMemory: GlobalMemory;
   timeZone?: string | null;
+  aiApiKey?: string;
   getThreadHistory?: (threadId: string) => Promise<ChatMessage[]>;
 }) => {
   const queryTokens = expandQueryTokens(tokenize(userMessage));
@@ -1342,6 +1318,7 @@ export const buildMemoryContext = async ({
       ...getTopRecentSnippets(messages),
     ]),
     timeZone,
+    aiApiKey,
   });
 
   const relevantThreadFacts =

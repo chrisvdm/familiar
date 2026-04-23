@@ -65,6 +65,7 @@ export type ProviderUserContext = {
 export type ProviderConfig = {
   token: string;
   baseUrl?: string;
+  aiApiKey?: string;
 };
 
 export type ProviderChannelInput = {

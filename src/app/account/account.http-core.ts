@@ -26,6 +26,7 @@ type AuthenticatedAccount = {
   integration: {
     id: string;
     baseUrl: string | null;
+    aiApiKey: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -66,9 +67,11 @@ type AccountEndpointDeps = {
     accountId: string;
     integrationId: string;
     baseUrl: string | null;
+    aiApiKey: string | null;
   }) => Promise<{
     id: string;
     baseUrl: string | null;
+    aiApiKey: string | null;
     createdAt: string;
     updatedAt: string;
   }>;
@@ -232,6 +235,10 @@ export const createHandleCurrentIntegrationEndpoint = (
           integration: {
             id: auth.integration.id,
             base_url: auth.integration.baseUrl,
+            ai_api_key_set: auth.integration.aiApiKey !== null,
+            ai_api_key_prefix: auth.integration.aiApiKey
+              ? auth.integration.aiApiKey.slice(0, 8)
+              : null,
             created_at: auth.integration.createdAt,
             updated_at: auth.integration.updatedAt,
           },
@@ -240,13 +247,36 @@ export const createHandleCurrentIntegrationEndpoint = (
     }
 
     try {
-      const input = await deps.readJson<{ base_url?: string | null }>(request);
+      const input = await deps.readJson<{
+        base_url?: string | null;
+        ai_api_key?: string | null;
+      }>(request);
+
       const normalizedBaseUrl =
         input.base_url == null ? null : deps.normalizeIntegrationBaseUrl(input.base_url);
+
+      // --GROK--: ai_api_key absent means keep current value; null means clear it; string means set it
+      const incomingAiApiKey = "ai_api_key" in input ? input.ai_api_key : undefined;
+      if (incomingAiApiKey !== undefined && incomingAiApiKey !== null) {
+        if (!incomingAiApiKey.startsWith("sk-or-v1-")) {
+          return deps.jsonError({
+            requestId,
+            status: 400,
+            code: "invalid_request",
+            message: "Unrecognised API key format. Expected an OpenRouter key starting with sk-or-v1-.",
+          });
+        }
+      }
+
+      // --GROK--: when ai_api_key is absent from the payload, preserve the existing value
+      const resolvedAiApiKey =
+        incomingAiApiKey !== undefined ? incomingAiApiKey : auth.integration.aiApiKey;
+
       const integration = await deps.updateAccountIntegrationBaseUrl({
         accountId: auth.account.id,
         integrationId: auth.integration.id,
         baseUrl: normalizedBaseUrl,
+        aiApiKey: resolvedAiApiKey ?? null,
       });
 
       return deps.jsonResponse({
@@ -255,6 +285,10 @@ export const createHandleCurrentIntegrationEndpoint = (
           integration: {
             id: integration.id,
             base_url: integration.baseUrl,
+            ai_api_key_set: integration.aiApiKey !== null,
+            ai_api_key_prefix: integration.aiApiKey
+              ? integration.aiApiKey.slice(0, 8)
+              : null,
             created_at: integration.createdAt,
             updated_at: integration.updatedAt,
           },

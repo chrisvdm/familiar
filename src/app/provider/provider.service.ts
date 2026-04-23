@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { requestInfo } from "rwsdk/worker";
 
+import { callOpenRouter as callOpenRouterClient } from "./openrouter.client";
 import {
   synthesizeUserProfile,
 } from "../chat/chat.memory";
@@ -90,16 +91,6 @@ type NormalizedProviderToolSyncInput = ProviderToolSyncInput & {
   user_id: string;
 };
 
-type OpenRouterResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
-};
 
 type ConversationDecision =
   | {
@@ -351,16 +342,19 @@ const buildDirectReply = async ({
   memoryContext,
   replyModel,
   timeZone,
+  aiApiKey,
 }: {
   content: string;
   messages: ChatMessage[];
   memoryContext: string | null;
   replyModel: string;
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
   return callOpenRouter({
     model: replyModel,
     timeZone,
+    aiApiKey,
     messages: [
       {
         role: "system" as const,
@@ -586,52 +580,32 @@ const callOpenRouter = async ({
   model,
   timeZone,
   jsonMode = false,
+  aiApiKey,
 }: {
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   model: string;
   timeZone?: string | null;
   jsonMode?: boolean;
+  aiApiKey?: string;
 }) => {
-  const apiKey = env.OPENROUTER_API_KEY;
+  const apiKey = aiApiKey || env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured.");
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": env.OPENROUTER_SITE_URL || "http://localhost:5173",
-      "X-Title": env.OPENROUTER_SITE_NAME || "familiar",
-    },
-    body: JSON.stringify({
-      model,
-      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT,
-        },
-        {
-          role: "system",
-          content: createDateTimeSystemPrompt({ timeZone }),
-        },
-        ...messages,
-      ],
-    }),
+  const content = await callOpenRouterClient({
+    apiKey,
+    model,
+    siteUrl: env.OPENROUTER_SITE_URL || "http://localhost:5173",
+    siteName: env.OPENROUTER_SITE_NAME || "familiar",
+    jsonMode,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: createDateTimeSystemPrompt({ timeZone }) },
+      ...messages,
+    ],
   });
-
-  const payload = (await response.json()) as OpenRouterResponse;
-
-  if (!response.ok) {
-    throw new Error(
-      payload.error?.message || "OpenRouter returned an unexpected error.",
-    );
-  }
-
-  const content = payload.choices?.[0]?.message?.content?.trim();
 
   if (!content) {
     throw new Error("OpenRouter did not return a response message.");
@@ -674,10 +648,12 @@ const callDecisionModel = async ({
   messages,
   timeZone,
   stage = "routing",
+  aiApiKey,
 }: {
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   timeZone?: string | null;
   stage?: "routing" | "extraction";
+  aiApiKey?: string;
 }) => {
   if (providerEnv.AI && shouldUseWorkersAiRouting()) {
     const cfModel = stage === "extraction" ? getCloudflareExtractionModel() : getCloudflareRoutingModel();
@@ -728,6 +704,7 @@ const callDecisionModel = async ({
   return callOpenRouter({
     model: stage === "extraction" ? getOpenRouterExtractionModel() : getOpenRouterRoutingModel(),
     timeZone,
+    aiApiKey,
     messages,
     jsonMode: true,
   });
@@ -1108,6 +1085,7 @@ const decideConversationAction = async ({
   tools,
   replyModel,
   timeZone,
+  aiApiKey,
 }: {
   content: string;
   messages: ChatMessage[];
@@ -1115,6 +1093,7 @@ const decideConversationAction = async ({
   tools: AllowedTool[];
   replyModel: string;
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
   if (tools.filter((tool) => tool.status === "active").length === 0) {
     const reply = await buildDirectReply({
@@ -1123,6 +1102,7 @@ const decideConversationAction = async ({
       memoryContext,
       replyModel,
       timeZone,
+      aiApiKey,
     });
 
     return {
@@ -1139,6 +1119,7 @@ const decideConversationAction = async ({
   const decision = await callDecisionModel({
     timeZone,
     stage: "routing",
+    aiApiKey,
     messages: [
       {
         role: "system",
@@ -1202,6 +1183,7 @@ const decideConversationAction = async ({
       memoryContext,
       replyModel,
       timeZone,
+      aiApiKey,
     });
 
     return {
@@ -1291,16 +1273,19 @@ const updatePendingToolArguments = async ({
   userReply,
   question,
   timeZone,
+  aiApiKey,
 }: {
   tool: AllowedTool;
   currentArguments: Record<string, unknown>;
   userReply: string;
   question?: string;
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
   const decision = await callDecisionModel({
     timeZone,
     stage: "extraction",
+    aiApiKey,
     messages: [
       {
         role: "system",
@@ -1499,6 +1484,7 @@ const refreshProviderMemories = async ({
   context,
   isPrivate,
   timeZone,
+  aiApiKey,
 }: {
   threadId: string;
   state: ChatSessionState;
@@ -1506,6 +1492,7 @@ const refreshProviderMemories = async ({
   context: ProviderUserContext;
   isPrivate: boolean;
   timeZone?: string | null;
+  aiApiKey?: string;
 }) => {
   try {
     const memoryBackend = createMemoryBackend();
@@ -1517,6 +1504,7 @@ const refreshProviderMemories = async ({
       previousThreadMemory: state.memory,
       globalMemory: isPrivate ? createEmptyGlobalMemory() : context.globalMemory,
       timeZone,
+      aiApiKey,
     });
 
     const nextThreadState = {
@@ -1573,9 +1561,11 @@ const isCalibrationRequest = (message: string): boolean =>
 const runProfileSynthesis = async ({
   context,
   timeZone,
+  aiApiKey,
 }: {
   context: ProviderUserContext;
   timeZone?: string | null;
+  aiApiKey?: string;
 }): Promise<ProviderUserContext> => {
   try {
     const recentThreads = [...context.threads]
@@ -1598,6 +1588,7 @@ const runProfileSynthesis = async ({
       messages,
       globalMemory: context.globalMemory,
       timeZone,
+      aiApiKey,
     });
 
     const now = new Date().toISOString();
@@ -1993,7 +1984,7 @@ export const handleProviderConversationInput = async ({
     context.threads.length > 0 &&
     (isSynthesisDue(context) || isCalibrationRequest(content))
   ) {
-    context = await runProfileSynthesis({ context, timeZone });
+    context = await runProfileSynthesis({ context, timeZone, aiApiKey: providerConfig.aiApiKey });
   }
 
   logProviderAudit({
@@ -2052,6 +2043,7 @@ export const handleProviderConversationInput = async ({
           globalMemory: memoryScope,
           policy: currentContext.memoryPolicy,
           timeZone,
+          aiApiKey: providerConfig.aiApiKey,
         });
   const nextState = await appendMessagesToThread({
     threadId,
@@ -2193,6 +2185,7 @@ export const handleProviderConversationInput = async ({
         userReply: content,
         question: currentState.pendingToolConfirmation.question,
         timeZone,
+        aiApiKey: providerConfig.aiApiKey,
       });
 
       if (updated.followUp) {
@@ -2261,6 +2254,7 @@ export const handleProviderConversationInput = async ({
       tools: currentContext.allowedTools,
       replyModel: model,
       timeZone,
+      aiApiKey: providerConfig.aiApiKey,
     });
     decisionReasoning = decision.reasoning ?? null;
 
@@ -2394,6 +2388,7 @@ export const handleProviderConversationInput = async ({
       context: finalContext,
       isPrivate: thread.isTemporary,
       timeZone,
+      aiApiKey: providerConfig.aiApiKey,
     }).then(() => undefined),
   );
 
@@ -2506,6 +2501,7 @@ export const handleProviderExecutorResult = async ({
       context: nextContext,
       isPrivate: thread.isTemporary,
       timeZone: null,
+      aiApiKey: providerConfig.aiApiKey,
     }).then(() => undefined),
   );
 
