@@ -38,7 +38,24 @@ TEXTY_EXECUTOR_CONFIG='{"integration_a":{"token":"dev-token","baseUrl":"http://l
 > [!NOTE]
 > The current local development config still uses an internal setup key such as `integration_a` inside `TEXTY_EXECUTOR_CONFIG`. That is an implementation detail. The public API happy path can now derive the active setup from the bearer token.
 
-## Step 1: Set the executor base URL
+## Step 1: Set your AI provider key
+
+*familiar* uses [OpenRouter](https://openrouter.ai) for all model calls. Each integration must supply its own key before it can process messages.
+
+```shell
+curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ai_api_key": "sk-or-v1-your_openrouter_key"
+  }'
+```
+
+Only OpenRouter keys are accepted. The key must start with `sk-or-v1-`.
+
+Get an OpenRouter key at [openrouter.ai/keys](https://openrouter.ai/keys).
+
+## Step 2: Set the executor base URL
 
 Before *familiar* can call your executor, set the executor base URL for the current token-backed setup:
 
@@ -54,7 +71,7 @@ curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
 Use the integration root URL here, not `/tools/execute`.
 *familiar* appends `/tools/execute` itself when it calls your runtime.
 
-## Step 2: Sync tools with *familiar*
+## Step 3: Sync tools with *familiar*
 
 Sync the tools for the current token-backed setup.
 
@@ -88,7 +105,7 @@ Use `input_mode: "raw"` for tools that want the exact captured user text instead
 The token-scoped route is the primary MVP path.
 For now, the authenticated token is enough for the single-user happy path.
 
-## Step 3: Send text input to *familiar*
+## Step 4: Send text input to *familiar*
 
 Send normalized text into *familiar*.
 
@@ -108,7 +125,7 @@ curl -X POST https://familiar.chrsvdmrw.dev/api/v1/input \
   }'
 ```
 
-## Step 4: Expose your executor endpoint
+## Step 5: Expose your executor endpoint
 
 Expose an executor endpoint that *familiar* can call.
 
@@ -136,7 +153,7 @@ The executor receives structured tool input rather than raw user text.
 }
 ```
 
-## Step 5: Return a sync or async result
+## Step 6: Return a sync or async result
 
 Return either:
 
@@ -167,7 +184,7 @@ Return either:
 }
 ```
 
-## Step 6: Send the final async result back
+## Step 7: Send the final async result back
 
 If the executor returned `accepted`, send the final result later:
 

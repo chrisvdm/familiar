@@ -118,6 +118,8 @@ Example response:
 {
   "integration": {
     "id": "setup_123",
+    "ai_api_key_set": true,
+    "ai_api_key_prefix": "sk-or-v1",
     "base_url": "https://executor.example",
     "created_at": "2026-03-25T10:00:00.000Z",
     "updated_at": "2026-03-25T10:05:00.000Z"
@@ -133,10 +135,24 @@ Endpoint:
 PATCH /api/v1/integration
 ```
 
-Set the executor base URL for the current token-backed integration.
+Update the AI provider key and/or executor base URL for the current token-backed integration.
 
-Use the integration root URL here, not `/tools/execute`.
-*familiar* appends `/tools/execute` when it calls the executor.
+**Set the AI provider key** — required before *familiar* will process messages:
+
+```shell
+curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ai_api_key": "sk-or-v1-your_openrouter_key"
+  }'
+```
+
+Only OpenRouter keys are accepted. The key must start with `sk-or-v1-`. The full key is never returned; responses include `ai_api_key_set` and `ai_api_key_prefix` only.
+
+To clear a stored key, set `ai_api_key` to `null`. Omitting the field leaves the existing key unchanged.
+
+**Set the executor base URL:**
 
 ```shell
 curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
@@ -147,13 +163,8 @@ curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
   }'
 ```
 
-To clear the stored executor base URL:
-
-```json
-{
-  "base_url": null
-}
-```
+Use the integration root URL here, not `/tools/execute`.
+*familiar* appends `/tools/execute` when it calls the executor.
 
 Example response:
 
@@ -161,6 +172,8 @@ Example response:
 {
   "integration": {
     "id": "setup_123",
+    "ai_api_key_set": true,
+    "ai_api_key_prefix": "sk-or-v1",
     "base_url": "https://vertex-amplifier-glasses-identical.trycloudflare.com",
     "created_at": "2026-03-25T10:00:00.000Z",
     "updated_at": "2026-03-30T15:00:00.000Z"
