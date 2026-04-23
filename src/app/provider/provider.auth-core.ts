@@ -181,27 +181,28 @@ export const authenticateProviderRequestWithConfigs = ({
       : null;
 
   if (!resolvedProviderId) {
+    const isAmbiguous = matchingProviderIds.length > 1;
     logAudit?.({
       event: "provider.auth.failed",
       requestId,
       providerId: providerId ?? "unknown",
       status: "error",
-      code: "forbidden",
-      detail:
-        matchingProviderIds.length > 1
-          ? "Ambiguous provider token"
-          : "Unknown provider token",
+      code: isAmbiguous ? "forbidden" : "unauthenticated",
+      detail: isAmbiguous ? "Ambiguous provider token" : "Unknown provider token",
     });
     return {
       ok: false,
       status: 403,
-      error: {
-        code: "forbidden",
-        message:
-          matchingProviderIds.length > 1
-            ? "Bearer token matches multiple setups. Include integration_id until the token is unique."
-            : "Unknown provider.",
-      },
+      error: isAmbiguous
+        ? {
+            code: "forbidden" as const,
+            message:
+              "Bearer token matches multiple setups. Include integration_id until the token is unique.",
+          }
+        : {
+            code: "unauthenticated" as const,
+            message: "Unknown or invalid token.",
+          },
     };
   }
 

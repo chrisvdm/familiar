@@ -112,6 +112,13 @@ export const authenticateProviderRequest = ({
     const accountAuth = await authenticateAccountToken(token);
 
     if (!accountAuth) {
+      if (!configAuth.ok && configAuth.error.code === "unauthenticated") {
+        return {
+          ok: false as const,
+          status: 401,
+          error: { code: "unauthenticated" as const, message: "Unknown or invalid token." },
+        };
+      }
       return configAuth;
     }
 
