@@ -19,6 +19,7 @@ Usage:
   familiar account create [--host <url>]
   familiar account show [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
+  familiar portal --port <port> [--host <url>] [--token <token>]
   familiar --help
 
 Commands:
@@ -26,10 +27,13 @@ Commands:
   account create  Create an account and issue the first API token.
   account show    Show the account for the current API token.
   whoami          Alias for account show.
+  portal          Start a local tunnel and keep familiar pointed at it.
+                  Requires cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation
 
 Options:
   --host <url>    Base URL for the familiar API. Default: ${DEFAULT_BASE_URL}
   --token <token> Use a token directly instead of the stored local token.
+  --port <port>   Local port your executor is running on (required for portal).
   --help          Show this help text.
 `;
 
@@ -37,6 +41,7 @@ const parseArgs = (argv) => {
   const positionals = [];
   let host = DEFAULT_BASE_URL;
   let token;
+  let port;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -47,6 +52,7 @@ const parseArgs = (argv) => {
         positionals: [],
         host,
         token,
+        port,
       };
     }
 
@@ -62,6 +68,12 @@ const parseArgs = (argv) => {
       continue;
     }
 
+    if (value === "--port") {
+      port = argv[index + 1]?.trim();
+      index += 1;
+      continue;
+    }
+
     positionals.push(value);
   }
 
@@ -70,6 +82,7 @@ const parseArgs = (argv) => {
     positionals,
     host,
     token,
+    port,
   };
 };
 
@@ -134,6 +147,124 @@ const getJson = async ({ url, token }) => {
   return payload;
 };
 
+const patchJson = async ({ url, body, token }) => {
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `Request failed: ${response.status}`);
+  }
+
+  return payload;
+};
+
+const runPortal = async ({ host, token, port }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error("No API token found. Run `familiar init` or pass `--token <token>`.");
+  }
+
+  if (!port) {
+    throw new Error("--port is required. Example: familiar portal --port 8787");
+  }
+
+  const { execSync, spawn } = await import("node:child_process");
+
+  try {
+    execSync("cloudflared --version", { stdio: "pipe" });
+  } catch {
+    throw new Error(
+      "cloudflared is not installed.\n" +
+      "  macOS:   brew install cloudflared\n" +
+      "  Windows: winget install Cloudflare.cloudflared\n" +
+      "  Linux:   https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation",
+    );
+  }
+
+  const baseHost = host.replace(/\/$/, "");
+  print(`Starting tunnel to http://localhost:${port}...`);
+
+  let tunnelProc = null;
+  let stopping = false;
+
+  const registerUrl = async (tunnelUrl) => {
+    try {
+      await patchJson({
+        url: `${baseHost}/api/v1/integration`,
+        body: { base_url: tunnelUrl },
+        token: resolvedToken,
+      });
+      print(`Registered: ${tunnelUrl}`);
+      print(`Ready. Keeping tunnel alive — press Ctrl-C to stop.`);
+    } catch (err) {
+      printError(`Failed to register URL with familiar: ${err.message}`);
+    }
+  };
+
+  const startTunnel = () => {
+    let registered = false;
+
+    const proc = spawn(
+      "cloudflared",
+      ["tunnel", "--url", `http://localhost:${port}`],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+
+    tunnelProc = proc;
+
+    const handleLine = (data) => {
+      const text = data.toString();
+      if (!registered) {
+        const match = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+        if (match) {
+          registered = true;
+          registerUrl(match[0]);
+        }
+      }
+    };
+
+    proc.stdout.on("data", handleLine);
+    proc.stderr.on("data", handleLine);
+
+    proc.on("close", (code) => {
+      if (!stopping) {
+        printError(`Tunnel exited (code ${code ?? "?"}) — restarting in 2s...`);
+        setTimeout(startTunnel, 2000);
+      }
+    });
+  };
+
+  const cleanup = async () => {
+    stopping = true;
+    print(`\nShutting down...`);
+    tunnelProc?.kill();
+    try {
+      await patchJson({
+        url: `${baseHost}/api/v1/integration`,
+        body: { base_url: null },
+        token: resolvedToken,
+      });
+      print(`Cleared executor URL from familiar.`);
+    } catch {
+      // best effort
+    }
+    process.exit(0);
+  };
+
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+
+  startTunnel();
+};
+
 const createAccount = async ({ host, shouldPersist }) => {
   const payload = await postJson({
     url: `${host.replace(/\/$/, "")}/api/v1/accounts`,
@@ -187,7 +318,7 @@ const showAccount = async ({ host, token }) => {
 };
 
 const main = async () => {
-  const { help, positionals, host, token } = parseArgs(process.argv.slice(2));
+  const { help, positionals, host, token, port } = parseArgs(process.argv.slice(2));
 
   if (help || positionals.length === 0) {
     print(helpText);
@@ -208,6 +339,11 @@ const main = async () => {
 
   if (command === "account show" || command === "whoami") {
     await showAccount({ host, token });
+    return;
+  }
+
+  if (command === "portal") {
+    await runPortal({ host, token, port });
     return;
   }
 

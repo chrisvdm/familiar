@@ -57,24 +57,30 @@ Get an OpenRouter key at [openrouter.ai/keys](https://openrouter.ai/keys).
 
 ## Step 2: Set the executor base URL
 
-*familiar* is hosted and calls your executor over the internet. If your executor is running locally, expose it with a Cloudflare tunnel first:
+*familiar* is hosted and calls your executor over the internet. `localhost` will not work — *familiar* cannot reach your local machine directly.
+
+The easiest way to handle this is `familiar portal`, which starts a tunnel and keeps the URL registered for you:
 
 ```shell
-npx wrangler dev --remote
-# or for a plain HTTP server:
-npx wrangler tunnel --url http://localhost:8787
+familiar portal --port 8787
 ```
 
-That gives you a `trycloudflare.com` URL to use below. `localhost` will not work — *familiar* cannot reach your local machine directly.
+Leave that running in a second terminal while your executor runs. When you stop it with `Ctrl-C`, it clears the URL from *familiar* automatically.
 
-Once you have a public URL, register it:
+If you prefer to manage the tunnel manually, install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation) and run:
+
+```shell
+cloudflared tunnel --url http://localhost:8787
+```
+
+Then register the generated URL:
 
 ```shell
 curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
-    "base_url": "https://vertex-amplifier-glasses-identical.trycloudflare.com"
+    "base_url": "https://your-tunnel-url.trycloudflare.com"
   }'
 ```
 
