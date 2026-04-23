@@ -5,13 +5,13 @@ JavaScript and TypeScript client for the [familiar](https://familiar.chrsvdmrw.w
 ## Install
 
 ```shell
-npm install @familiar/sdk
+npm install familiar-sdk
 ```
 
 ## Quick start
 
 ```typescript
-import { Familiar } from "@familiar/sdk";
+import { Familiar } from "familiar-sdk";
 
 const familiar = new Familiar({ token: "fam_your_token" });
 
@@ -28,7 +28,7 @@ console.log(result.messages.at(-1)?.content);
 If you don't have a token yet:
 
 ```typescript
-import { Familiar } from "@familiar/sdk";
+import { Familiar } from "familiar-sdk";
 
 const { account, token } = await Familiar.createAccount();
 console.log(token.value); // store this — shown once
@@ -72,7 +72,7 @@ await familiar.tools.sync({
 All errors throw a `FamiliarError` with a `code` field:
 
 ```typescript
-import { Familiar, FamiliarError } from "@familiar/sdk";
+import { Familiar, FamiliarError } from "familiar-sdk";
 
 try {
   await familiar.input({ text: "hello", channel: { type: "web", id: "s1" } });

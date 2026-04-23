@@ -1,5 +1,5 @@
 {
-  "name": "@familiar/cli",
+  "name": "familiar-cli",
   "version": "1.0.0",
   "description": "A conversation layer for tools, workflows, and useful code",
   "bin": {
