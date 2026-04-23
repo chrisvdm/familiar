@@ -57,7 +57,17 @@ Get an OpenRouter key at [openrouter.ai/keys](https://openrouter.ai/keys).
 
 ## Step 2: Set the executor base URL
 
-Before *familiar* can call your executor, set the executor base URL for the current token-backed setup:
+*familiar* is hosted and calls your executor over the internet. If your executor is running locally, expose it with a Cloudflare tunnel first:
+
+```shell
+npx wrangler dev --remote
+# or for a plain HTTP server:
+npx wrangler tunnel --url http://localhost:8787
+```
+
+That gives you a `trycloudflare.com` URL to use below. `localhost` will not work — *familiar* cannot reach your local machine directly.
+
+Once you have a public URL, register it:
 
 ```shell
 curl -X PATCH https://familiar.chrsvdmrw.dev/api/v1/integration \
