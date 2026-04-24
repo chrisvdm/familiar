@@ -1,7 +1,7 @@
 {
   "name": "familiar-cli",
-  "version": "1.0.0",
-  "description": "CLI for managing familiar accounts, keys, and local tunnels",
+  "version": "1.0.1",
+  "description": "CLI for managing familiar accounts, keys, and local tunnels (early development)",
   "type": "module",
   "bin": {
     "familiar": "./familiar.mjs"

@@ -1,7 +1,7 @@
 {
   "name": "familiar-sdk",
   "version": "0.1.1",
-  "description": "JavaScript/TypeScript client for the familiar API",
+  "description": "JavaScript/TypeScript client for the familiar API (early development)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

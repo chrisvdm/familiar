@@ -1,4 +1,6 @@
-# @familiar/sdk
+# familiar-sdk
+
+> **Early development.** This is an MVP release. Expect breaking changes.
 
 JavaScript and TypeScript client for the [familiar](https://familiar.chrsvdmrw.workers.dev) API.
 
