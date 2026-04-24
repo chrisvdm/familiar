@@ -19,6 +19,8 @@ Usage:
   familiar account create [--host <url>]
   familiar account show [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
+  familiar set-key <key> [--host <url>] [--token <token>]
+  familiar tools sync [--file <path>] [--host <url>] [--token <token>]
   familiar portal --port <port> [--host <url>] [--token <token>]
   familiar --help
 
@@ -27,6 +29,10 @@ Commands:
   account create  Create an account and issue the first API token.
   account show    Show the account for the current API token.
   whoami          Alias for account show.
+  set-key         Set the OpenRouter AI provider key for the current project integration.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  tools sync      Sync tools from a JSON file (default: familiar.tools.json).
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   portal          Start a local tunnel and keep familiar pointed at it.
                   Requires cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation
 
@@ -34,6 +40,7 @@ Options:
   --host <url>    Base URL for the familiar API. Default: ${DEFAULT_BASE_URL}
   --token <token> Use a token directly instead of the stored local token.
   --port <port>   Local port your executor is running on (required for portal).
+  --file <path>   Path to tools JSON file (default: familiar.tools.json).
   --help          Show this help text.
 `;
 
@@ -42,6 +49,7 @@ const parseArgs = (argv) => {
   let host = DEFAULT_BASE_URL;
   let token;
   let port;
+  let file;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -74,6 +82,12 @@ const parseArgs = (argv) => {
       continue;
     }
 
+    if (value === "--file") {
+      file = argv[index + 1]?.trim();
+      index += 1;
+      continue;
+    }
+
     positionals.push(value);
   }
 
@@ -83,6 +97,7 @@ const parseArgs = (argv) => {
     host,
     token,
     port,
+    file,
   };
 };
 
@@ -104,9 +119,24 @@ const loadConfig = async () => {
   }
 };
 
+const loadDevVars = async () => {
+  try {
+    const raw = await fs.readFile(path.join(process.cwd(), ".dev.vars"), "utf8");
+    const match = raw.match(/^FAMILIAR_TOKEN=(.+)$/m);
+    return match?.[1]?.trim() || null;
+  } catch {
+    return null;
+  }
+};
+
 const resolveToken = async (explicitToken) => {
   if (explicitToken?.trim()) {
     return explicitToken.trim();
+  }
+
+  const devVarsToken = await loadDevVars();
+  if (devVarsToken) {
+    return devVarsToken;
   }
 
   const config = await loadConfig();
@@ -290,13 +320,74 @@ const createAccount = async ({ host, shouldPersist }) => {
   }
 
   print(``);
-  print(`Next step: set your AI provider key so familiar can make model calls on your behalf.`);
-  print(`  familiar set-key <your-openrouter-key>`);
-  print(`  -- or --`);
-  print(`  curl -X PATCH ${host}/api/v1/integration \\`);
-  print(`    -H "Authorization: Bearer ${payload.token.value}" \\`);
-  print(`    -H "Content-Type: application/json" \\`);
-  print(`    -d '{"ai_api_key": "sk-or-v1-..."}'`);
+  print(`Next steps:`);
+  print(`  1. Add your token to .dev.vars in your project:`);
+  print(`     FAMILIAR_TOKEN=${payload.token.value}`);
+  print(``);
+  print(`  2. Set your OpenRouter AI key (from your project directory):`);
+  print(`     familiar set-key sk-or-v1-...`);
+  print(``);
+  print(`  Get an OpenRouter key at: https://openrouter.ai/keys`);
+};
+
+const setKey = async ({ host, token, key }) => {
+  if (!key?.trim()) {
+    throw new Error("Usage: familiar set-key <your-openrouter-key>");
+  }
+
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Add FAMILIAR_TOKEN to .dev.vars or run `familiar init`.",
+    );
+  }
+
+  await patchJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/integration`,
+    body: { ai_api_key: key.trim() },
+    token: resolvedToken,
+  });
+
+  print(`AI provider key set.`);
+};
+
+const syncTools = async ({ host, token, file }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Add FAMILIAR_TOKEN to .dev.vars or run `familiar init`.",
+    );
+  }
+
+  const toolsPath = path.resolve(process.cwd(), file || "familiar.tools.json");
+  let raw;
+
+  try {
+    raw = await fs.readFile(toolsPath, "utf8");
+  } catch {
+    throw new Error(`Tools file not found: ${toolsPath}`);
+  }
+
+  let tools;
+  try {
+    tools = JSON.parse(raw);
+  } catch {
+    throw new Error(`Tools file is not valid JSON: ${toolsPath}`);
+  }
+
+  if (!Array.isArray(tools)) {
+    throw new Error(`Tools file must contain a JSON array of tools.`);
+  }
+
+  const payload = await postJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/tools/sync`,
+    body: { tools },
+    token: resolvedToken,
+  });
+
+  print(`Synced ${payload.synced_tools ?? tools.length} tool(s).`);
 };
 
 const showAccount = async ({ host, token }) => {
@@ -320,7 +411,7 @@ const showAccount = async ({ host, token }) => {
 };
 
 const main = async () => {
-  const { help, positionals, host, token, port } = parseArgs(process.argv.slice(2));
+  const { help, positionals, host, token, port, file } = parseArgs(process.argv.slice(2));
 
   if (help || positionals.length === 0) {
     print(helpText);
@@ -346,6 +437,16 @@ const main = async () => {
 
   if (command === "portal") {
     await runPortal({ host, token, port });
+    return;
+  }
+
+  if (positionals[0] === "set-key") {
+    await setKey({ host, token, key: positionals[1] });
+    return;
+  }
+
+  if (command === "tools sync") {
+    await syncTools({ host, token, file });
     return;
   }
 
