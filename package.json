@@ -1,40 +1,14 @@
 {
-  "name": "familiar-cli",
+  "name": "familiar-worker",
   "version": "1.0.0",
-  "description": "A conversation layer for tools, workflows, and useful code",
-  "bin": {
-    "familiar": "./src/cli/familiar.mjs"
-  },
+  "description": "familiar — Cloudflare Worker application",
+  "private": true,
   "type": "module",
-  "files": [
-    "src/cli/familiar.mjs",
-    "README.md",
-    "LICENSE"
-  ],
-  "keywords": [
-    "ai",
-    "assistant",
-    "cli",
-    "conversation",
-    "familiar",
-    "tools",
-    "workflow"
-  ],
+  "keywords": [],
   "author": "Chris van der Merwe",
   "license": "MIT",
-  "homepage": "https://familiar.chrsvdmrw.dev",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/chrisvdm/familiar.git"
-  },
-  "bugs": {
-    "url": "https://github.com/chrisvdm/familiar/issues"
-  },
   "engines": {
     "node": ">=22"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "scripts": {
     "build": "vite build",

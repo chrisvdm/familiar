@@ -1,0 +1,34 @@
+{
+  "name": "familiar-cli",
+  "version": "1.0.0",
+  "description": "CLI for managing familiar accounts, keys, and local tunnels",
+  "type": "module",
+  "bin": {
+    "familiar": "./familiar.mjs"
+  },
+  "files": [
+    "familiar.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "familiar",
+    "cli",
+    "conversation",
+    "tools"
+  ],
+  "author": "Chris van der Merwe",
+  "license": "MIT",
+  "homepage": "https://familiar.chrsvdmrw.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chrisvdm/familiar.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/chrisvdm/familiar/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
