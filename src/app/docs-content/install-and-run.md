@@ -6,17 +6,15 @@ If you are new here, use these steps in order.
 
 ## Step 1: Create your account
 
-Use one of these working paths today.
+Use one of these paths.
 
-### In your browser
+### Through the CLI
 
-Open:
-
-```text
-https://familiar.chrsvdmrw.workers.dev/setup
+```sh
+npx familiar-cli init
 ```
 
-That page creates an account and shows your first API token once.
+That creates an account, issues the first API token, and stores it locally.
 
 ### Through the API
 
@@ -27,6 +25,16 @@ curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
 ```
 
 That returns your first API token.
+
+### In your browser
+
+Open:
+
+```text
+https://familiar.chrsvdmrw.workers.dev/setup
+```
+
+That page creates an account and shows your first API token once.
 
 ## Step 2: Connect your app or bot
 
@@ -49,32 +57,15 @@ Use these pages next:
 - [Executors](/docs/executors)
 - [Webhooks](/docs/webhooks)
 
-## CLI Status
+## CLI
 
-The CLI remains the intended primary setup path for humans and AI agents.
-
-The package is being prepared as:
-
-```text
-@familiar/cli
-```
-
-Planned commands:
+The CLI is published as `familiar-cli`.
 
 ```sh
-npx @familiar/cli@latest init
+npm install -g familiar-cli
 ```
 
-and:
-
-```sh
-npm install -g @familiar/cli
-familiar init
-```
-
-Until npm publish is live, use the browser or API path above.
-
-For local development or alternate hosted environments, the CLI helper in this repo already supports overriding the base URL with:
+For local development or alternate hosted environments, override the base URL with:
 
 ```sh
 familiar init --host http://localhost:5173
@@ -86,7 +77,7 @@ or:
 FAMILIAR_BASE_URL=http://localhost:5173 familiar whoami
 ```
 
-That means local auth state should be treated as host-aware rather than assuming one global token for every environment.
+Auth state is host-aware — there is no single global token across environments.
 
 ## Contributor Docs
 

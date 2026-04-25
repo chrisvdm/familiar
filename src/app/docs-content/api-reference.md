@@ -62,13 +62,9 @@ Example response:
 
 CLI equivalent:
 
-```text
-npx @familiar/cli@latest init
+```sh
+npx familiar-cli init
 ```
-
-That is the planned CLI command once the package is published.
-
-Today, the working account bootstrap path is the API route shown above.
 
 ## Get account
 

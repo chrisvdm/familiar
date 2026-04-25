@@ -26,7 +26,7 @@ In simple terms, an integration is the full setup that connects:
 
 Each integration tells *familiar* which tools the current setup should use.
 
-That tool list should come from `*familiar*.json`.
+That tool list should come from `familiar.tools.json`.
 
 The main sync endpoint is:
 

@@ -4,7 +4,11 @@ This is the smallest useful path for getting *familiar* working with your own ex
 
 ## Step 0: Create an account
 
-Use the API today:
+```shell
+npx familiar-cli init
+```
+
+Or use the API directly:
 
 ```shell
 curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
@@ -12,9 +16,7 @@ curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
   -d '{}'
 ```
 
-That returns your first API token.
-
-The CLI is being prepared as `@familiar/cli`, but it is not published yet.
+Both return your first API token.
 
 ## What you need
 
