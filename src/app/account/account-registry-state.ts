@@ -5,6 +5,7 @@ export const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
   integrations: {},
   tokens: {},
   tokenIndex: {},
+  cliSessions: {},
 });
 
 const normalizeIntegrationRecord = (
@@ -36,5 +37,9 @@ export const normalizeAccountRegistryState = (
   tokenIndex:
     state?.tokenIndex && typeof state.tokenIndex === "object"
       ? state.tokenIndex
+      : {},
+  cliSessions:
+    state?.cliSessions && typeof state.cliSessions === "object"
+      ? state.cliSessions
       : {},
 });

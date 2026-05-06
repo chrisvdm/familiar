@@ -12,6 +12,7 @@ import { Debug } from "@/app/pages/debug";
 import { DocsPage } from "@/app/pages/docs";
 import { DocsAiPage } from "@/app/pages/docs-ai";
 import { Home } from "@/app/pages/home/index";
+import { AuthCli } from "@/app/pages/auth-cli";
 import { Setup } from "@/app/pages/setup";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
 import { SandboxProvider } from "@/app/pages/sandbox-provider";
@@ -89,7 +90,10 @@ export default defineApp([
     StaticDocument,
     [
       route("/", Home),
-      layout(PublicLayout, [route("/setup", Setup)]),
+      layout(PublicLayout, [
+        route("/setup", Setup),
+        route("/auth/cli", AuthCli),
+      ]),
       layout(DocsLayout, [
         route("/docs", DocsPage),
         route("/docs/", DocsPage),

@@ -4,6 +4,7 @@ import type {
   FamiliarAccount,
   FamiliarAccountRegistryState,
   FamiliarApiToken,
+  FamiliarCliSession,
   FamiliarIntegrationConfig,
   FamiliarTokenAuth,
 } from "./account.types";
@@ -108,6 +109,61 @@ export class AccountRegistryDurableObject extends DurableObject {
       account,
       token: input.token,
     };
+  }
+
+  async createCliSession(input: { sessionId: string }) {
+    const state = await this.loadState();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+
+    // prune expired sessions lazily
+    for (const [id, session] of Object.entries(state.cliSessions)) {
+      if (new Date(session.expiresAt) < now) {
+        delete state.cliSessions[id];
+      }
+    }
+
+    const session: FamiliarCliSession = { sessionId: input.sessionId, expiresAt };
+    state.cliSessions[input.sessionId] = session;
+    await this.saveState(state);
+    return { value: session };
+  }
+
+  async completeCliSession(input: { sessionId: string; tokenValue: string }) {
+    const state = await this.loadState();
+    const session = state.cliSessions[input.sessionId];
+
+    if (!session) {
+      return { error: "Session not found." };
+    }
+
+    if (new Date(session.expiresAt) < new Date()) {
+      return { error: "Session expired." };
+    }
+
+    // token validity is verified by the service layer before calling here
+    state.cliSessions[input.sessionId] = { ...session, tokenValue: input.tokenValue };
+    await this.saveState(state);
+    return { value: "ok" as const };
+  }
+
+  async pollCliSession(input: { sessionId: string }) {
+    const state = await this.loadState();
+    const session = state.cliSessions[input.sessionId];
+
+    if (!session) {
+      return { state: "expired" as const };
+    }
+
+    if (new Date(session.expiresAt) < new Date()) {
+      return { state: "expired" as const };
+    }
+
+    if (session.tokenValue) {
+      return { state: "completed" as const, tokenValue: session.tokenValue };
+    }
+
+    return { state: "pending" as const };
   }
 
   async authenticateToken(input: { tokenHash: string }) {

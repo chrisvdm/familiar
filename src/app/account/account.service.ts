@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import type {
   FamiliarAccount,
   FamiliarApiToken,
+  FamiliarCliSession,
   FamiliarIntegrationConfig,
   FamiliarTokenAuth,
 } from "./account.types";
@@ -26,6 +27,20 @@ type AccountRegistryStub = {
   authenticateToken: (input: {
     tokenHash: string;
   }) => Promise<{ value: FamiliarTokenAuth } | { error: string }>;
+  createCliSession: (input: {
+    sessionId: string;
+  }) => Promise<{ value: FamiliarCliSession }>;
+  completeCliSession: (input: {
+    sessionId: string;
+    tokenValue: string;
+  }) => Promise<{ value: "ok" } | { error: string }>;
+  pollCliSession: (input: {
+    sessionId: string;
+  }) => Promise<
+    | { state: "pending" }
+    | { state: "completed"; tokenValue: string }
+    | { state: "expired" }
+  >;
 };
 
 const accountEnv = env as typeof env & {
@@ -186,4 +201,22 @@ export const updateAccountIntegrationBaseUrl = async ({
   }
 
   return result.value;
+};
+
+export const createCliSession = async () => {
+  const sessionId = `cli_${randomHex(32)}`;
+  const result = await getAccountRegistryStub().createCliSession({ sessionId });
+  return result.value;
+};
+
+export const completeCliSession = async (sessionId: string, rawToken: string) => {
+  const auth = await authenticateAccountToken(rawToken);
+  if (!auth) {
+    return { error: "Token not found." } as const;
+  }
+  return getAccountRegistryStub().completeCliSession({ sessionId, tokenValue: rawToken });
+};
+
+export const pollCliSession = async (sessionId: string) => {
+  return getAccountRegistryStub().pollCliSession({ sessionId });
 };

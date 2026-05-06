@@ -87,6 +87,8 @@ const EXAMPLES = [
 
 const RESOURCES = [
   { label: "Overview", href: "/docs/intro" },
+  { label: "CLI", href: "/docs/cli" },
+  { label: "SDK", href: "/docs/sdk" },
   { label: "Quickstart", href: "/docs/quickstart" },
   { label: "API reference", href: "/docs/api-reference" },
   { label: "Executors", href: "/docs/executors" },
@@ -129,16 +131,15 @@ export const Home = () => (
             </p>
           </div>
           <div className="hero-snippet">
-            <p className="hero-snippet-label">Create an account and get started</p>
-            <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \\
-  -H "Content-Type: application/json" \\
-  -d '{}'`}</pre>
+            <p className="hero-snippet-label">Install the CLI and create an account</p>
+            <pre className="hero-snippet-code">{`npm install -g familiar-cli
+familiar init`}</pre>
             <div className="hero-actions">
-              <a className="hero-primary" href="/docs/quickstart">
-                Quickstart
+              <a className="hero-primary" href="/docs/cli">
+                CLI docs
               </a>
-              <a className="hero-secondary" href="/docs/api-reference">
-                API reference
+              <a className="hero-secondary" href="/docs/quickstart">
+                Quickstart
               </a>
             </div>
           </div>

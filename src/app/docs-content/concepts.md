@@ -66,6 +66,32 @@ Examples include:
 - `:rename`
 - `:delete`
 
+### Private threads
+
+A private thread keeps its own local transcript and memory. It does not write into shared user memory and does not contribute to cross-thread recall.
+
+To create a private thread, call `POST /api/v1/threads` with `is_private: true` first, then pass the returned `thread_id` on the input call:
+
+```json
+POST /api/v1/threads
+{
+  "title": "Private session",
+  "channel": { "type": "web", "id": "browser_session_abc" },
+  "is_private": true
+}
+```
+
+Then use the thread:
+
+```json
+POST /api/v1/input
+{
+  "input": { "kind": "text", "text": "..." },
+  "channel": { "type": "web", "id": "browser_session_abc" },
+  "thread_id": "<returned thread_id>"
+}
+```
+
 ## Tool shortcut
 
 A user can make an explicit tool call with `@tool-name payload`.

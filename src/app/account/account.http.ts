@@ -2,17 +2,23 @@ import { getRequestId, jsonError, jsonResponse, readJson } from "../provider/pro
 
 import {
   authenticateAccountToken,
+  completeCliSession,
   createAccountWithInitialToken,
+  createCliSession,
   normalizeIntegrationBaseUrl,
+  pollCliSession,
   updateAccountIntegrationBaseUrl,
 } from "./account.service";
 import {
+  createHandleCompleteCliSessionEndpoint,
   createHandleCreateAccountEndpoint,
+  createHandleCreateCliSessionEndpoint,
   createHandleCurrentIntegrationEndpoint,
   createHandleGetAccountEndpoint,
+  createHandlePollCliSessionEndpoint,
 } from "./account.http-core";
 
-export const handleCreateAccountEndpoint = createHandleCreateAccountEndpoint({
+const sharedDeps = {
   getRequestId,
   readJson,
   jsonResponse,
@@ -21,27 +27,25 @@ export const handleCreateAccountEndpoint = createHandleCreateAccountEndpoint({
   createAccountWithInitialToken,
   normalizeIntegrationBaseUrl,
   updateAccountIntegrationBaseUrl,
-});
+  createCliSession,
+  completeCliSession,
+  pollCliSession,
+};
 
-export const handleGetAccountEndpoint = createHandleGetAccountEndpoint({
-  getRequestId,
-  readJson,
-  jsonResponse,
-  jsonError,
-  authenticateAccountToken,
-  createAccountWithInitialToken,
-  normalizeIntegrationBaseUrl,
-  updateAccountIntegrationBaseUrl,
-});
+export const handleCreateAccountEndpoint =
+  createHandleCreateAccountEndpoint(sharedDeps);
+
+export const handleGetAccountEndpoint =
+  createHandleGetAccountEndpoint(sharedDeps);
 
 export const handleCurrentIntegrationEndpoint =
-  createHandleCurrentIntegrationEndpoint({
-    getRequestId,
-    readJson,
-    jsonResponse,
-    jsonError,
-    authenticateAccountToken,
-    createAccountWithInitialToken,
-    normalizeIntegrationBaseUrl,
-    updateAccountIntegrationBaseUrl,
-});
+  createHandleCurrentIntegrationEndpoint(sharedDeps);
+
+export const handleCreateCliSessionEndpoint =
+  createHandleCreateCliSessionEndpoint(sharedDeps);
+
+export const handlePollCliSessionEndpoint =
+  createHandlePollCliSessionEndpoint(sharedDeps);
+
+export const handleCompleteCliSessionEndpoint =
+  createHandleCompleteCliSessionEndpoint(sharedDeps);

@@ -11,7 +11,7 @@ Use this when:
 Send inbound Discord messages to:
 
 ```text
-POST /api/v1/conversation/input
+POST /api/v1/input
 ```
 
 Do not send inbound Discord messages to:
@@ -51,7 +51,7 @@ That webhook is only for executor results coming back later.
 ## curl example
 
 ```sh
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/conversation/input \
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input \
   -H "Authorization: Bearer YOUR_FAMILIAR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: discord-msg-1234567890" \
@@ -114,7 +114,7 @@ async function handleDiscordMention(event: DiscordMessageCreate) {
   if (!text.trim()) return;
 
   const response = await fetch(
-    "https://familiar.chrsvdmrw.workers.dev/api/v1/conversation/input",
+    "https://familiar.chrsvdmrw.workers.dev/api/v1/input",
     {
       method: "POST",
       headers: {

@@ -56,6 +56,15 @@ export const SetupClient = () => {
 
       setResult(payload);
       setStatus("Account created. Copy the token now. It is only shown once.");
+      localStorage.setItem(
+        "familiar_token",
+        JSON.stringify({
+          value: payload.token.value,
+          prefix: payload.token.prefix,
+          lastFour: payload.token.last_four,
+          createdAt: payload.token.created_at,
+        }),
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to create account.");
       setResult(null);

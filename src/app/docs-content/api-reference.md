@@ -343,12 +343,36 @@ Use this when:
 
 - you want to create a thread before the first message
 - you want to separate a new task or theme from an older one
+- you want to create a private thread
 
 ```json
 {
-  "title": "Q2 planning"
+  "title": "Q2 planning",
+  "channel": {
+    "type": "web",
+    "id": "browser_session_abc"
+  }
 }
 ```
+
+`channel` is required. *familiar* uses it to link the thread to the correct channel context.
+
+To create a private thread, add `"is_private": true`:
+
+```json
+{
+  "title": "Private planning",
+  "channel": {
+    "type": "web",
+    "id": "browser_session_abc"
+  },
+  "is_private": true
+}
+```
+
+Private threads keep their own local transcript and memory. They do not write into shared user memory and are not included in cross-thread recall.
+
+Once created, pass the returned `thread_id` on subsequent input calls to continue the private thread.
 
 ## List threads
 

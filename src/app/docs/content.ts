@@ -7,6 +7,8 @@ const docModules = import.meta.glob("../docs-content/*.md", {
 const DOC_ORDER = [
   "intro",
   "install-and-run",
+  "cli",
+  "sdk",
   "quickstart",
   "cookbook",
   "cookbook-discord-mentions",
@@ -15,6 +17,7 @@ const DOC_ORDER = [
   "integrations",
   "executors",
   "webhooks",
+  "memory-backend",
   "local-development",
 ];
 
@@ -24,13 +27,16 @@ const toSlug = (path: string) =>
 const toLabel = (slug: string) =>
   slug === "intro"
     ? "Overview"
-    : slug === "cookbook-discord-mentions"
-      ? "Discord Mention Bridge"
-      :
-  slug
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+    : slug === "cli"
+      ? "CLI"
+      : slug === "sdk"
+        ? "SDK"
+        : slug === "cookbook-discord-mentions"
+          ? "Discord Mention Bridge"
+          : slug
+              .split("-")
+              .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+              .join(" ");
 
 export const toAnchorId = (value: string) =>
   value

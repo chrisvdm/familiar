@@ -75,6 +75,16 @@ type AccountEndpointDeps = {
     createdAt: string;
     updatedAt: string;
   }>;
+  createCliSession: () => Promise<{ sessionId: string; expiresAt: string }>;
+  completeCliSession: (
+    sessionId: string,
+    rawToken: string,
+  ) => Promise<{ value: "ok" } | { error: string }>;
+  pollCliSession: (sessionId: string) => Promise<
+    | { state: "pending" }
+    | { state: "completed"; tokenValue: string }
+    | { state: "expired" }
+  >;
 };
 
 const getBearerToken = (request: Request) => {
@@ -305,5 +315,114 @@ export const createHandleCurrentIntegrationEndpoint = (
             : "Invalid integration configuration request.",
       });
     }
+  };
+};
+
+export const createHandleCreateCliSessionEndpoint = (deps: AccountEndpointDeps) => {
+  return async ({ request }: { request: Request }) => {
+    const requestId = deps.getRequestId(request);
+
+    if (request.method !== "POST") {
+      return deps.jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    const session = await deps.createCliSession();
+    return deps.jsonResponse({
+      requestId,
+      status: 201,
+      body: { session_id: session.sessionId },
+    });
+  };
+};
+
+export const createHandlePollCliSessionEndpoint = (deps: AccountEndpointDeps) => {
+  return async ({
+    request,
+    params,
+  }: {
+    request: Request;
+    params: Record<string, string>;
+  }) => {
+    const requestId = deps.getRequestId(request);
+
+    if (request.method !== "GET") {
+      return deps.jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    const result = await deps.pollCliSession(params.session_id);
+
+    if (result.state === "completed") {
+      return deps.jsonResponse({
+        requestId,
+        body: { state: "completed", token: result.tokenValue },
+      });
+    }
+
+    return deps.jsonResponse({ requestId, body: { state: result.state } });
+  };
+};
+
+export const createHandleCompleteCliSessionEndpoint = (deps: AccountEndpointDeps) => {
+  return async ({
+    request,
+    params,
+  }: {
+    request: Request;
+    params: Record<string, string>;
+  }) => {
+    const requestId = deps.getRequestId(request);
+
+    if (request.method !== "POST") {
+      return deps.jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    let token: string;
+    try {
+      const body = await deps.readJson<{ token?: unknown }>(request);
+      if (!body.token || typeof body.token !== "string") {
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: "Missing token.",
+        });
+      }
+      token = body.token;
+    } catch {
+      return deps.jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message: "Invalid request body.",
+      });
+    }
+
+    const result = await deps.completeCliSession(params.session_id, token);
+
+    if ("error" in result) {
+      return deps.jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message: result.error,
+      });
+    }
+
+    return deps.jsonResponse({ requestId, body: { ok: true } });
   };
 };

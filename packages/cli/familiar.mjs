@@ -16,6 +16,7 @@ const helpText = `familiar
 
 Usage:
   familiar init [--host <url>]
+  familiar login [--token <token>] [--host <url>]
   familiar account create [--host <url>]
   familiar account show [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
@@ -26,6 +27,8 @@ Usage:
 
 Commands:
   init            Create an account, issue the first API token, and store it locally.
+  login           Connect an existing account to the CLI via a browser-assisted flow.
+                  Pass --token to import a token directly without opening a browser.
   account create  Create an account and issue the first API token.
   account show    Show the account for the current API token.
   whoami          Alias for account show.
@@ -410,6 +413,75 @@ const showAccount = async ({ host, token }) => {
   print(`Token Prefix: ${payload.token.prefix}`);
 };
 
+const openBrowser = async (url) => {
+  const { spawn } = await import("node:child_process");
+  const platform = process.platform;
+  const cmd = platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
+  const args = platform === "win32" ? ["/c", "start", "", url] : [url];
+  spawn(cmd, args, { stdio: "ignore", detached: true }).unref();
+};
+
+const login = async ({ host, token }) => {
+  if (token?.trim()) {
+    if (!token.trim().startsWith("fam_")) {
+      throw new Error(
+        "Token format not recognised. Expected a token starting with fam_",
+      );
+    }
+    await saveConfig({
+      host,
+      token: token.trim(),
+      created_at: new Date().toISOString(),
+    });
+    print("Token saved.");
+    return;
+  }
+
+  const baseHost = host.replace(/\/$/, "");
+
+  const sessionPayload = await postJson({
+    url: `${baseHost}/api/v1/auth/cli/sessions`,
+    body: {},
+  });
+  const sessionId = sessionPayload.session_id;
+
+  const browserUrl = `${baseHost}/auth/cli?session=${sessionId}`;
+  print(`Opening browser: ${browserUrl}`);
+  await openBrowser(browserUrl);
+  print(`Waiting for login… (Ctrl-C to cancel)`);
+
+  const pollUrl = `${baseHost}/api/v1/auth/cli/sessions/${sessionId}`;
+  const maxAttempts = 150;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    let result;
+    try {
+      const response = await fetch(pollUrl);
+      result = await response.json();
+    } catch {
+      continue;
+    }
+
+    if (result.state === "completed") {
+      await saveConfig({
+        host,
+        token: result.token,
+        created_at: new Date().toISOString(),
+      });
+      print("Logged in.");
+      return;
+    }
+
+    if (result.state === "expired") {
+      throw new Error("Login expired. Run `familiar login` to try again.");
+    }
+  }
+
+  throw new Error("Login timed out. Run `familiar login` to try again.");
+};
+
 const main = async () => {
   const { help, positionals, host, token, port, file } = parseArgs(process.argv.slice(2));
 
@@ -422,6 +494,11 @@ const main = async () => {
 
   if (command === "init") {
     await createAccount({ host, shouldPersist: true });
+    return;
+  }
+
+  if (command === "login") {
+    await login({ host, token });
     return;
   }
 

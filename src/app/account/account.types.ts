@@ -24,11 +24,18 @@ export type FamiliarApiToken = {
   revokedAt: string | null;
 };
 
+export type FamiliarCliSession = {
+  sessionId: string;
+  tokenValue?: string;
+  expiresAt: string;
+};
+
 export type FamiliarAccountRegistryState = {
   accounts: Record<string, FamiliarAccount>;
   integrations: Record<string, FamiliarIntegrationConfig>;
   tokens: Record<string, FamiliarApiToken>;
   tokenIndex: Record<string, string>;
+  cliSessions: Record<string, FamiliarCliSession>;
 };
 
 export type FamiliarTokenAuth = {

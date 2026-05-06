@@ -62,6 +62,14 @@ If your product supports voice notes or speech input, normalize that upstream be
 }
 ```
 
+## How to integrate
+
+There are three ways to connect your system to *familiar*:
+
+- **CLI** — use `familiar-cli` to set up an account, configure your integration, sync tools, and run a local tunnel during development
+- **SDK** — use `familiar-sdk` to send input, sync tools, and manage integrations from your own JavaScript or TypeScript code
+- **API** — call the HTTP API directly using any HTTP client
+
 ## Try the examples
 
 The easiest way to understand the product is to open the live examples:

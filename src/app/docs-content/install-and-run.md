@@ -2,8 +2,6 @@
 
 This is the normal hosted setup path for using *familiar*.
 
-If you are new here, use these steps in order.
-
 ## Step 1: Create your account
 
 Use one of these paths.
@@ -36,48 +34,42 @@ https://familiar.chrsvdmrw.workers.dev/setup
 
 That page creates an account and shows your first API token once.
 
-## Step 2: Connect your app or bot
+## Step 2: Choose your integration path
 
-Once you have a token, your app, bot, or webhook can call the hosted API.
+Once you have a token, pick the path that fits how you work.
 
-The normal flow is:
+### CLI
 
-1. sync tools with *familiar*
-2. send normalized text to *familiar*
-3. let *familiar* decide whether to reply, clarify, or call your executor
-4. if your executor is async, send the final result back through the executor webhook
-
-## Step 3: Read the next docs
-
-Use these pages next:
-
-- [Quickstart](/docs/quickstart)
-- [API Reference](/docs/api-reference)
-- [Integrations](/docs/integrations)
-- [Executors](/docs/executors)
-- [Webhooks](/docs/webhooks)
-
-## CLI
-
-The CLI is published as `familiar-cli`.
+The recommended path for setting up and managing an integration.
 
 ```sh
 npm install -g familiar-cli
 ```
 
-For local development or alternate hosted environments, override the base URL with:
+The CLI handles account setup, AI key configuration, tool sync, and the local tunnel for development. See [CLI](/docs/cli) for the full reference.
+
+### SDK
+
+The recommended path for sending input and syncing tools from your own code.
 
 ```sh
-familiar init --host http://localhost:5173
+npm install familiar-sdk
 ```
 
-or:
+The SDK is a typed JavaScript and TypeScript client with zero runtime dependencies. See [SDK](/docs/sdk) for the full reference.
 
-```sh
-FAMILIAR_BASE_URL=http://localhost:5173 familiar whoami
-```
+### API
 
-Auth state is host-aware — there is no single global token across environments.
+Call the HTTP API directly from any HTTP client. See [Quickstart](/docs/quickstart) for a step-by-step walkthrough and [API Reference](/docs/api-reference) for the full endpoint surface.
+
+## Step 3: Read the next docs
+
+- [CLI](/docs/cli) — full CLI command reference
+- [SDK](/docs/sdk) — full SDK reference
+- [Quickstart](/docs/quickstart) — step-by-step API walkthrough
+- [API Reference](/docs/api-reference) — all endpoints
+- [Executors](/docs/executors) — what your executor needs to expose
+- [Webhooks](/docs/webhooks) — async executor result callbacks
 
 ## Contributor Docs
 
