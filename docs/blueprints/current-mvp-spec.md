@@ -463,7 +463,7 @@ Current status:
 Current local config path:
 
 ```text
-~/.codex/familiar/config.json
+~/.familiar/config.json
 ```
 
 Stored fields today:

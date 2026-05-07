@@ -26,7 +26,7 @@ If this is your first time using *familiar*, create a new account:
 familiar init
 ```
 
-Creates an account, issues the first API token, and stores it in `~/.codex/familiar/config.json`.
+Creates an account, issues the first API token, and stores it in `~/.familiar/config.json`.
 
 If you already have an account (from the web setup or another machine), connect it instead:
 
@@ -104,7 +104,7 @@ Requires [cloudflared](https://developers.cloudflare.com/cloudflare-one/connecti
 
 ### `familiar init`
 
-Create an account and issue the first API token. Stores the token globally at `~/.codex/familiar/config.json`.
+Create an account and issue the first API token. Stores the token globally at `~/.familiar/config.json`.
 
 ```shell
 familiar init
@@ -120,7 +120,7 @@ familiar login
 familiar login --host http://localhost:5173
 ```
 
-Opens a browser to `/auth/cli`. If you previously used the web setup page, the browser detects your existing token and offers to connect it in one click. If not, it creates a new account and connects it. Either way, the token is stored at `~/.codex/familiar/config.json` — no copy-paste required.
+Opens a browser to `/auth/cli`. If you previously used the web setup page, the browser detects your existing token and offers to connect it in one click. If not, it creates a new account and connects it. Either way, the token is stored at `~/.familiar/config.json` — no copy-paste required.
 
 To import a token directly without opening a browser:
 
@@ -195,6 +195,6 @@ The CLI resolves a token in this order:
 
 1. `--token` flag on the command
 2. `FAMILIAR_TOKEN` in `.dev.vars` in the current directory
-3. Token stored in `~/.codex/familiar/config.json`
+3. Token stored in `~/.familiar/config.json`
 
 Commands that act on a project integration (`set-key`, `tools sync`, `portal`) read from `.dev.vars` so different projects can use different tokens from the same machine.
