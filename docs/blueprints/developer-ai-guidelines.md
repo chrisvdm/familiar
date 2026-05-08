@@ -8,6 +8,7 @@ Update it when the team adopts a new standing convention, documentation rule, or
 
 ## Documentation Rules
 
+- **API changes and new features must be documented in both internal docs and user-facing docs.** Internal docs capture the "what" and "how" for maintainers. User-facing docs (quickstart, API reference, SDK docs) explain the "why" and "how to use it" for developers integrating with familiar. Never ship an API change without updating both.
 - Create task-specific worklogs in `docs/worklogs/`.
 - Name worklogs as `YYYY-MM-DD-task-name.md`.
 - Use worklogs to capture scope, completed work, results, follow-ups, and notable constraints for a single task.
