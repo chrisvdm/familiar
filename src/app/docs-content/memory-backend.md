@@ -23,7 +23,7 @@ This is the backend active for all hosted *familiar* accounts.
 
 ## MemPalace backend
 
-[MemPalace](https://github.com/chrisvdm/mempalace) is a Python memory server (ChromaDB + SQLite) that stores verbatim text chunks and a temporal knowledge graph. It is suited to developers who use *familiar* as the conversation layer for a personal software suite and want cross-suite semantic memory.
+[MemPalace](https://github.com/chrisvdm/mempalace) is a Python memory server (ChromaDB + SQLite) that stores verbatim text chunks and a temporal knowledge graph. It is suited to developers who use *familiar* as the tool router for a personal software suite and want cross-suite semantic memory.
 
 ### Run the MemPalace server
 

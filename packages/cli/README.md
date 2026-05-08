@@ -2,7 +2,7 @@
 
 > **Early development.** This is an MVP release. Expect breaking changes.
 
-Command-line tool for setting up and managing [familiar](https://familiar.chrsvdmrw.workers.dev) integrations.
+Command-line tool for setting up and managing [familiar](https://familiar.chrsvdmrw.workers.dev) — a hosted tool router with memory.
 
 ## Install
 

@@ -2,7 +2,7 @@
 
 > **Early development.** This is an MVP release. Expect breaking changes.
 
-JavaScript and TypeScript client for the [familiar](https://familiar.chrsvdmrw.workers.dev) API.
+JavaScript and TypeScript client for [familiar](https://familiar.chrsvdmrw.workers.dev) — a hosted tool router with memory.
 
 ## Install
 

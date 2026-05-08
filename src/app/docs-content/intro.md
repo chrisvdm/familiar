@@ -1,33 +1,33 @@
 # *familiar*
 
-*familiar* is a hosted conversation layer for executable systems.
+*familiar* is a hosted tool router with memory.
 
-It sits between a person and the code that does the work. *familiar* keeps the thread, remembers useful context, asks follow-up questions when something is missing, chooses the right tool, and sends structured input to the executor behind that tool.
+It receives text from any channel, decides which tool to call, executes it via webhook, and remembers context across conversations — so the next message picks up where the last one left off.
 
 ## Why it exists
 
-Without *familiar*, every app or workflow that wants a conversational interface has to rebuild the same pieces:
+Without *familiar*, every system that wants to expose tools through text has to rebuild the same pieces:
 
-- thread handling
-- context and memory
-- clarification questions
-- tool selection
-- channel continuity
-- user-facing replies
+- parsing intent from natural language
+- choosing the right tool
+- asking for missing arguments
+- keeping thread context
+- remembering facts across conversations
+- routing results back to the right channel
 
-*familiar* is meant to own those parts once so connected systems can focus on useful work.
+*familiar* owns routing and memory so your executors can focus on execution.
 
 ## What it does
 
 *familiar* currently handles:
 
-- normalized text input
+- text input from any channel
 - thread continuity
 - channel-aware routing
 - shared and thread-local memory
-- clarification when required details are missing
-- tool selection
-- executor handoff
+- clarification when required arguments are missing
+- tool selection and routing
+- webhook execution
 - async executor callbacks
 
 ## How the product works

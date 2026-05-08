@@ -3,7 +3,7 @@ export const PublicSiteFooter = () => (
     <div>
       <p className="footer-name">familiar</p>
       <p className="footer-copy">
-        Makes tools and workflows usable through conversation.
+        A hosted tool router with memory.
       </p>
     </div>
     <div className="footer-links">

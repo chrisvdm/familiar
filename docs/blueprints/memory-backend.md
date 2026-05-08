@@ -19,7 +19,7 @@ Two backends exist:
 
 **Default backend** wraps familiar's built-in pipeline: heuristic candidate selection, cheap-model AI selection, expensive-model answer generation. Facts are stored in Cloudflare Durable Objects. This is the only backend active when no environment variable is set.
 
-**MemPalace backend** routes memory operations to a locally-running MemPalace HTTP server (Python, ChromaDB + SQLite). If the server is unreachable or returns an error, it falls back to the default backend silently. This backend is intended for developers who use familiar as the conversation layer for a personal software suite and want a richer, cross-suite semantic memory store.
+**MemPalace backend** routes memory operations to a locally-running MemPalace HTTP server (Python, ChromaDB + SQLite). If the server is unreachable or returns an error, it falls back to the default backend silently. This backend is intended for developers who use familiar as the tool router for a personal software suite and want a richer, cross-suite semantic memory store.
 
 ## System Flow
 

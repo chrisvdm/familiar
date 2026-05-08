@@ -28,7 +28,7 @@ familiar should be able to accept input from:
 - voice-note transcripts
 - image-derived text context
 
-At the conversation layer, those should all become one normalized input shape.
+At the routing layer, those should all become one normalized input shape.
 
 Example:
 

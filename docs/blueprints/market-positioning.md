@@ -2,15 +2,15 @@
 
 ## Definition
 
-`familiar` makes tools and workflows usable through conversation.
+`familiar` is a hosted tool router with memory.
 
-It is a processing layer for conversational interfaces. It interprets user messages, asks for missing details, keeps track of context, prepares structured tool input, and sends it to the right external system.
+It receives text from any channel, decides which tool to call, executes it via webhook, and remembers context across conversations — so the next message picks up where the last one left off.
 
 ## Problem
 
 Teams can already execute work with tools like Zapier, n8n, internal APIs, and custom services.
 
-What they usually do not have is a solid conversation layer in front of that execution layer:
+What they usually do not have is solid tool routing in front of their execution layer:
 
 - keeping track of threads over time
 - deciding what context should persist
@@ -43,14 +43,14 @@ What `familiar` does not do:
 
 Plain version:
 
-`familiar` handles the conversation. Your existing systems handle the work.
+`familiar` handles routing and memory. Your existing systems handle the work.
 
 ## Target Users
 
 Best-fit users:
 
 - teams building app-specific copilots
-- teams adding conversational interfaces to internal software
+- teams adding text-based tool routing to internal software
 - founders building workflow-driven products with a chat layer
 - agencies building custom AI systems for clients
 - developers connecting multiple existing systems behind one interaction surface
@@ -71,12 +71,12 @@ Against OpenClaw or MyClaw:
 Against Zapier or n8n:
 
 - Zapier and n8n execute workflows.
-- `familiar` adds the conversation layer in front of those workflows.
+- `familiar` adds routing and memory in front of those workflows.
 
 Against Botpress:
 
 - Botpress is primarily a bot platform.
-- `familiar` is for teams that already have or want custom execution systems behind the conversation layer.
+- `familiar` is for teams that already have or want custom execution systems behind a text router.
 
 Against LangGraph-style frameworks:
 
@@ -87,6 +87,6 @@ Against LangGraph-style frameworks:
 
 Default version:
 
-`familiar` makes tools and workflows usable through conversation.
+`familiar` is a hosted tool router with memory.
 
-It is a processing layer for conversational interfaces. It interprets user messages, asks for missing details, keeps track of context, prepares structured tool input, and sends it to the right external system.
+It receives text from any channel, decides which tool to call, executes it via webhook, and remembers context across conversations — so the next message picks up where the last one left off.

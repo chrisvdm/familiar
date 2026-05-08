@@ -74,4 +74,4 @@ The important model is:
 - the executor decides whether the work is blocking or async
 - *familiar* turns either response into the user-facing conversation
 
-*familiar* is not pretending to be a background job system. It is a conversation layer that can receive delayed executor results.
+*familiar* is not pretending to be a background job system. It is a tool router that can receive delayed executor results.

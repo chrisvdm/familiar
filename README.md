@@ -2,9 +2,7 @@
 
 # familiar
 
-_coming soon..._
-
-familiar is a hosted conversation layer for executable systems.
+familiar is a hosted tool router with memory.
 
 ## Hosted Setup
 
@@ -28,29 +26,29 @@ You can then use the returned token for the rest of the API.
 
 The CLI exists in this repo as a local development helper, but it is not the public install path right now because the package is not published yet.
 
-People talk to familiar. familiar keeps track of threads, context, and memory. When work needs to happen, familiar decides which tool should run, triggers that tool's target, and then explains the result back to the user.
+familiar receives text from any channel, decides which tool to call, executes it via webhook, and remembers context across conversations — so the next message picks up where the last one left off.
 
 ## Features
 
-- conversation threads managed by familiar
-- shared memory across normal conversations
+- route natural language to the right tool via webhook
+- remember context across messages and channels
 - private threads that stay out of shared memory
 - channel-aware continuity across web, messaging, email, and other inputs
-- tool and workflow handoff to connected tool targets
-- clarification flow when a request is missing information
+- ask for missing details before calling a tool
+- async executor callbacks for long-running work
 
 ## Why It’s Useful
 
-Without familiar, every app or script that wants a conversational interface has to rebuild the same things:
+Without familiar, every system that wants to expose tools through text has to rebuild the same things:
 
-- conversation history
-- thread handling
-- memory
-- clarification questions
-- channel continuity
-- user-facing replies
+- parsing intent from natural language
+- choosing the right tool
+- asking for missing arguments
+- keeping thread context
+- remembering facts across conversations
+- routing results back to the right channel
 
-familiar is meant to own those parts once, so connected systems can focus on doing useful work.
+familiar owns routing and memory so your executors can focus on execution.
 
 ## Current Status
 

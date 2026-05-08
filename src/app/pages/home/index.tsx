@@ -1,10 +1,10 @@
 import { FamiliarMark } from "@/app/components/familiar-mark";
 
 const OVERVIEW = [
-  "Receives normalized user messages.",
-  "Keeps track of threads and useful context.",
-  "Asks follow-up questions when required details are missing.",
-  "Sends structured input to the right external tool or workflow.",
+  "Receives text from any channel.",
+  "Decides which tool to call.",
+  "Executes it via webhook.",
+  "Remembers context across conversations.",
 ];
 
 const GET_STARTED = [
@@ -27,16 +27,16 @@ const GET_STARTED = [
 
 const PRINCIPLES = [
   {
-    title: "Conversation stays in one place",
-    body: "familiar keeps the thread, recent context, and memory policy in one system instead of spreading that logic across each tool or workflow.",
+    title: "Routing stays separate from execution",
+    body: "familiar keeps thread context, memory, and routing logic in one place instead of spreading it across every tool or workflow.",
   },
   {
     title: "Tools define a clear contract",
     body: "Each tool declares what it does and what input it needs. That gives familiar a reliable way to ask questions and send structured requests.",
   },
   {
-    title: "Your systems stay in control",
-    body: "familiar does not replace your workflows or business logic. It decides when to call them and passes clean input into the systems you already own.",
+    title: "Your executors stay in control",
+    body: "familiar does not replace your code or business logic. It decides when to call it and passes clean, validated input into the systems you already own.",
   },
   {
     title: "Missing details are asked for first",
@@ -47,23 +47,23 @@ const PRINCIPLES = [
 const LIFECYCLE = [
   {
     step: "01",
-    title: "Message is received",
-    body: "A person sends a message through a web chat, messaging app, email flow, or another normalized input path.",
+    title: "Text arrives",
+    body: "A message comes in from web chat, WhatsApp, email, Slack, or any other channel.",
   },
   {
     step: "02",
     title: "Context is loaded",
-    body: "familiar finds the current thread, loads recent context, and applies the configured memory policy.",
+    body: "familiar finds the right thread, loads recent messages, and recalls relevant memory.",
   },
   {
     step: "03",
-    title: "A decision is made",
-    body: "familiar decides whether to reply directly, ask a follow-up question, or call a tool based on the declared contract.",
+    title: "A tool is chosen",
+    body: "familiar decides which tool matches the request. If details are missing, it asks first.",
   },
   {
     step: "04",
-    title: "Your system runs the work",
-    body: "The executor, workflow, or backend receives structured input, performs the work, and returns the result now or later through the webhook.",
+    title: "Your executor runs",
+    body: "familiar calls your webhook with structured arguments. Your code does the work and returns the result.",
   },
 ];
 
@@ -121,13 +121,13 @@ export const Home = () => (
           <div className="hero-copy">
             <h1 className="hero-title">familiar</h1>
             <p className="hero-subtitle">
-              Makes tools and workflows usable through conversation.
+              A hosted tool router with memory.
             </p>
             <p className="hero-detail">
-              It is a processing layer for conversational interfaces. It
-              interprets user messages, asks for missing details, keeps track
-              of context, prepares structured tool input, and sends it to the
-              right external system.
+              Receives text from any channel, decides which tool to call,
+              executes it via webhook, and remembers context across
+              conversations — so the next message picks up where the last
+              one left off.
             </p>
           </div>
           <div className="hero-snippet">
@@ -150,19 +150,19 @@ familiar init`}</pre>
       <div className="section-heading">
         <p className="section-kicker">Overview</p>
         <h2 className="section-title">
-          Add a conversation layer without rebuilding one.
+          Route tools from text without rebuilding thread logic.
         </h2>
       </div>
       <div className="overview-grid">
         <div className="overview-copy">
           <p>
-            Most systems can already do the work. The missing piece is
-            usually the conversation layer in front of that work.
+            Most systems already have tools. The missing piece is routing
+            natural language to the right tool and keeping context across
+            messages.
           </p>
           <p>
-            familiar accepts user input, keeps track of the thread, asks for
-            missing details, and calls the right external tool or workflow
-            with structured input.
+            familiar receives text, finds the right thread, asks for missing
+            details, and calls your executor with clean, structured input.
           </p>
         </div>
         <div className="overview-list">
@@ -211,7 +211,7 @@ POST /api/v1/webhooks/executor`}</pre>
       <div className="section-heading">
         <p className="section-kicker">Principles</p>
         <h2 className="section-title">
-          Keep the conversation layer separate from the execution layer.
+          Keep routing separate from execution.
         </h2>
       </div>
       <div className="principles-grid">
@@ -228,7 +228,7 @@ POST /api/v1/webhooks/executor`}</pre>
       <div className="section-heading">
         <p className="section-kicker">Request Lifecycle</p>
         <h2 className="section-title">
-          What happens after someone sends a message.
+          What happens after text arrives.
         </h2>
       </div>
       <div className="lifecycle-grid">
@@ -295,7 +295,7 @@ POST /api/v1/webhooks/executor`}</pre>
         <div>
           <p className="footer-name">familiar</p>
           <p className="footer-copy">
-            Makes tools and workflows usable through conversation.
+            A hosted tool router with memory.
           </p>
         </div>
         <div className="footer-links">

@@ -28,7 +28,7 @@ You need two things:
 For this guide, think of the token as identifying one current *familiar* setup for one app or deployment:
 
 - the user-facing channel
-- the *familiar* conversation layer
+- the *familiar* router
 - the executor endpoints that do the work
 
 If you are working on the *familiar* codebase locally, that configuration can look like:

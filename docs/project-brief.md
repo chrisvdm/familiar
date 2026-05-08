@@ -2,13 +2,13 @@
 
 ## Purpose
 
-familiar is a focused conversational AI interface built with RedwoodSDK and the OpenRouter API.
+familiar is a hosted tool router with memory, built with RedwoodSDK and the OpenRouter API.
 
-The end goal is for familiar to be a reusable hosted conversation layer that owns memory, threads, and interaction flow, while delegating business-side effects to external tool-execution systems.
+The end goal is for familiar to be a reusable hosted tool router that owns memory, threads, and routing, while delegating business-side effects to external tool-execution systems.
 
 In the target architecture:
 
-- familiar owns conversation
+- familiar owns routing and memory
 - executors own execution
 
 familiar should be usable by multiple executor systems, not just one product.
@@ -18,7 +18,7 @@ Examples:
 - an automation backend
 - an app-building backend
 
-This means familiar is being designed as a general-purpose conversational front end for tools and workflows, not as a single-purpose browser chat app.
+This means familiar is being designed as a general-purpose tool router for text-based interfaces, not as a single-purpose browser chat app.
 
 ## Hosted Model
 
@@ -150,7 +150,7 @@ familiar should own the canonical tool registry for the authenticated setup that
 
 The expected integration model is:
 
-1. A developer or AI agent gets an API token when they want familiar to own the conversation layer for that system.
+1. A developer or AI agent gets an API token when they want familiar to handle routing and memory for that system.
 2. Tool definitions are published into the hosted registry behind that token.
 3. familiar reasons over the registered tools during a conversation.
 4. familiar invokes the executor when a tool should run.

@@ -215,7 +215,7 @@ The CLI should be the main developer control surface for hosted _familiar_.
 
 The important mental model is:
 
-- _familiar_ is a hosted conversation layer
+- _familiar_ is a hosted tool router with memory
 - the local CLI exists to make changes to hosted integrations
 - local files exist to help author or publish those changes
 

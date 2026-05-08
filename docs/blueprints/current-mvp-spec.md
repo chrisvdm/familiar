@@ -8,7 +8,7 @@ If the codebase disappeared, this is the document that should let someone rebuil
 
 ## Product Shape
 
-The current MVP is a hosted conversation layer with:
+The current MVP is a hosted tool router with memory:
 
 - account creation
 - one default API token per account

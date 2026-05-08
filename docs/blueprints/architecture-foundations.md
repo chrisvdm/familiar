@@ -37,7 +37,7 @@ That means:
 
 ### familiar
 
-familiar is the conversation layer.
+familiar is the tool router with memory.
 
 It should own:
 

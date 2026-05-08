@@ -20,7 +20,7 @@ Examples:
 - a workflow that sends an onboarding email
 - a tool that creates or updates a record in another system
 
-*familiar* owns the conversation. The executor owns the side effects.
+*familiar* owns routing and memory. The executor owns the side effects.
 
 ## Integration
 

@@ -4,7 +4,7 @@
 
 familiar is moving toward a simpler tool-target architecture.
 
-familiar should act as the conversational interface and memory layer. External systems should expose tools and perform side effects. familiar should then decide when to answer directly, when to clarify, and when to call a tool target.
+familiar should act as the tool router with memory. External systems should expose tools and perform side effects. familiar should then decide when to answer directly, when to clarify, and when to call a tool target.
 
 This allows familiar to be reused by multiple execution systems such as:
 

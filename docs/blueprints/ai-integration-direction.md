@@ -18,7 +18,7 @@ That means the integration surface should be simple enough that:
 
 ## New Framing
 
-familiar is a conversation layer for executable systems.
+familiar is a tool router with memory for executable systems.
 
 A connected system can be:
 
