@@ -1276,3 +1276,123 @@
     margin-left: auto;
   }
 }
+
+/* Fixes section */
+.fixes-grid {
+  width: min(960px, 100%);
+  margin: var(--section-content-gap) auto 0;
+  display: grid;
+  gap: 0;
+}
+
+.fix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.fix-row:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.fix-cell {
+  padding: 18px 24px;
+}
+
+.fix-without {
+  color: rgba(28, 31, 87, 0.56);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  border-right: 1px solid var(--line);
+}
+
+.fix-with {
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.fix-cell p {
+  margin: 0;
+}
+
+/* Pricing section */
+.pricing-grid {
+  width: min(960px, 100%);
+  margin: var(--section-content-gap) auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.pricing-card {
+  padding: 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pricing-tier {
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pricing-price {
+  color: var(--heading);
+  font-family: var(--serif);
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.pricing-note {
+  color: rgba(28, 31, 87, 0.72);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+@media (max-width: 960px) {
+  .fixes-grid,
+  .pricing-grid {
+    width: min(760px, 100%);
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .fix-row {
+    grid-template-columns: 1fr;
+  }
+
+  .fix-without {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+
+  .fix-cell {
+    padding: 14px 16px;
+  }
+
+  .pricing-card {
+    padding: 22px 18px;
+  }
+
+  .pricing-price {
+    font-size: 30px;
+  }
+}
