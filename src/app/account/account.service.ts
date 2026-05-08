@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 
+import { loadProviderUserContext } from "../provider/provider.storage";
 import type {
   FamiliarAccount,
   FamiliarApiToken,
@@ -244,4 +245,21 @@ export const getAccountUsage = async (accountId: string) => {
     throw new Error(result.error);
   }
   return result.value;
+};
+
+export const getIntegrationStatus = async ({
+  integrationId,
+}: {
+  accountId: string;
+  integrationId: string;
+}) => {
+  const context = await loadProviderUserContext({
+    providerId: integrationId,
+    userId: "default",
+  });
+
+  return {
+    toolCount: context?.allowedTools.filter((t) => t.status === "active").length ?? 0,
+    threadCount: context?.threads.length ?? 0,
+  };
 };

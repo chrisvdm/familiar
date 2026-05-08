@@ -6,6 +6,7 @@ import {
   createAccountWithInitialToken,
   createCliSession,
   getAccountUsage,
+  getIntegrationStatus,
   normalizeIntegrationBaseUrl,
   pollCliSession,
   updateAccountIntegrationBaseUrl,
@@ -17,6 +18,7 @@ import {
   createHandleCreateCliSessionEndpoint,
   createHandleCurrentIntegrationEndpoint,
   createHandleGetAccountEndpoint,
+  createHandleIntegrationStatusEndpoint,
   createHandlePollCliSessionEndpoint,
 } from "./account.http-core";
 
@@ -33,6 +35,7 @@ const sharedDeps = {
   completeCliSession,
   pollCliSession,
   getAccountUsage,
+  getIntegrationStatus,
 };
 
 export const handleCreateAccountEndpoint =
@@ -52,6 +55,9 @@ export const handleCreateCliSessionEndpoint =
 
 export const handlePollCliSessionEndpoint =
   createHandlePollCliSessionEndpoint(sharedDeps);
+
+export const handleIntegrationStatusEndpoint =
+  createHandleIntegrationStatusEndpoint(sharedDeps);
 
 export const handleCompleteCliSessionEndpoint =
   createHandleCompleteCliSessionEndpoint(sharedDeps);

@@ -91,6 +91,13 @@ type AccountEndpointDeps = {
     freeActionsRemaining: number | null;
     plan: "free" | "paid";
   }>;
+  getIntegrationStatus: (input: {
+    accountId: string;
+    integrationId: string;
+  }) => Promise<{
+    toolCount: number;
+    threadCount: number;
+  }>;
 };
 
 const getBearerToken = (request: Request) => {
@@ -425,6 +432,78 @@ export const createHandlePollCliSessionEndpoint = (deps: AccountEndpointDeps) =>
     }
 
     return deps.jsonResponse({ requestId, body: { state: result.state } });
+  };
+};
+
+export const createHandleIntegrationStatusEndpoint = (
+  deps: AccountEndpointDeps,
+) => {
+  return async ({ request }: { request: Request }) => {
+    const requestId = deps.getRequestId(request);
+
+    if (request.method !== "GET") {
+      return deps.jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    const token = getBearerToken(request);
+
+    if (!token) {
+      return deps.jsonError({
+        requestId,
+        status: 401,
+        code: "unauthenticated",
+        message: "Missing bearer token.",
+      });
+    }
+
+    const auth = await deps.authenticateAccountToken(token);
+
+    if (!auth) {
+      return deps.jsonError({
+        requestId,
+        status: 403,
+        code: "forbidden",
+        message: "Invalid API token.",
+      });
+    }
+
+    const usage = await deps.getAccountUsage(auth.account.id);
+    const runtime = await deps.getIntegrationStatus({
+      accountId: auth.account.id,
+      integrationId: auth.integration.id,
+    });
+
+    return deps.jsonResponse({
+      requestId,
+      body: {
+        integration: {
+          id: auth.integration.id,
+          base_url: auth.integration.baseUrl,
+          ai_api_key_set: auth.integration.aiApiKey !== null,
+          ai_api_key_prefix: auth.integration.aiApiKey
+            ? auth.integration.aiApiKey.slice(0, 8)
+            : null,
+          created_at: auth.integration.createdAt,
+          updated_at: auth.integration.updatedAt,
+        },
+        account: {
+          id: auth.account.id,
+          plan: usage.plan,
+          action_count: usage.actionCount,
+          free_actions_used: usage.freeActionsUsed,
+          free_actions_remaining: usage.freeActionsRemaining,
+        },
+        runtime: {
+          tool_count: runtime.toolCount,
+          thread_count: runtime.threadCount,
+        },
+      },
+    });
   };
 };
 
