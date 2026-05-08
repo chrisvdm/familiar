@@ -90,6 +90,7 @@ export default defineApp([
     StaticDocument,
     [
       route("/", Home),
+      route("/temp-home", Home),
       layout(PublicLayout, [
         route("/setup", Setup),
         route("/auth/cli", AuthCli),

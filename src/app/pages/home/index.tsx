@@ -19,51 +19,19 @@ const FIXES = [
   },
 ];
 
-const HOW_IT_WORKS = [
+const PRICING = [
   {
-    step: "01",
-    title: "Define your tools",
-    body: "What they do, what they need, in familiar.tools.json.",
+    tier: "First 10 actions",
+    price: "Free — try without commitment",
   },
   {
-    step: "02",
-    title: "Expose an endpoint",
-    body: "One URL where your code runs. familiar calls it.",
+    tier: "Per action",
+    price: "$0.10",
   },
   {
-    step: "03",
-    title: "familiar handles the rest",
-    body: "Receives text, picks the tool, calls your code, stores what happened, replies where you are.",
+    tier: "Custom integration",
+    price: "$500–2,000",
   },
-];
-
-const EXAMPLES = [
-  {
-    title: "Single tool flow",
-    href: "/sandbox/demo-executor",
-    body: "One message becomes one tool call and one response. The simplest end-to-end example.",
-  },
-  {
-    title: "Async callback",
-    href: "/sandbox/async-countdown",
-    body: "The executor accepts the work first and sends the final result later through the webhook.",
-  },
-  {
-    title: "Pinned tool",
-    href: "/sandbox/pinned-tool",
-    body: "Later messages keep using the same selected tool until the user switches tools or exits that mode.",
-  },
-];
-
-const RESOURCES = [
-  { label: "Overview", href: "/docs/intro" },
-  { label: "CLI", href: "/docs/cli" },
-  { label: "SDK", href: "/docs/sdk" },
-  { label: "Quickstart", href: "/docs/quickstart" },
-  { label: "API reference", href: "/docs/api-reference" },
-  { label: "Executors", href: "/docs/executors" },
-  { label: "Webhooks", href: "/docs/webhooks" },
-  { label: "Setup", href: "/setup" },
 ];
 
 export const Home = () => (
@@ -106,31 +74,18 @@ export const Home = () => (
               arguments, automatically).
             </p>
           </div>
-          <div className="hero-snippet">
-            <p className="hero-snippet-label">Get started</p>
-            <pre className="hero-snippet-code">{`npx familiar-cli init`}</pre>
-            <p className="hero-snippet-label">Or via API</p>
-            <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts`}</pre>
-            <div className="hero-actions">
-              <a className="hero-primary" href="/docs/cli">
-                CLI docs
-              </a>
-              <a className="hero-secondary" href="/docs/agent-quickstart">
-                API docs
-              </a>
-            </div>
-          </div>
         </div>
       </header>
 
       <section className="landing-section" id="what-it-fixes">
         <div className="section-heading">
           <p className="section-kicker">What it fixes</p>
-          <h2 className="section-title">
-            Without familiar vs. with familiar
-          </h2>
         </div>
         <div className="fixes-grid">
+          <div className="fix-row fix-header-row">
+            <div className="fix-cell fix-header">Without familiar</div>
+            <div className="fix-cell fix-header">With familiar</div>
+          </div>
           {FIXES.map((item, index) => (
             <div key={index} className="fix-row">
               <div className="fix-cell fix-without">
@@ -147,60 +102,58 @@ export const Home = () => (
       <section className="landing-section">
         <div className="section-heading">
           <p className="section-kicker">How it works</p>
-          <h2 className="section-title">
-            Your code. Your logic. familiar adds the conversation layer.
-          </h2>
         </div>
         <div className="steps-grid">
           <div className="steps-list">
-            {HOW_IT_WORKS.map((item) => (
-              <article key={item.step} className="step-item">
-                <span className="step-number">{item.step}</span>
-                <div>
-                  <h3 className="step-title">{item.title}</h3>
-                  <p className="step-body">{item.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="steps-code">
-            <p className="panel-label">familiar.tools.json</p>
-            <pre className="panel-code">{`[
-  {
-    "tool_name": "backup.run",
-    "description": "Run a backup",
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "target": { "type": "string" }
-      },
-      "required": ["target"]
-    },
-    "status": "active"
-  }
-]`}</pre>
+            <article className="step-item">
+              <span className="step-number">01</span>
+              <div>
+                <h3 className="step-title">You define tools</h3>
+                <p className="step-body">
+                  What they do, what they need, in familiar.tools.json
+                </p>
+              </div>
+            </article>
+            <article className="step-item">
+              <span className="step-number">02</span>
+              <div>
+                <h3 className="step-title">You expose an endpoint</h3>
+                <p className="step-body">One URL where your code runs</p>
+              </div>
+            </article>
+            <article className="step-item">
+              <span className="step-number">03</span>
+              <div>
+                <h3 className="step-title">familiar handles the rest</h3>
+                <p className="step-body">
+                  Receives text, picks the tool, calls your code, stores what
+                  happened, replies where you are
+                </p>
+              </div>
+            </article>
           </div>
         </div>
+        <p className="section-closing">
+          Your code. Your logic. familiar adds the conversation layer you don't
+          want to build again.
+        </p>
       </section>
 
       <section className="landing-section">
         <div className="section-heading">
           <p className="section-kicker">Who it's for</p>
-          <h2 className="section-title">
-            People with /scripts folders.
-          </h2>
         </div>
         <div className="overview-grid">
           <div className="overview-copy">
             <p>
-              People who cron jobs and curl APIs. People who want their
-              personal software to feel like one system, not ten disconnected
-              tools.
+              People with /scripts folders. People who cron jobs and curl APIs.
+              People who want their personal software to feel like one system,
+              not ten disconnected tools.
             </p>
             <p>
               AI agents can build with familiar too — it's schema-first,
-              code-friendly, minimal approval needed. But it's built for
-              humans who own their tools.
+              code-friendly, minimal approval needed. But it's built for humans
+              who own their tools.
             </p>
           </div>
         </div>
@@ -209,60 +162,53 @@ export const Home = () => (
       <section className="landing-section">
         <div className="section-heading">
           <p className="section-kicker">Pricing</p>
-          <h2 className="section-title">
-            Usage-based. No subscription for silence.
-          </h2>
         </div>
-        <div className="pricing-grid">
-          <div className="pricing-card">
-            <span className="pricing-tier">First 10 actions</span>
-            <span className="pricing-price">Free</span>
-            <span className="pricing-note">Try without commitment</span>
+        <div className="fixes-grid">
+          <div className="fix-row fix-header-row">
+            <div className="fix-cell fix-header">Tier</div>
+            <div className="fix-cell fix-header">Price</div>
           </div>
-          <div className="pricing-card">
-            <span className="pricing-tier">Per action</span>
-            <span className="pricing-price">$0.10</span>
-            <span className="pricing-note">Bundled AI costs included</span>
-          </div>
-          <div className="pricing-card">
-            <span className="pricing-tier">Custom integration</span>
-            <span className="pricing-price">$500–2,000</span>
-            <span className="pricing-note">One-time setup fee</span>
-          </div>
+          {PRICING.map((item, index) => (
+            <div key={index} className="fix-row">
+              <div className="fix-cell fix-without">
+                <p>{item.tier}</p>
+              </div>
+              <div className="fix-cell fix-with">
+                <p>{item.price}</p>
+              </div>
+            </div>
+          ))}
         </div>
+        <p className="section-closing">
+          Usage-based. No subscription for silence.
+        </p>
       </section>
 
       <section className="landing-section">
         <div className="section-heading">
-          <p className="section-kicker">Examples</p>
-          <h2 className="section-title">See a few integration patterns.</h2>
-          <p className="section-text">
-            Start with a basic executor flow, then look at delayed results and
-            tool-specific follow-up behavior.
-          </p>
+          <p className="section-kicker">Get started</p>
         </div>
-        <div className="examples-grid">
-          {EXAMPLES.map((item) => (
-            <a key={item.href} className="example-card" href={item.href}>
-              <h3 className="example-title">{item.title}</h3>
-              <p className="example-body">{item.body}</p>
-              <span className="example-link">Open example</span>
-            </a>
-          ))}
+        <div className="get-started-snippet">
+          <pre className="hero-snippet-code">{`npx familiar-cli init`}</pre>
+          <p className="hero-snippet-label">Or via API:</p>
+          <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts`}</pre>
         </div>
       </section>
 
       <section className="landing-section landing-section-docs">
         <div className="section-heading">
           <p className="section-kicker">Docs</p>
-          <h2 className="section-title">Read the setup and API documentation.</h2>
         </div>
-        <div className="resources-grid">
-          {RESOURCES.map((item) => (
-            <a key={item.href} className="resource-link" href={item.href}>
-              {item.label}
-            </a>
-          ))}
+        <div className="docs-links">
+          <a href="/docs/cli">CLI</a>
+          <span>·</span>
+          <a href="/docs/sdk">SDK</a>
+          <span>·</span>
+          <a href="/docs/api-reference">API</a>
+          <span>·</span>
+          <a href="/docs/executors">Executors</a>
+          <span>·</span>
+          <a href="/docs/quickstart">Cookbook</a>
         </div>
       </section>
 
@@ -272,17 +218,6 @@ export const Home = () => (
           <p className="footer-copy">
             Your scripts, with a conversation layer.
           </p>
-        </div>
-        <div className="footer-links">
-          <a className="footer-link" href="/docs/">
-            Docs
-          </a>
-          <a className="footer-link" href="/setup">
-            Setup
-          </a>
-          <a className="footer-link" href="/sandbox/demo-executor">
-            Demo
-          </a>
         </div>
       </footer>
 
