@@ -232,7 +232,77 @@ Rules:
 - sending `null` clears the stored key
 - omitting `ai_api_key` from the payload leaves the existing key unchanged
 
-### 4. Send conversation input
+### 4. Get integration status
+
+`GET /api/v1/integration/status`
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+```
+
+Response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "base_url": null,
+    "ai_api_key_set": true,
+    "ai_api_key_prefix": "sk-or-v1",
+    "created_at": "2026-03-25T10:00:00.000Z",
+    "updated_at": "2026-03-25T10:00:00.000Z"
+  },
+  "account": {
+    "id": "acct_123",
+    "plan": "free",
+    "action_count": 0,
+    "free_actions_used": 0,
+    "free_actions_remaining": 10
+  },
+  "runtime": {
+    "tool_count": 3,
+    "thread_count": 5
+  }
+}
+```
+
+Rules:
+
+- returns the current integration config, account usage, and runtime stats
+- `tool_count` is the number of active synced tools
+- `thread_count` is the number of threads in the provider user context
+
+### 5. Get account usage
+
+`GET /api/v1/account/usage`
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+```
+
+Response:
+
+```json
+{
+  "account_id": "acct_123",
+  "plan": "free",
+  "action_count": 12,
+  "free_actions_used": 10,
+  "free_actions_remaining": 0
+}
+```
+
+Rules:
+
+- returns usage stats for the authenticated account
+- `free_actions_remaining` is `null` for paid accounts
+- `action_count` increments after each successful conversation turn
+
+### 6. Send conversation input
 
 `POST /api/v1/input`
 
@@ -297,7 +367,7 @@ Behavior:
 - decide direct reply, clarification, or tool call
 - persist the conversation state
 
-### 5. Sync tools
+### 7. Sync tools
 
 `POST /api/v1/tools/sync`
 
@@ -341,7 +411,7 @@ Rules:
 - response may still include `integration_id` as the resolved backing setup id
 - compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 
-### 6. Thread endpoints
+### 8. Thread endpoints
 
 Required thread/runtime endpoints:
 
@@ -359,7 +429,7 @@ The short explanation:
 - mutate or delete threads
 - inspect shared memory and thread memory for debugging/admin visibility
 
-### 7. Async executor callback
+### 9. Async executor callback
 
 `POST /api/v1/webhooks/executor`
 

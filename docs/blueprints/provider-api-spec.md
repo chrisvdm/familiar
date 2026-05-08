@@ -505,6 +505,72 @@ Success response:
 }
 ```
 
+### 10. Get integration status
+
+`GET /api/v1/integration/status`
+
+Purpose:
+
+- check the current integration configuration, account usage, and runtime stats
+
+Response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "base_url": "https://executor.example",
+    "ai_api_key_set": true,
+    "ai_api_key_prefix": "sk-or-v1",
+    "created_at": "2026-03-25T10:00:00.000Z",
+    "updated_at": "2026-03-25T10:00:00.000Z"
+  },
+  "account": {
+    "id": "acct_123",
+    "plan": "free",
+    "action_count": 12,
+    "free_actions_used": 10,
+    "free_actions_remaining": 0
+  },
+  "runtime": {
+    "tool_count": 3,
+    "thread_count": 5
+  }
+}
+```
+
+Status codes:
+
+- `200` success
+- `401` unauthenticated
+- `403` forbidden
+
+### 11. Get account usage
+
+`GET /api/v1/account/usage`
+
+Purpose:
+
+- retrieve current usage stats for the authenticated account
+
+Response:
+
+```json
+{
+  "account_id": "acct_123",
+  "plan": "free",
+  "action_count": 12,
+  "free_actions_used": 10,
+  "free_actions_remaining": 0
+}
+```
+
+Status codes:
+
+- `200` success
+- `401` unauthenticated
+- `403` forbidden
+
 ## Tool Execution Contract
 
 When familiar decides a tool should run, it should call the target that owns the tool.

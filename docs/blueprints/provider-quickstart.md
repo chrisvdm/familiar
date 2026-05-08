@@ -72,6 +72,31 @@ To clear a key later, send `{"ai_api_key": null}`.
 
 Get an OpenRouter key at https://openrouter.ai/keys.
 
+### Verify your setup
+
+Check that everything is configured:
+
+```shell
+curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/integration/status \
+  -H "Authorization: Bearer fam_your_token"
+```
+
+This returns your integration config, account plan/usage, and runtime stats (tool count, thread count).
+
+### Check account usage
+
+```shell
+curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/account/usage \
+  -H "Authorization: Bearer fam_your_token"
+```
+
+Returns:
+
+- `plan` — `"free"` or `"paid"`
+- `action_count` — total actions used
+- `free_actions_used` — free tier actions consumed
+- `free_actions_remaining` — `null` if paid, number if free
+
 ## Step 3: Sync Allowed Tools
 
 Tell familiar which tools the current setup should use.
@@ -260,6 +285,50 @@ Example failure response:
     "message": "No sheet named Sales exists."
   }
 }
+```
+
+## Thread Management
+
+### List threads
+
+```shell
+curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/users/default/threads \
+  -H "Authorization: Bearer fam_your_token"
+```
+
+Returns:
+
+```json
+{
+  "threads": [
+    {
+      "thread_id": "thread_abc",
+      "title": "Sales update",
+      "is_private": false,
+      "updated_at": "2026-05-08T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Create a thread
+
+```shell
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/threads \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel": { "type": "web", "id": "session_123" },
+    "title": "My new thread"
+  }'
+```
+
+### Delete a thread
+
+```shell
+curl -X DELETE https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json"
 ```
 
 ## The Minimum Mental Model
