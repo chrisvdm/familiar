@@ -20,9 +20,9 @@
 - [x] Step 1: Exploration complete
 - [x] Step 2: #17 implementation
 - [x] Step 3: #17 testing
-- [ ] Step 4: #17 commit
-- [ ] Step 5: #16 implementation
-- [ ] Step 6: #16 testing
+- [x] Step 4: #17 commit
+- [x] Step 5: #16 implementation
+- [x] Step 6: #16 testing
 - [ ] Step 7: #16 commit
 
 ## Exploration findings
@@ -93,3 +93,71 @@ All of these fall back to `env.OPENROUTER_API_KEY` when `aiApiKey` is undefined.
 
 ### Runtime tests
 - 147/148 tests pass. The 1 failure is the pre-existing `normalizeProviderConfigMap rejects invalid JSON` test.
+
+## #16 Implementation
+
+### Changes made
+
+1. **`src/app/account/account-registry-do.ts`**
+   - Added `incrementActionCount({ accountId })`:
+     - Increments `actionCount`
+     - Increments `freeActionsUsed` only if `plan === "free"`
+     - Returns `{ actionCount, freeActionsUsed, freeActionsRemaining, plan }`
+   - Added `getAccountUsage({ accountId })`:
+     - Returns current usage stats without modifying
+
+2. **`src/app/account/account.service.ts`**
+   - Added `incrementAccountActionCount(accountId)` wrapper
+   - Added `getAccountUsage(accountId)` wrapper
+   - Updated `AccountRegistryStub` type with new DO methods
+
+3. **`src/app/account/account.http-core.ts`**
+   - Added `getAccountUsage` to `AccountEndpointDeps`
+   - Added `createHandleAccountUsageEndpoint` handler:
+     - Authenticates bearer token
+     - Returns `{ account_id, plan, action_count, free_actions_used, free_actions_remaining }`
+
+4. **`src/app/account/account.http.ts`**
+   - Imported `getAccountUsage` from service
+   - Exported `handleAccountUsageEndpoint`
+
+5. **`src/app/account/account.routes.ts`**
+   - Added `GET /api/v1/account/usage` route
+
+6. **`src/app/provider/provider.conversation.endpoint.core.ts`**
+   - Added `incrementAccountActionCount` to `ConversationEndpointDeps`
+   - After successful `handleProviderConversationInput`, calls `incrementAccountActionCount(auth.accountId)`
+   - Applied to both idempotent and non-idempotent paths
+
+7. **`src/app/provider/provider.conversation.endpoint.ts`**
+   - Imported `incrementAccountActionCount` from account service
+   - Wired it into `handleConversationInputEndpoint` deps
+
+### Test updates
+- `provider.endpoint.test-helpers.ts`: Added `incrementAccountActionCount` to `sharedEndpointDeps`
+- `provider.conversation.endpoint.test.ts`: Uses shared deps, so no changes needed
+- `account.ai-provider-key-onboarding.test.ts`: Added `incrementAccountActionCount` and `getAccountUsage` mocks
+- `account.http.test.ts`: Added `getAccountUsage` to `sharedDeps`
+
+### Type check
+- All new errors resolved. Same 3 pre-existing errors remain.
+
+### Runtime tests
+- 147/148 tests pass. The 1 failure is pre-existing.
+
+## Verification
+
+### Free tier flow
+1. `POST /api/v1/accounts` → creates account with `plan: "free"`, `freeActionsUsed: 0`
+2. `POST /api/v1/input` without `aiApiKey` → passes auth (within free tier)
+3. Service layer uses `env.OPENROUTER_API_KEY` fallback
+4. After 10th action, `freeActionsUsed === 10`
+5. 11th `POST /api/v1/input` → auth returns `configuration_required`
+
+### Usage endpoint
+- `GET /api/v1/account/usage` → returns current stats for authenticated token
+
+## Next steps
+- Deploy and test with a fresh account via curl
+- Close #16 and #17 on GitHub
+- Move to #18 (GET /api/v1/integration/status) or #20 (landing page CTAs)

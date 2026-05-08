@@ -41,6 +41,12 @@ type AccountRegistryStub = {
     | { state: "completed"; tokenValue: string }
     | { state: "expired" }
   >;
+  incrementActionCount: (input: {
+    accountId: string;
+  }) => Promise<{ value: { actionCount: number; freeActionsUsed: number; freeActionsRemaining: number | null; plan: "free" | "paid" } } | { error: string }>;
+  getAccountUsage: (input: {
+    accountId: string;
+  }) => Promise<{ value: { actionCount: number; freeActionsUsed: number; freeActionsRemaining: number | null; plan: "free" | "paid" } } | { error: string }>;
 };
 
 const accountEnv = env as typeof env & {
@@ -222,4 +228,20 @@ export const completeCliSession = async (sessionId: string, rawToken: string) =>
 
 export const pollCliSession = async (sessionId: string) => {
   return getAccountRegistryStub().pollCliSession({ sessionId });
+};
+
+export const incrementAccountActionCount = async (accountId: string) => {
+  const result = await getAccountRegistryStub().incrementActionCount({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.value;
+};
+
+export const getAccountUsage = async (accountId: string) => {
+  const result = await getAccountRegistryStub().getAccountUsage({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.value;
 };

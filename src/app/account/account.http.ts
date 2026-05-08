@@ -5,11 +5,13 @@ import {
   completeCliSession,
   createAccountWithInitialToken,
   createCliSession,
+  getAccountUsage,
   normalizeIntegrationBaseUrl,
   pollCliSession,
   updateAccountIntegrationBaseUrl,
 } from "./account.service";
 import {
+  createHandleAccountUsageEndpoint,
   createHandleCompleteCliSessionEndpoint,
   createHandleCreateAccountEndpoint,
   createHandleCreateCliSessionEndpoint,
@@ -30,6 +32,7 @@ const sharedDeps = {
   createCliSession,
   completeCliSession,
   pollCliSession,
+  getAccountUsage,
 };
 
 export const handleCreateAccountEndpoint =
@@ -37,6 +40,9 @@ export const handleCreateAccountEndpoint =
 
 export const handleGetAccountEndpoint =
   createHandleGetAccountEndpoint(sharedDeps);
+
+export const handleAccountUsageEndpoint =
+  createHandleAccountUsageEndpoint(sharedDeps);
 
 export const handleCurrentIntegrationEndpoint =
   createHandleCurrentIntegrationEndpoint(sharedDeps);

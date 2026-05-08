@@ -216,4 +216,47 @@ export class AccountRegistryDurableObject extends DurableObject {
 
     return { value: auth };
   }
+
+  async incrementActionCount(input: { accountId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    account.actionCount = (account.actionCount || 0) + 1;
+    if (account.plan === "free") {
+      account.freeActionsUsed = (account.freeActionsUsed || 0) + 1;
+    }
+
+    await this.saveState(state);
+
+    return {
+      value: {
+        actionCount: account.actionCount,
+        freeActionsUsed: account.freeActionsUsed,
+        freeActionsRemaining: account.plan === "free" ? Math.max(0, 10 - (account.freeActionsUsed || 0)) : null,
+        plan: account.plan,
+      },
+    };
+  }
+
+  async getAccountUsage(input: { accountId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    return {
+      value: {
+        actionCount: account.actionCount || 0,
+        freeActionsUsed: account.freeActionsUsed || 0,
+        freeActionsRemaining: account.plan === "free" ? Math.max(0, 10 - (account.freeActionsUsed || 0)) : null,
+        plan: account.plan,
+      },
+    };
+  }
 }

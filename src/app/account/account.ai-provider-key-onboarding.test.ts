@@ -66,6 +66,7 @@ const sharedDeps = {
   createCliSession: async () => ({ sessionId: "cli_123", expiresAt: "2026-03-25T11:00:00.000Z" }),
   completeCliSession: async () => ({ value: "ok" as const }),
   pollCliSession: async () => ({ state: "pending" as const }),
+  getAccountUsage: async () => ({ actionCount: 0, freeActionsUsed: 0, freeActionsRemaining: 10, plan: "free" as const }),
 };
 
 const integrationRequest = (method: "GET" | "PATCH", body?: unknown) =>
@@ -240,6 +241,12 @@ test("conversation endpoint forwards aiApiKey from auth to handleProviderConvers
       capturedConfig = providerConfig;
       return { state: "completed" };
     },
+    incrementAccountActionCount: async () => ({
+      actionCount: 1,
+      freeActionsUsed: 1,
+      freeActionsRemaining: 9,
+      plan: "free" as const,
+    }),
     isProviderRateLimitError: () => false,
   });
 
@@ -289,6 +296,12 @@ test("conversation endpoint returns 400 configuration_required when no AI key is
     readIdempotencyReplay: () => ({ kind: "miss" as const }),
     storeIdempotencyReplay: ({ context }) => context,
     handleProviderConversationInput: async () => { throw new Error("should not be called"); },
+    incrementAccountActionCount: async () => ({
+      actionCount: 1,
+      freeActionsUsed: 1,
+      freeActionsRemaining: 9,
+      plan: "free" as const,
+    }),
     isProviderRateLimitError: () => false,
   });
 

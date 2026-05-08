@@ -29,6 +29,7 @@ const sharedDeps = {
   createCliSession: async () => ({ sessionId: "cli_123", expiresAt: "2026-03-25T11:00:00.000Z" }),
   completeCliSession: async () => ({ value: "ok" as const }),
   pollCliSession: async () => ({ state: "pending" as const }),
+  getAccountUsage: async () => ({ actionCount: 0, freeActionsUsed: 0, freeActionsRemaining: 10, plan: "free" as const }),
 };
 
 test("create account endpoint returns account and first token", async () => {
