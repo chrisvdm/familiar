@@ -44,6 +44,21 @@ export type Integration = {
   updatedAt: string;
 };
 
+export type IntegrationStatus = {
+  integration: Integration;
+  account: {
+    id: string;
+    plan: "free" | "paid";
+    actionCount: number;
+    freeActionsUsed: number;
+    freeActionsRemaining: number | null;
+  };
+  runtime: {
+    toolCount: number;
+    threadCount: number;
+  };
+};
+
 export type Account = {
   id: string;
   createdAt: string;
@@ -59,6 +74,37 @@ export type Token = {
 export type CreateAccountResult = {
   account: Account;
   token: Token;
+};
+
+export type AccountUsage = {
+  accountId: string;
+  plan: "free" | "paid";
+  actionCount: number;
+  freeActionsUsed: number;
+  freeActionsRemaining: number | null;
+};
+
+export type Thread = {
+  threadId: string;
+  title: string;
+  isPrivate: boolean;
+  updatedAt: string;
+};
+
+export type ThreadListResult = {
+  threads: Thread[];
+};
+
+export type ThreadCreateResult = {
+  threadId: string;
+  title: string;
+  isPrivate: boolean;
+  status: string;
+};
+
+export type ThreadDeleteResult = {
+  threadId: string;
+  status: string;
 };
 
 export type FamiliarErrorCode =

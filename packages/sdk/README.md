@@ -119,3 +119,56 @@ Get the current integration configuration.
 ### `familiar.integration.update({ aiApiKey?, baseUrl? })`
 
 Update the AI provider key or executor base URL. Pass `null` to clear a value.
+
+### `familiar.integration.status()`
+
+Get the full integration status: config, account usage, and runtime stats (tool count, thread count).
+
+```typescript
+const status = await familiar.integration.status();
+console.log(status.account.plan);        // "free" | "paid"
+console.log(status.account.actionCount);
+console.log(status.runtime.toolCount);   // number of synced tools
+console.log(status.runtime.threadCount); // number of threads
+```
+
+### `familiar.account.usage()`
+
+Get current usage stats for the authenticated account.
+
+```typescript
+const usage = await familiar.account.usage();
+console.log(usage.plan);                   // "free" | "paid"
+console.log(usage.actionCount);            // total actions used
+console.log(usage.freeActionsUsed);        // free tier actions consumed
+console.log(usage.freeActionsRemaining);   // null if paid, number if free
+```
+
+### `familiar.threads.list({ userId? })`
+
+List threads for the current integration. Optionally filter by `userId`.
+
+```typescript
+const { threads } = await familiar.threads.list();
+// threads: [{ threadId, title, isPrivate, updatedAt }]
+```
+
+### `familiar.threads.create({ channel, title?, isPrivate?, userId?, integrationId? })`
+
+Create a new thread.
+
+```typescript
+const thread = await familiar.threads.create({
+  channel: { type: "web", id: "session_123" },
+  title: "My thread",
+});
+console.log(thread.threadId);
+```
+
+### `familiar.threads.delete({ threadId, userId?, integrationId? })`
+
+Delete a thread by ID.
+
+```typescript
+await familiar.threads.delete({ threadId: "thread_abc" });
+```
