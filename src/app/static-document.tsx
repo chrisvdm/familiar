@@ -1,4 +1,4 @@
-import homeStyles from "./pages/home/home.css?url";
+import homeStyles from "./pages/home/home.css?url&v=2";
 
 export const StaticDocument: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -10,7 +10,7 @@ export const StaticDocument: React.FC<{ children: React.ReactNode }> = ({
       <title>familiar</title>
       <meta
         name="description"
-        content="familiar makes tools and workflows easier to use through conversation."
+        content="Your scripts, but you can text them. familiar adds reach, memory, and routing to your existing tools."
       />
       <link rel="icon" href="/familiar-mark.svg" type="image/svg+xml" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
