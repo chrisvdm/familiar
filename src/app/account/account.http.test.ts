@@ -26,6 +26,9 @@ const sharedDeps = {
     createdAt: "2026-03-25T10:00:00.000Z",
     updatedAt: "2026-03-25T10:05:00.000Z",
   }),
+  createCliSession: async () => ({ sessionId: "cli_123", expiresAt: "2026-03-25T11:00:00.000Z" }),
+  completeCliSession: async () => ({ value: "ok" as const }),
+  pollCliSession: async () => ({ state: "pending" as const }),
 };
 
 test("create account endpoint returns account and first token", async () => {
@@ -35,11 +38,16 @@ test("create account endpoint returns account and first token", async () => {
     createAccountWithInitialToken: async () => ({
       account: {
         id: "acct_123",
+        defaultSetupId: "setup_123",
+        actionCount: 0,
+        freeActionsUsed: 0,
+        plan: "free",
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
         id: "setup_123",
         baseUrl: null,
+        aiApiKey: null,
         createdAt: "2026-03-25T10:00:00.000Z",
         updatedAt: "2026-03-25T10:00:00.000Z",
       },
@@ -90,6 +98,9 @@ test("get account endpoint resolves account from bearer token", async () => {
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
+        actionCount: 0,
+        freeActionsUsed: 0,
+        plan: "free",
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
@@ -150,6 +161,9 @@ test("current integration endpoint returns stored executor base url", async () =
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
+        actionCount: 0,
+        freeActionsUsed: 0,
+        plan: "free",
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
@@ -222,11 +236,15 @@ test("current integration endpoint updates the executor base url", async () => {
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
+        actionCount: 0,
+        freeActionsUsed: 0,
+        plan: "free",
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
         id: "setup_123",
         baseUrl: null,
+        aiApiKey: null,
         createdAt: "2026-03-25T10:00:00.000Z",
         updatedAt: "2026-03-25T10:00:00.000Z",
       },

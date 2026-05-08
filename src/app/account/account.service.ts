@@ -136,6 +136,9 @@ export const createAccountWithInitialToken = async ({
   const account: FamiliarAccount = {
     id: createAccountId(),
     defaultSetupId: setupId,
+    actionCount: 0,
+    freeActionsUsed: 0,
+    plan: "free",
     createdAt: new Date().toISOString(),
   };
   const integration: FamiliarIntegrationConfig = {

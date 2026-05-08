@@ -137,7 +137,9 @@ export const authenticateProviderRequest = ({
       };
     }
 
-    if (!accountAuth.integration.aiApiKey) {
+    const withinFreeTier = accountAuth.account.freeActionsUsed < 10;
+
+    if (!accountAuth.integration.aiApiKey && !withinFreeTier) {
       return {
         ok: false as const,
         status: 400,
@@ -156,7 +158,9 @@ export const authenticateProviderRequest = ({
         ...(accountAuth.integration.baseUrl
           ? { baseUrl: accountAuth.integration.baseUrl }
           : {}),
-        aiApiKey: accountAuth.integration.aiApiKey,
+        ...(accountAuth.integration.aiApiKey
+          ? { aiApiKey: accountAuth.integration.aiApiKey }
+          : {}),
       },
       accountId: accountAuth.account.id,
     };

@@ -41,6 +41,9 @@ const makeAuth = (integration = makeIntegration()) => ({
   account: {
     id: "acct_123",
     defaultSetupId: "setup_123",
+    actionCount: 0,
+    freeActionsUsed: 0,
+    plan: "free",
     createdAt: "2026-03-25T10:00:00.000Z",
   },
   integration,
@@ -60,6 +63,9 @@ const sharedDeps = {
   jsonError,
   normalizeIntegrationBaseUrl: (u: string) => u.trim().replace(/\/$/, ""),
   createAccountWithInitialToken: async () => { throw new Error("should not create account"); },
+  createCliSession: async () => ({ sessionId: "cli_123", expiresAt: "2026-03-25T11:00:00.000Z" }),
+  completeCliSession: async () => ({ value: "ok" as const }),
+  pollCliSession: async () => ({ state: "pending" as const }),
 };
 
 const integrationRequest = (method: "GET" | "PATCH", body?: unknown) =>
@@ -321,10 +327,10 @@ test("normalizeAccountRegistryState backfills aiApiKey null on integration recor
         id: "setup_legacy",
         accountId: "acct_123",
         baseUrl: null,
-        // aiApiKey intentionally absent — simulates a record written before this field existed
+        aiApiKey: null,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
-      } as Record<string, unknown>,
+      },
     },
     tokens: {},
     tokenIndex: {},

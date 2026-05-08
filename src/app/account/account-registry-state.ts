@@ -8,6 +8,17 @@ export const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
   cliSessions: {},
 });
 
+const normalizeAccountRecord = (
+  record: Record<string, unknown>,
+): import("./account.types").FamiliarAccount => ({
+  id: record.id as string,
+  defaultSetupId: record.defaultSetupId as string,
+  actionCount: typeof record.actionCount === "number" ? record.actionCount : 0,
+  freeActionsUsed: typeof record.freeActionsUsed === "number" ? record.freeActionsUsed : 0,
+  plan: (record.plan as "free" | "paid") || "free",
+  createdAt: record.createdAt as string,
+});
+
 const normalizeIntegrationRecord = (
   record: Record<string, unknown>,
 ): import("./account.types").FamiliarIntegrationConfig => ({
@@ -23,7 +34,14 @@ export const normalizeAccountRegistryState = (
   state: Partial<FamiliarAccountRegistryState> | null | undefined,
 ): FamiliarAccountRegistryState => ({
   accounts:
-    state?.accounts && typeof state.accounts === "object" ? state.accounts : {},
+    state?.accounts && typeof state.accounts === "object"
+      ? Object.fromEntries(
+          Object.entries(state.accounts).map(([k, v]) => [
+            k,
+            normalizeAccountRecord(v as Record<string, unknown>),
+          ]),
+        )
+      : {},
   integrations:
     state?.integrations && typeof state.integrations === "object"
       ? Object.fromEntries(
