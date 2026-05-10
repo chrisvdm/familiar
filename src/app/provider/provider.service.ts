@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { requestInfo } from "rwsdk/worker";
 
-import { callOpenRouter as callOpenRouterClient } from "./openrouter.client";
+import { callOpenRouter as callOpenRouterClient, callOpenRouterStream } from "./openrouter.client";
 import {
   synthesizeUserProfile,
 } from "../chat/chat.memory";
@@ -358,6 +358,51 @@ const buildDirectReply = async ({
     messages: [
       {
         role: "system" as const,
+        content:
+          "You are familiar. Reply directly to the user in a brief, natural, human-facing way. Do not describe tool-selection reasoning or internal decision logic.",
+      },
+      ...(memoryContext
+        ? [
+            {
+              role: "system" as const,
+              content: memoryContext,
+            },
+          ]
+        : []),
+      ...buildPromptContext([...messages, createUserMessage(content)]),
+    ],
+  });
+};
+
+const buildDirectReplyStream = async function* ({
+  content,
+  messages,
+  memoryContext,
+  replyModel,
+  timeZone,
+  aiApiKey,
+}: {
+  content: string;
+  messages: ChatMessage[];
+  memoryContext: string | null;
+  replyModel: string;
+  timeZone?: string | null;
+  aiApiKey?: string;
+}): AsyncGenerator<string, void, unknown> {
+  const apiKey = aiApiKey || env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not configured.");
+  }
+
+  yield* callOpenRouterStream({
+    apiKey,
+    model: replyModel,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: createDateTimeSystemPrompt({ timeZone }) },
+      {
+        role: "system",
         content:
           "You are familiar. Reply directly to the user in a brief, natural, human-facing way. Do not describe tool-selection reasoning or internal decision logic.",
       },
@@ -1086,6 +1131,7 @@ export const decideConversationAction = async ({
   replyModel,
   timeZone,
   aiApiKey,
+  generateReply = true,
 }: {
   content: string;
   messages: ChatMessage[];
@@ -1094,8 +1140,16 @@ export const decideConversationAction = async ({
   replyModel: string;
   timeZone?: string | null;
   aiApiKey?: string;
+  generateReply?: boolean;
 }) => {
   if (tools.filter((tool) => tool.status === "active").length === 0) {
+    if (!generateReply) {
+      return {
+        action: "direct_reply",
+        reply: "",
+      } satisfies ConversationDecision;
+    }
+
     const reply = await buildDirectReply({
       content,
       messages,
@@ -1173,6 +1227,14 @@ export const decideConversationAction = async ({
       return {
         action: "clarification",
         question: followUp,
+        reasoning: reasoning ?? undefined,
+      } satisfies ConversationDecision;
+    }
+
+    if (!generateReply) {
+      return {
+        action: "direct_reply",
+        reply: "",
         reasoning: reasoning ?? undefined,
       } satisfies ConversationDecision;
     }
@@ -2431,6 +2493,564 @@ export const handleProviderConversationInput = async ({
         : null,
     model: model || finalContext.selectedModel,
   };
+};
+
+export const handleStreamConversationInput = async ({
+  input,
+  providerConfig,
+  requestId,
+}: {
+  input: NormalizedProviderConversationInput;
+  providerConfig: ProviderConfig;
+  requestId?: string;
+}) => {
+  const model = input.model?.trim() || DEFAULT_MODEL;
+  const timeZone = getRequestTimeZone(input.timezone);
+  let context = await loadOrCreateProviderUserContext({
+    providerId: input.integration_id,
+    userId: input.user_id,
+  });
+  const content = input.input.text.trim();
+
+  if (!content) {
+    throw new Error("Input text is required.");
+  }
+
+  context = enforceConversationRateLimit({ context });
+  if (input.tools) {
+    context = {
+      ...context,
+      allowedTools: normalizeAllowedTools(input.tools),
+    };
+  }
+  context = await saveProviderUserContext(context);
+
+  if (
+    context.threads.length > 0 &&
+    (isSynthesisDue(context) || isCalibrationRequest(content))
+  ) {
+    context = await runProfileSynthesis({ context, timeZone, aiApiKey: providerConfig.aiApiKey });
+  }
+
+  logProviderAudit({
+    event: "provider.conversation.received",
+    requestId,
+    providerId: input.integration_id,
+    userId: input.user_id,
+    threadId: input.thread_id,
+    channelType: input.channel.type,
+    channelId: input.channel.id,
+    status: "ok",
+  });
+
+  let threadId = await resolveThreadId({
+    context,
+    providedThreadId: input.thread_id,
+    channel: input.channel,
+    content,
+  });
+  let currentContext = context;
+
+  if (!threadId) {
+    const created = await createThreadForContext({
+      context,
+      channel: input.channel,
+      isPrivate: false,
+    });
+
+    threadId = created.threadId;
+    currentContext = created.context;
+  }
+
+  const thread = currentContext.threads.find((entry) => entry.id === threadId);
+
+  if (!thread) {
+    throw new Error("Thread not found.");
+  }
+
+  const currentState = await loadChatSession(threadId);
+  const memoryScope = selectProviderGlobalMemory({
+    memoryPolicy: currentContext.memoryPolicy,
+    globalMemory: currentContext.globalMemory,
+    isPrivate: thread.isTemporary,
+  });
+  const memoryBackend = createMemoryBackend();
+  const memoryContext =
+    currentContext.memoryPolicy.mode === "external"
+      ? input.context?.external_memories?.join("\n") || null
+      : await memoryBackend.retrieve({
+          userId: input.user_id ?? "",
+          integrationId: input.integration_id ?? "",
+          threadId,
+          userMessage: content,
+          messages: currentState.messages,
+          threadMemory: currentState.memory,
+          globalMemory: memoryScope,
+          policy: currentContext.memoryPolicy,
+          timeZone,
+          aiApiKey: providerConfig.aiApiKey,
+        });
+
+  await appendMessagesToThread({
+    threadId,
+    messages: [createUserMessage(content)],
+  });
+
+  let action:
+    | "direct_reply"
+    | "clarification"
+    | "tool_call"
+    | "command" = "direct_reply";
+  let executionState: ProviderExecutionState | undefined;
+  let executionId: string | undefined;
+  let pendingToolConfirmation: PendingToolConfirmation | null = null;
+  let decisionReasoning: string | null = null;
+  let streamDecision: ConversationDecision | null = null;
+
+  const shortcutInvocation = parseToolShortcutInvocation({
+    content,
+    tools: currentContext.allowedTools,
+  });
+  const shortcutInvocations = parseToolShortcutInvocations({
+    content,
+    tools: currentContext.allowedTools,
+  });
+
+  let preComputedContent = "";
+  let preComputedAction: "direct_reply" | "clarification" | "tool_call" | "command" = action;
+  let preComputedExecutionState: ProviderExecutionState | undefined = executionState;
+  let preComputedExecutionId: string | undefined = executionId;
+  let preComputedPendingToolConfirmation: PendingToolConfirmation | null = pendingToolConfirmation;
+
+  if (shortcutInvocation) {
+    const lastShortcutInvocation = shortcutInvocations.at(-1) ?? shortcutInvocation;
+    const executableShortcuts = shortcutInvocations.filter((entry) => entry.remainder);
+
+    if (executableShortcuts.length > 0) {
+      const executionMessages = [];
+
+      for (const entry of executableShortcuts) {
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          toolName: entry.tool.toolName,
+          args: buildShortcutToolArguments({
+            tool: entry.tool,
+            content: entry.remainder,
+          }),
+          channel: input.channel,
+          rawInputText: buildShortcutRawInputText({
+            tool: entry.tool,
+            content: entry.remainder,
+          }),
+          shortcutMode: true,
+          requestId,
+        });
+
+        executionMessages.push(execution.message);
+        preComputedAction = "tool_call";
+        preComputedExecutionState = execution.state;
+        preComputedExecutionId = execution.executionId;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: entry.tool.toolName,
+            executionState: execution.state,
+            viaShortcut: true,
+          },
+        });
+      }
+
+      preComputedContent = executionMessages.join("\n");
+    } else {
+      preComputedContent = `Tool shortcut detected for ${lastShortcutInvocation.tool.toolName}. Include the payload in the same message, for example \`@${lastShortcutInvocation.tool.toolName} hello\`.`;
+      preComputedAction = "clarification";
+      preComputedExecutionState = "needs_clarification";
+    }
+  } else if (currentState.pendingToolConfirmation) {
+    const pendingTool = currentContext.allowedTools.find(
+      (tool) => tool.toolName === currentState.pendingToolConfirmation?.toolName,
+    );
+
+    if (
+      currentState.pendingToolConfirmation.mode === "confirmation" ||
+      !pendingTool
+    ) {
+      const pendingReply = interpretPendingToolConfirmation(content);
+
+      if (pendingReply === "confirm") {
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          toolName: currentState.pendingToolConfirmation.toolName,
+          args: currentState.pendingToolConfirmation.arguments,
+          executorPayloadTemplate: pendingTool?.executorPayload,
+          channel: input.channel,
+          rawInputText: currentState.pendingToolConfirmation.rawInputText,
+          requestId,
+        });
+
+        preComputedContent = execution.message;
+        preComputedAction = "tool_call";
+        preComputedExecutionState = execution.state;
+        preComputedExecutionId = execution.executionId;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: currentState.pendingToolConfirmation.toolName,
+            executionState: execution.state,
+            viaConfirmation: true,
+          },
+        });
+      } else if (pendingReply === "reject") {
+        preComputedContent =
+          "Okay, I will not use that tool. Tell me what you want me to do instead.";
+        preComputedAction = "clarification";
+        preComputedExecutionState = "needs_clarification";
+      } else {
+        preComputedContent = buildPendingConfirmationReminder({
+          tool: pendingTool,
+        });
+        preComputedAction = "clarification";
+        preComputedExecutionState = "needs_clarification";
+        preComputedPendingToolConfirmation = currentState.pendingToolConfirmation;
+      }
+    } else {
+      const updated = await updatePendingToolArguments({
+        tool: pendingTool,
+        currentArguments: currentState.pendingToolConfirmation.arguments,
+        userReply: content,
+        question: currentState.pendingToolConfirmation.question,
+        timeZone,
+        aiApiKey: providerConfig.aiApiKey,
+      });
+
+      if (updated.followUp) {
+        preComputedContent = updated.followUp;
+        preComputedAction = "clarification";
+        preComputedExecutionState = "needs_clarification";
+        const pendingRawFieldName = getRawToolStringFieldName(pendingTool);
+        const updatedRawInputText =
+          getToolInputMode(pendingTool) === "raw"
+            ? pendingRawFieldName && typeof updated.arguments[pendingRawFieldName] === "string"
+              ? (updated.arguments[pendingRawFieldName] as string)
+              : undefined
+            : currentState.pendingToolConfirmation.rawInputText;
+        preComputedPendingToolConfirmation = {
+          ...currentState.pendingToolConfirmation,
+          mode: "follow_up",
+          arguments: updated.arguments,
+          rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
+          question: updated.followUp,
+        };
+      } else {
+        const pendingRawFieldName = getRawToolStringFieldName(pendingTool);
+        const updatedRawInputText =
+          getToolInputMode(pendingTool) === "raw"
+            ? pendingRawFieldName && typeof updated.arguments[pendingRawFieldName] === "string"
+              ? (updated.arguments[pendingRawFieldName] as string)
+              : undefined
+            : currentState.pendingToolConfirmation.rawInputText;
+        const execution = await executeProviderTool({
+          providerConfig,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          toolName: currentState.pendingToolConfirmation.toolName,
+          args: updated.arguments,
+          channel: input.channel,
+          rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
+          requestId,
+        });
+
+        preComputedContent = execution.message;
+        preComputedAction = "tool_call";
+        preComputedExecutionState = execution.state;
+        preComputedExecutionId = execution.executionId;
+
+        logProviderAudit({
+          event: "provider.tool.executed",
+          requestId,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          status: execution.state === "failed" ? "error" : "ok",
+          metadata: {
+            toolName: currentState.pendingToolConfirmation.toolName,
+            executionState: execution.state,
+            viaFollowUp: true,
+          },
+        });
+      }
+    }
+  } else {
+    const decision = await decideConversationAction({
+      content,
+      messages: currentState.messages,
+      memoryContext,
+      tools: currentContext.allowedTools,
+      replyModel: model,
+      timeZone,
+      aiApiKey: providerConfig.aiApiKey,
+      generateReply: false,
+    });
+    decisionReasoning = decision.reasoning ?? null;
+    streamDecision = decision;
+  }
+
+  const isPrecomputed = !streamDecision;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (event: string, data: Record<string, unknown>) => {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ event, ...data })}\n\n`),
+        );
+      };
+
+      try {
+        let assistantContent = preComputedContent;
+        let finalAction: "direct_reply" | "clarification" | "tool_call" | "command" = preComputedAction;
+        let finalExecutionState: ProviderExecutionState | undefined = preComputedExecutionState;
+        let finalExecutionId: string | undefined = preComputedExecutionId;
+        let finalPendingToolConfirmation: PendingToolConfirmation | null = preComputedPendingToolConfirmation;
+
+        if (isPrecomputed) {
+          send("decision", {
+            action: finalAction,
+            reasoning: decisionReasoning,
+          });
+        } else if (streamDecision?.action === "direct_reply") {
+          send("decision", {
+            action: "direct_reply",
+            reasoning: decisionReasoning,
+          });
+
+          let streamedContent = "";
+          for await (const chunk of buildDirectReplyStream({
+            content,
+            messages: currentState.messages,
+            memoryContext,
+            replyModel: model,
+            timeZone,
+            aiApiKey: providerConfig.aiApiKey,
+          })) {
+            streamedContent += chunk;
+            send("delta", { content: chunk });
+          }
+
+          assistantContent = streamedContent;
+          finalAction = "direct_reply";
+        } else if (streamDecision?.action === "clarification") {
+          assistantContent = streamDecision.question;
+          finalAction = "clarification";
+          finalExecutionState = "needs_clarification";
+          send("decision", {
+            action: "clarification",
+            reasoning: decisionReasoning,
+          });
+        } else if (streamDecision?.action === "tool_follow_up") {
+          const confidence = clampDecisionConfidence(streamDecision.confidence);
+          const tool = currentContext.allowedTools.find(
+            (entry) => entry.toolName === streamDecision.tool_name,
+          );
+          const normalizedInput = normalizeToolExecutionInput({
+            tool,
+            args: streamDecision.arguments,
+            content,
+          });
+
+          assistantContent = streamDecision.question;
+          finalAction = "clarification";
+          finalExecutionState = "needs_clarification";
+          finalPendingToolConfirmation = {
+            mode: "follow_up",
+            toolName: streamDecision.tool_name,
+            arguments: normalizedInput.arguments,
+            rawInputText: normalizedInput.rawInputText,
+            confidence,
+            createdAt: new Date().toISOString(),
+            question: streamDecision.question,
+          };
+          send("decision", {
+            action: "clarification",
+            reasoning: decisionReasoning,
+          });
+        } else if (streamDecision?.action === "tool_call") {
+          const confidence = clampDecisionConfidence(streamDecision.confidence);
+          const tool = currentContext.allowedTools.find(
+            (entry) => entry.toolName === streamDecision.tool_name,
+          );
+          const normalizedInput = normalizeToolExecutionInput({
+            tool,
+            args: streamDecision.arguments,
+            content,
+          });
+          const confidenceAction = getToolDecisionConfidenceAction(confidence);
+
+          if (confidenceAction === "clarify") {
+            assistantContent = buildLowConfidenceToolQuestion();
+            finalAction = "clarification";
+            finalExecutionState = "needs_clarification";
+            send("decision", {
+              action: "clarification",
+              reasoning: decisionReasoning,
+            });
+          } else if (confidenceAction === "confirm") {
+            assistantContent = buildToolConfirmationQuestion({ tool });
+            finalAction = "clarification";
+            finalExecutionState = "needs_clarification";
+            finalPendingToolConfirmation = {
+              mode: "confirmation",
+              toolName: streamDecision.tool_name,
+              arguments: normalizedInput.arguments,
+              rawInputText: normalizedInput.rawInputText,
+              confidence,
+              createdAt: new Date().toISOString(),
+            };
+            send("decision", {
+              action: "clarification",
+              reasoning: decisionReasoning,
+            });
+          } else {
+            const execution = await executeProviderTool({
+              providerConfig,
+              providerId: input.integration_id,
+              userId: input.user_id,
+              threadId,
+              toolName: streamDecision.tool_name,
+              args: normalizedInput.arguments,
+              executorPayloadTemplate: tool?.executorPayload,
+              channel: input.channel,
+              rawInputText: normalizedInput.rawInputText,
+              requestId,
+            });
+
+            assistantContent = execution.message;
+            finalAction = "tool_call";
+            finalExecutionState = execution.state;
+            finalExecutionId = execution.executionId;
+
+            logProviderAudit({
+              event: "provider.tool.executed",
+              requestId,
+              providerId: input.integration_id,
+              userId: input.user_id,
+              threadId,
+              status: execution.state === "failed" ? "error" : "ok",
+              metadata: {
+                toolName: streamDecision.tool_name,
+                executionState: execution.state,
+                confidence,
+              },
+            });
+
+            send("decision", {
+              action: "tool_call",
+              reasoning: decisionReasoning,
+            });
+          }
+        }
+
+        const withAssistant = await appendMessagesToThread({
+          threadId,
+          messages: [createAssistantMessage(assistantContent)],
+          pendingToolConfirmation: finalPendingToolConfirmation,
+        });
+
+        const finalContext = await saveProviderUserContext({
+          ...currentContext,
+          selectedModel: model,
+          threads: updateThreadSummaries(
+            currentContext.threads,
+            buildThreadSummary(thread, withAssistant.messages),
+          ),
+          channels: updateChannelState({
+            context: currentContext,
+            channel: input.channel,
+            threadId,
+          }),
+          threadChannels: updateThreadChannelState({
+            context: currentContext,
+            channel: input.channel,
+            threadId,
+          }),
+        });
+
+        scheduleBackgroundTask(
+          refreshProviderMemories({
+            threadId,
+            state: withAssistant,
+            thread:
+              finalContext.threads.find((entry) => entry.id === threadId) ?? thread,
+            context: finalContext,
+            isPrivate: thread.isTemporary,
+            timeZone,
+            aiApiKey: providerConfig.aiApiKey,
+          }).then(() => undefined),
+        );
+
+        logProviderAudit({
+          event: "provider.conversation.completed",
+          requestId,
+          providerId: input.integration_id,
+          userId: input.user_id,
+          threadId,
+          channelType: input.channel.type,
+          channelId: input.channel.id,
+          status: "ok",
+          metadata: {
+            action: finalAction,
+            executionState: finalExecutionState ?? null,
+          },
+        });
+
+        send("done", {
+          thread_id: threadId,
+          messages: withAssistant.messages.map((m) => ({
+            message_id: m.id,
+            role: m.role,
+            content: m.content,
+            created_at: m.createdAt,
+          })),
+          action: finalAction,
+          execution:
+            finalExecutionState || finalExecutionId
+              ? {
+                  state: finalExecutionState ?? null,
+                  execution_id: finalExecutionId ?? null,
+                }
+              : null,
+          model,
+        });
+
+        controller.close();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Stream error.";
+        send("error", { code: "internal_error", message });
+        controller.close();
+      }
+    },
+  });
+
+  return { stream, threadId };
 };
 
 export const simulateConversationInput = async ({

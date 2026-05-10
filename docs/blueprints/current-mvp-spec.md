@@ -367,7 +367,60 @@ Behavior:
 - decide direct reply, clarification, or tool call
 - persist the conversation state
 
-### 7. Simulate conversation input (dry run)
+### 7. Stream conversation input
+
+`POST /api/v1/input/stream`
+
+Purpose:
+
+- stream the assistant response for direct replies as it is generated
+- tool calls and clarifications still return the full result (no content streaming)
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+Request:
+
+Same shape as `POST /api/v1/input`.
+
+Response:
+
+`text/event-stream` with JSON data lines.
+
+Events:
+
+- `decision` — the chosen action (`direct_reply`, `clarification`, `tool_call`)
+- `delta` — a text chunk (only for `direct_reply`)
+- `done` — the final payload with `thread_id`, `messages`, `execution`, `action`
+- `error` — if something goes wrong during the stream
+
+Example stream for a direct reply:
+
+```text
+data: {"event":"decision","action":"direct_reply"}
+
+data: {"event":"delta","content":"The"}
+
+data: {"event":"delta","content":" sales"}
+
+data: {"event":"delta","content":" sheet"}
+
+data: {"event":"done","thread_id":"thread_abc","messages":[...],"action":"direct_reply","execution":null,"model":"openai/gpt-4o-mini"}
+```
+
+Rules:
+
+- auth and rate-limit errors are returned as HTTP errors before the stream starts
+- the decision model still runs first (non-streaming) to determine the action
+- only `direct_reply` content is streamed
+- `done` always includes the full conversation state
+
+### 8. Simulate conversation input (dry run)
 
 `POST /api/v1/input/simulate`
 
@@ -418,7 +471,7 @@ Rules:
 - does **not** increment action count or consume free quota
 - does **not** schedule background memory refresh
 
-### 8. Sync tools
+### 9. Sync tools
 
 `POST /api/v1/tools/sync`
 
@@ -462,7 +515,7 @@ Rules:
 - response may still include `integration_id` as the resolved backing setup id
 - compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 
-### 9. Thread endpoints
+### 10. Thread endpoints
 
 Required thread/runtime endpoints:
 
@@ -480,7 +533,7 @@ The short explanation:
 - mutate or delete threads
 - inspect shared memory and thread memory for debugging/admin visibility
 
-### 10. Async executor callback
+### 11. Async executor callback
 
 `POST /api/v1/webhooks/executor`
 
@@ -512,7 +565,7 @@ Rules:
 - `Idempotency-Key` is supported
 - if no idempotency key is provided, the system may fall back to `result.execution_id`
 
-### 11. Query audit events
+### 12. Query audit events
 
 `GET /api/v1/audit/events`
 

@@ -124,6 +124,33 @@ console.log(result.response.reasoning);// model reasoning
 console.log(result.simulated);         // true
 ```
 
+### `familiar.inputStream({ text, channel, userId?, threadId?, integrationId?, tools? })`
+
+Stream the assistant response for direct replies. Returns an async generator of SSE events.
+
+```typescript
+for await (const event of familiar.inputStream({
+  text: "Tell me about the sales sheet",
+  channel: { type: "web", id: "session_123" },
+})) {
+  if (event.event === "decision") {
+    console.log("Action:", event.action);
+  }
+  if (event.event === "delta") {
+    process.stdout.write(event.content); // stream text chunks
+  }
+  if (event.event === "done") {
+    console.log("Thread:", event.threadId);
+    console.log("Messages:", event.messages);
+  }
+  if (event.event === "error") {
+    console.error("Stream error:", event.message);
+  }
+}
+```
+
+Tool calls and clarifications are not streamed — they emit a single `decision` event followed by `done`.
+
 ### `familiar.tools.sync({ tools })`
 
 Sync the tool set for the current token-backed integration.

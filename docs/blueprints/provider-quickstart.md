@@ -165,6 +165,43 @@ Important input rule:
 - if your product supports voice notes or speech input, transcribe or otherwise normalize that upstream before calling `/api/v1/input`
 - large transcription blocks are fine as long as they arrive as plain `input.text`
 
+### Streaming responses
+
+For direct replies, you can stream the assistant response as it is generated:
+
+```shell
+curl -N -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input/stream \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "input": {
+      "kind": "text",
+      "text": "Tell me about the sales sheet"
+    },
+    "channel": {
+      "type": "email",
+      "id": "chris@example.com"
+    }
+  }'
+```
+
+SSE events:
+
+```
+data: {"event":"decision","action":"direct_reply"}
+
+data: {"event":"delta","content":"The"}
+
+data: {"event":"delta","content":" sales"}
+
+data: {"event":"delta","content":" sheet"}
+
+data: {"event":"done","thread_id":"thread_abc","messages":[...],"action":"direct_reply"}
+```
+
+Tool calls and clarifications are not streamed — they emit a single `decision` event followed by `done`.
+
 ## Step 5: Simulate input (dry run)
 
 Test what familiar would do without persisting messages, executing tools, or burning quota:

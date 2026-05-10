@@ -1,4 +1,4 @@
-import { request } from "./client.js";
+import { request, FamiliarError } from "./client.js";
 import type {
   Channel,
   Tool,
@@ -13,9 +13,11 @@ import type {
   ThreadDeleteResult,
   AuditListResult,
   SimulateInputResult,
+  InputStreamEvent,
+  FamiliarErrorCode,
 } from "./types.js";
 
-export { FamiliarError } from "./client.js";
+export { FamiliarError };
 export type {
   Channel,
   Tool,
@@ -35,6 +37,7 @@ export type {
   AuditEvent,
   AuditListResult,
   FamiliarErrorCode,
+  InputStreamEvent,
 } from "./types.js";
 
 const DEFAULT_HOST = "https://familiar.chrsvdmrw.workers.dev";
@@ -99,6 +102,88 @@ export class Familiar {
     tools?: Tool[];
   }): Promise<SimulateInputResult> {
     return this._input({ text, channel, userId, threadId, integrationId, tools, simulate: true }) as Promise<SimulateInputResult>;
+  }
+
+  async *inputStream({
+    text,
+    channel,
+    userId,
+    threadId,
+    integrationId,
+    tools,
+  }: {
+    text: string;
+    channel: Channel;
+    userId?: string;
+    threadId?: string;
+    integrationId?: string;
+    tools?: Tool[];
+  }): AsyncGenerator<InputStreamEvent> {
+    const url = `${this.host.replace(/\/$/, "")}/api/v1/input/stream`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify({
+        input: { kind: "text", text },
+        channel,
+        ...(userId ? { user_id: userId } : {}),
+        ...(threadId ? { thread_id: threadId } : {}),
+        ...(integrationId ? { integration_id: integrationId } : {}),
+        ...(tools ? { tools: tools.map(serializeTool) } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      let payload: Record<string, unknown> = {};
+      try {
+        payload = await response.json();
+      } catch {
+        // ignore
+      }
+      const error = payload?.error as { code?: string; message?: string } | undefined;
+      throw new FamiliarError({
+        code: (error?.code ?? "internal_error") as FamiliarErrorCode,
+        message: error?.message ?? `Request failed: ${response.status}`,
+        status: response.status,
+      });
+    }
+
+    if (!response.body) {
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+          const data = trimmed.slice(6);
+          try {
+            const event = JSON.parse(data) as InputStreamEvent;
+            yield event;
+          } catch {
+            // ignore malformed SSE lines
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   private async _input({

@@ -330,7 +330,60 @@ Example rate-limited response:
 }
 ```
 
-### 3. Simulate conversation input (dry run)
+### 3. Stream conversation input
+
+`POST /api/v1/input/stream`
+
+Purpose:
+
+- stream the assistant response for direct replies as it is generated
+- tool calls and clarifications still return the full result (no content streaming)
+
+Request:
+
+Same shape as `POST /api/v1/input`.
+
+Response:
+
+`text/event-stream` with JSON data lines.
+
+Events:
+
+- `decision` — the chosen action (`direct_reply`, `clarification`, `tool_call`)
+- `delta` — a text chunk (only for `direct_reply`)
+- `done` — the final payload with `thread_id`, `messages`, `execution`, `action`
+- `error` — if something goes wrong during the stream
+
+Example stream for a direct reply:
+
+```text
+data: {"event":"decision","action":"direct_reply"}
+
+data: {"event":"delta","content":"The"}
+
+data: {"event":"delta","content":" sales"}
+
+data: {"event":"delta","content":" sheet"}
+
+data: {"event":"done","thread_id":"thread_abc","messages":[...],"action":"direct_reply","execution":null,"model":"openai/gpt-4o-mini"}
+```
+
+Rules:
+
+- auth and rate-limit errors are returned as HTTP errors before the stream starts
+- the decision model still runs first (non-streaming) to determine the action
+- only `direct_reply` content is streamed
+- `done` always includes the full conversation state
+
+Status codes:
+
+- `200` success (stream begins)
+- `400` invalid payload
+- `401` unauthenticated
+- `403` integration mismatch
+- `429` rate limited
+
+### 4. Simulate conversation input (dry run)
 
 `POST /api/v1/input/simulate`
 
@@ -382,7 +435,7 @@ Status codes:
 - `403` integration mismatch
 - `429` rate limited
 
-### 4. Create thread
+### 5. Create thread
 
 `POST /api/v1/threads`
 
@@ -416,7 +469,7 @@ Success response:
 }
 ```
 
-### 5. List threads
+### 6. List threads
 
 `GET /api/v1/integrations/:integration_id/users/:user_id/threads`
 
@@ -439,7 +492,7 @@ Success response:
 }
 ```
 
-### 6. Rename thread
+### 7. Rename thread
 
 `PATCH /api/v1/threads/:thread_id`
 
@@ -453,7 +506,7 @@ Request:
 }
 ```
 
-### 7. Delete thread
+### 8. Delete thread
 
 `DELETE /api/v1/threads/:thread_id`
 
@@ -473,7 +526,7 @@ Behavior:
 - remove thread from user-visible thread list
 - remove any shared-memory entries that depend only on this thread, according to the implemented provenance model
 
-### 8. Read shared memory
+### 9. Read shared memory
 
 `GET /api/v1/integrations/:integration_id/users/:user_id/memory`
 
@@ -487,7 +540,7 @@ This is primarily useful for:
 - admin tooling
 - future user-facing memory inspection
 
-### 9. Read thread memory
+### 10. Read thread memory
 
 `GET /api/v1/threads/:thread_id/memory`
 
@@ -495,7 +548,7 @@ Purpose:
 
 - inspect thread-local memory for one thread
 
-### 10. Executor result callback
+### 11. Executor result callback
 
 `POST /api/v1/webhooks/executor`
 
@@ -557,7 +610,7 @@ Success response:
 }
 ```
 
-### 11. Get integration status
+### 12. Get integration status
 
 `GET /api/v1/integration/status`
 
@@ -597,7 +650,7 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
-### 12. Get account usage
+### 13. Get account usage
 
 `GET /api/v1/account/usage`
 
@@ -623,7 +676,7 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
-### 13. Query audit events
+### 14. Query audit events
 
 `GET /api/v1/audit/events`
 

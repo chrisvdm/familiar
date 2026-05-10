@@ -139,6 +139,12 @@ export type SimulateInputResult = {
   model: string;
 };
 
+export type InputStreamEvent =
+  | { event: "decision"; action: string; reasoning?: string | null }
+  | { event: "delta"; content: string }
+  | { event: "done"; threadId: string; messages: Message[]; action: string; execution: { state: string | null; executionId: string | null } | null; model: string }
+  | { event: "error"; code: string; message: string };
+
 export type FamiliarErrorCode =
   | "unauthenticated"
   | "forbidden"

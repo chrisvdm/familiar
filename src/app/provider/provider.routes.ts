@@ -14,6 +14,7 @@ import {
 import {
   getProviderMemory,
   getProviderThreadMemory,
+  handleStreamConversationInput,
   listProviderThreads,
   simulateConversationInput,
 } from "./provider.service";
@@ -28,6 +29,88 @@ export const providerRoutes = [
   ),
   route("/api/v1/input", handleConversationInputEndpoint),
   route("/api/v1/conversation/input", handleConversationInputEndpoint),
+  route("/api/v1/input/stream", async ({ request }) => {
+    const requestId = getRequestId(request);
+
+    if (request.method !== "POST") {
+      return jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    try {
+      const body = await request.json() as {
+        input?: { text?: string };
+        channel?: { type: string; id: string };
+        thread_id?: string;
+        tools?: unknown;
+        model?: string;
+        timezone?: string;
+        user_id?: string;
+        integration_id?: string;
+      };
+      const auth = await authenticateProviderRequest({ request, requestId });
+
+      if (!auth.ok) {
+        return jsonError({
+          requestId,
+          status: auth.status,
+          code: auth.error.code,
+          message: auth.error.message,
+        });
+      }
+
+      const result = await handleStreamConversationInput({
+        input: {
+          integration_id: auth.providerId,
+          user_id: body.user_id ?? "default",
+          input: { kind: "text" as const, text: body.input?.text ?? "" },
+          channel: body.channel ?? { type: "web", id: "stream" },
+          ...(body.thread_id ? { thread_id: body.thread_id } : {}),
+          ...(body.tools ? { tools: body.tools as unknown[] } : {}),
+          ...(body.model ? { model: body.model } : {}),
+          ...(body.timezone ? { timezone: body.timezone } : {}),
+        } as any,
+        providerConfig: auth.providerConfig,
+        requestId,
+      });
+
+      return new Response(result.stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "X-Request-Id": requestId,
+        },
+      });
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "retryAfterSeconds" in error &&
+        typeof error.retryAfterSeconds === "number"
+      ) {
+        return jsonError({
+          requestId,
+          status: 429,
+          code: "rate_limited",
+          message: "Too many conversation requests. Try again shortly.",
+          details: { retry_after_seconds: error.retryAfterSeconds },
+          retryAfterSeconds: error.retryAfterSeconds,
+        });
+      }
+
+      return jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message:
+          error instanceof Error ? error.message : "Invalid stream request.",
+      });
+    }
+  }),
   route("/api/v1/input/simulate", async ({ request }) => {
     const requestId = getRequestId(request);
 
