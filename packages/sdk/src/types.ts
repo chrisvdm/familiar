@@ -107,6 +107,20 @@ export type ThreadDeleteResult = {
   status: string;
 };
 
+export type AuditEvent = {
+  event: string;
+  requestId?: string;
+  status?: "ok" | "error";
+  code?: string;
+  detail?: string;
+  metadata?: Record<string, unknown>;
+  at: string;
+};
+
+export type AuditListResult = {
+  events: AuditEvent[];
+};
+
 export type FamiliarErrorCode =
   | "unauthenticated"
   | "forbidden"

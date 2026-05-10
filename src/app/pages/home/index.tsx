@@ -1,4 +1,5 @@
 import { FamiliarMark } from "@/app/components/familiar-mark";
+import { FamiliarName } from "@/app/components/familiar-name";
 
 const FIXES = [
   {
@@ -57,7 +58,7 @@ export const Home = () => (
       <header className="hero" id="hero">
         <div className="hero-panel">
           <div className="hero-copy">
-            <h1 className="hero-title">familiar</h1>
+            <h1 className="hero-title"><FamiliarName/></h1>
             <p className="hero-subtitle">
               Your scripts, but you can text them.
             </p>

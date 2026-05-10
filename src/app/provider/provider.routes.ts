@@ -16,6 +16,7 @@ import {
   getProviderThreadMemory,
   listProviderThreads,
 } from "./provider.service";
+import { loadOrCreateProviderUserContext } from "./provider.storage";
 
 export const providerRoutes = [
   route("/api/v1/tools/sync", handleToolsSyncEndpoint),
@@ -285,6 +286,62 @@ export const providerRoutes = [
         code: "invalid_request",
         message:
           error instanceof Error ? error.message : "Unable to load thread memory.",
+      });
+    }
+  }),
+  route("/api/v1/audit/events", async ({ request }) => {
+    const requestId = getRequestId(request);
+
+    if (request.method !== "GET") {
+      return jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    const auth = await authenticateProviderRequest({ request, requestId });
+
+    if (!auth.ok) {
+      return jsonError({
+        requestId,
+        status: auth.status,
+        code: auth.error.code,
+        message: auth.error.message,
+      });
+    }
+
+    try {
+      const url = new URL(request.url);
+      const statusFilter = url.searchParams.get("status");
+      const limit = Math.min(
+        parseInt(url.searchParams.get("limit") ?? "50", 10),
+        100,
+      );
+
+      const context = await loadOrCreateProviderUserContext({
+        providerId: auth.providerId,
+        userId: "default",
+      });
+
+      let events = context.auditLog ?? [];
+      if (statusFilter) {
+        events = events.filter((e) => e.status === statusFilter);
+      }
+      events = events.slice(-limit);
+
+      return jsonResponse({
+        requestId,
+        body: { events },
+      });
+    } catch (error) {
+      return jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message:
+          error instanceof Error ? error.message : "Unable to load audit events.",
       });
     }
   }),

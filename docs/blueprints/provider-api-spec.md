@@ -571,6 +571,40 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
+### 12. Query audit events
+
+`GET /api/v1/audit/events`
+
+Purpose:
+
+- retrieve recent audit events for debugging and operator visibility
+
+Query params:
+
+- `status` — filter by `"ok"` or `"error"`
+- `limit` — max events to return (default 50, max 100)
+
+Response:
+
+```json
+{
+  "events": [
+    {
+      "event": "provider.conversation.completed",
+      "request_id": "req_123",
+      "status": "ok",
+      "at": "2026-05-08T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+Status codes:
+
+- `200` success
+- `401` unauthenticated
+- `403` forbidden
+
 ## Tool Execution Contract
 
 When familiar decides a tool should run, it should call the target that owns the tool.

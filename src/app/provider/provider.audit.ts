@@ -1,3 +1,5 @@
+import { appendProviderAuditEvent } from "./provider.storage";
+
 type ProviderAuditEvent = {
   event: string;
   requestId?: string;
@@ -20,4 +22,21 @@ export const logProviderAudit = (event: ProviderAuditEvent) => {
       ...event,
     }),
   );
+
+  if (event.providerId && event.userId) {
+    appendProviderAuditEvent({
+      providerId: event.providerId,
+      userId: event.userId,
+      event: {
+        event: event.event,
+        requestId: event.requestId,
+        status: event.status,
+        code: event.code,
+        detail: event.detail,
+        metadata: event.metadata,
+      },
+    }).catch(() => {
+      // best-effort persistence; don't fail the request
+    });
+  }
 };

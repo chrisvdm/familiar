@@ -53,6 +53,7 @@ export const createProviderUserContext = ({
       toolSyncTimestamps: [],
     },
     idempotency: {},
+    auditLog: [],
     lastSynthesis: null,
     nextSynthesis: null,
     createdAt: now,
@@ -116,6 +117,7 @@ export const saveProviderUserContext = async (context: ProviderUserContext) => {
     },
     threadChannels: context.threadChannels ?? {},
     idempotency: context.idempotency ?? {},
+    auditLog: context.auditLog ?? [],
     lastSynthesis: context.lastSynthesis ?? null,
     nextSynthesis: context.nextSynthesis ?? null,
     updatedAt: new Date().toISOString(),
@@ -127,6 +129,31 @@ export const saveProviderUserContext = async (context: ProviderUserContext) => {
   }).saveContext(normalized);
 
   return normalized;
+};
+
+export const appendProviderAuditEvent = async ({
+  providerId,
+  userId,
+  event,
+}: {
+  providerId: string;
+  userId: string;
+  event: {
+    event: string;
+    requestId?: string;
+    status?: "ok" | "error";
+    code?: string;
+    detail?: string;
+    metadata?: Record<string, unknown>;
+  };
+}) => {
+  const context = await loadOrCreateProviderUserContext({ providerId, userId });
+  const auditLog = [...context.auditLog];
+  auditLog.push({ ...event, at: new Date().toISOString() });
+  if (auditLog.length > 100) {
+    auditLog.shift();
+  }
+  await saveProviderUserContext({ ...context, auditLog });
 };
 
 export const deleteProviderUserContext = async ({

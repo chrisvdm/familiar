@@ -11,6 +11,7 @@ import type {
   ThreadListResult,
   ThreadCreateResult,
   ThreadDeleteResult,
+  AuditListResult,
 } from "./types.js";
 
 export { FamiliarError } from "./client.js";
@@ -30,6 +31,8 @@ export type {
   ThreadListResult,
   ThreadCreateResult,
   ThreadDeleteResult,
+  AuditEvent,
+  AuditListResult,
   FamiliarErrorCode,
 } from "./types.js";
 
@@ -224,6 +227,49 @@ export class Familiar {
         actionCount: payload.action_count,
         freeActionsUsed: payload.free_actions_used,
         freeActionsRemaining: payload.free_actions_remaining,
+      };
+    },
+  };
+
+  audit = {
+    events: async ({
+      status,
+      limit,
+    }: {
+      status?: "ok" | "error";
+      limit?: number;
+    } = {}): Promise<AuditListResult> => {
+      const query = new URLSearchParams();
+      if (status) query.set("status", status);
+      if (limit) query.set("limit", String(limit));
+
+      const payload = await request<{
+        events: Array<{
+          event: string;
+          request_id?: string;
+          status?: "ok" | "error";
+          code?: string;
+          detail?: string;
+          metadata?: Record<string, unknown>;
+          at: string;
+        }>;
+      }>({
+        host: this.host,
+        method: "GET",
+        path: `/api/v1/audit/events?${query.toString()}`,
+        token: this.token,
+      });
+
+      return {
+        events: payload.events.map((e) => ({
+          event: e.event,
+          requestId: e.request_id,
+          status: e.status,
+          code: e.code,
+          detail: e.detail,
+          metadata: e.metadata,
+          at: e.at,
+        })),
       };
     },
   };

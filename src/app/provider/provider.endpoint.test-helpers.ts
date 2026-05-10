@@ -31,6 +31,7 @@ export const createTestContext = (): ProviderUserContext => ({
     toolSyncTimestamps: [],
   },
   idempotency: {},
+  auditLog: [],
   lastSynthesis: null,
   nextSynthesis: null,
   createdAt: "2026-03-21T10:00:00.000Z",

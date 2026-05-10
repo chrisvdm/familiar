@@ -331,6 +331,20 @@ curl -X DELETE https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc 
   -H "Content-Type: application/json"
 ```
 
+### Query audit events
+
+```shell
+curl -s "https://familiar.chrsvdmrw.workers.dev/api/v1/audit/events?limit=20" \
+  -H "Authorization: Bearer fam_your_token"
+```
+
+Filter by status:
+
+```shell
+curl -s "https://familiar.chrsvdmrw.workers.dev/api/v1/audit/events?status=error&limit=10" \
+  -H "Authorization: Bearer fam_your_token"
+```
+
 ## The Minimum Mental Model
 
 If you are connecting something simple, think of it like this:

@@ -47,6 +47,15 @@ export type ProviderUserContext = {
     conversationInputTimestamps: string[];
     toolSyncTimestamps: string[];
   };
+  auditLog: Array<{
+    event: string;
+    requestId?: string;
+    status?: "ok" | "error";
+    code?: string;
+    detail?: string;
+    metadata?: Record<string, unknown>;
+    at: string;
+  }>;
   idempotency: Record<
     string,
     {

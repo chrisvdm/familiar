@@ -461,6 +461,42 @@ Rules:
 - `Idempotency-Key` is supported
 - if no idempotency key is provided, the system may fall back to `result.execution_id`
 
+### 10. Query audit events
+
+`GET /api/v1/audit/events`
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+```
+
+Query params:
+
+- `status` — filter by `"ok"` or `"error"`
+- `limit` — max events to return (default 50, max 100)
+
+Response:
+
+```json
+{
+  "events": [
+    {
+      "event": "provider.conversation.completed",
+      "request_id": "req_123",
+      "status": "ok",
+      "at": "2026-05-08T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+Rules:
+
+- events are stored per integration/user context
+- capped at 100 most recent events
+- useful for debugging and operator visibility
+
 ## Error Model
 
 Errors use one simple shape:

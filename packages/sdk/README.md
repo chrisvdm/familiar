@@ -172,3 +172,15 @@ Delete a thread by ID.
 ```typescript
 await familiar.threads.delete({ threadId: "thread_abc" });
 ```
+
+### `familiar.audit.events({ status?, limit? })`
+
+Query recent audit events for the current integration.
+
+```typescript
+const { events } = await familiar.audit.events({ limit: 20 });
+// events: [{ event, requestId, status, code, detail, metadata, at }]
+
+// Filter to errors only
+const errors = await familiar.audit.events({ status: "error", limit: 10 });
+```
