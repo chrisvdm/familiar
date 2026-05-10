@@ -143,6 +143,39 @@ curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
 
 This gives familiar permission to reason over that tool for the current setup.
 
+### Curl-only tool syncing
+
+You can also send the tools array directly — no wrapper object needed. Save your tools to a file:
+
+```json
+// familiar.json
+[
+  {
+    "tool_name": "spreadsheet.update_row",
+    "description": "Update a row in a spreadsheet",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "sheet": { "type": "string" },
+        "row_id": { "type": "string" },
+        "values": { "type": "object" }
+      },
+      "required": ["sheet", "row_id", "values"]
+    },
+    "status": "active"
+  }
+]
+```
+
+Then sync with:
+
+```shell
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d @familiar.json
+```
+
 Current MVP shortcut:
 
 - you can also send `tools` directly on `POST /api/v1/input`

@@ -427,13 +427,19 @@ export class Familiar {
   audit = {
     events: async ({
       status,
+      event,
+      requestId: requestIdFilter,
       limit,
     }: {
       status?: "ok" | "error";
+      event?: string;
+      requestId?: string;
       limit?: number;
     } = {}): Promise<AuditListResult> => {
       const query = new URLSearchParams();
       if (status) query.set("status", status);
+      if (event) query.set("event", event);
+      if (requestIdFilter) query.set("request_id", requestIdFilter);
       if (limit) query.set("limit", String(limit));
 
       const payload = await request<{

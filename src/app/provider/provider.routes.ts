@@ -505,6 +505,8 @@ export const providerRoutes = [
     try {
       const url = new URL(request.url);
       const statusFilter = url.searchParams.get("status");
+      const eventFilter = url.searchParams.get("event");
+      const requestIdFilter = url.searchParams.get("request_id");
       const limit = Math.min(
         parseInt(url.searchParams.get("limit") ?? "50", 10),
         100,
@@ -518,6 +520,12 @@ export const providerRoutes = [
       let events = context.auditLog ?? [];
       if (statusFilter) {
         events = events.filter((e) => e.status === statusFilter);
+      }
+      if (eventFilter) {
+        events = events.filter((e) => e.event === eventFilter);
+      }
+      if (requestIdFilter) {
+        events = events.filter((e) => e.requestId === requestIdFilter);
       }
       events = events.slice(-limit);
 

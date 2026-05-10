@@ -163,6 +163,11 @@ Request:
 }
 ```
 
+Curl-only convenience:
+
+- the endpoint also accepts a bare tools array without the wrapper object
+- this lets you `curl -d @familiar.json` where the file is just the array
+
 Success response:
 
 ```json

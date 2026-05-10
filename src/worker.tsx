@@ -12,6 +12,7 @@ import { Debug } from "@/app/pages/debug";
 import { DocsPage } from "@/app/pages/docs";
 import { DocsAiPage } from "@/app/pages/docs-ai";
 import { Home } from "@/app/pages/home/index";
+import { Operator } from "@/app/pages/operator";
 import { AuthCli } from "@/app/pages/auth-cli";
 import { Setup } from "@/app/pages/setup";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
@@ -108,6 +109,7 @@ export default defineApp([
   ),
   render(Document, [
     route("/debug", Debug),
+    route("/operator", Operator),
     route("/sandbox/messenger", SandboxMessenger),
     route("/sandbox/provider", SandboxProvider),
   ]),

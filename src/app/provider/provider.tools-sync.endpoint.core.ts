@@ -139,7 +139,8 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
     }
 
     try {
-      const input = await deps.readJson<ProviderToolSyncInput>(request);
+      const raw = await deps.readJson<ProviderToolSyncInput | Array<Record<string, unknown>>>(request);
+      const input: ProviderToolSyncInput = Array.isArray(raw) ? { tools: raw as ProviderToolSyncInput["tools"] } : raw;
       const idempotencyKey = deps.getIdempotencyHeader(request);
       const providerId = resolveProviderIdFromInput({
         explicitProviderId: input.integration_id ?? params.integrationId,
