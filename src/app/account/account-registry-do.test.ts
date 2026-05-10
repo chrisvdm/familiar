@@ -60,5 +60,7 @@ test("normalizeAccountRegistryState backfills integrations for legacy state", ()
       hash_123: "tok_123",
     },
     cliSessions: {},
+    users: {},
+    emailIndex: {},
   });
 });

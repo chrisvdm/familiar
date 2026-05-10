@@ -56,16 +56,13 @@ export class AccountRegistryDurableObject extends DurableObject {
     accountId: string;
     baseUrl: string | null;
     aiApiKey: string | null;
+    name?: string;
   }) {
     const state = await this.loadState();
     const account = state.accounts[input.accountId];
 
     if (!account) {
       return { error: "Account not found." };
-    }
-
-    if (account.defaultSetupId !== input.integrationId) {
-      return { error: "Integration not found." };
     }
 
     const existing = state.integrations[input.integrationId];
@@ -75,11 +72,13 @@ export class AccountRegistryDurableObject extends DurableObject {
           ...existing,
           baseUrl: input.baseUrl,
           aiApiKey: input.aiApiKey,
+          ...(input.name !== undefined ? { name: input.name } : {}),
           updatedAt: now,
         }
       : {
           id: input.integrationId,
           accountId: input.accountId,
+          name: input.name || "Integration",
           baseUrl: input.baseUrl,
           aiApiKey: input.aiApiKey,
           createdAt: now,
@@ -258,5 +257,44 @@ export class AccountRegistryDurableObject extends DurableObject {
         plan: account.plan,
       },
     };
+  }
+
+  async listAccountIntegrations(input: { accountId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    const integrations = Object.values(state.integrations)
+      .filter((i) => i.accountId === input.accountId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    return { value: integrations };
+  }
+
+  async createUser(input: { user: import("./account.types").FamiliarUser }) {
+    const state = await this.loadState();
+    state.users[input.user.id] = input.user;
+    state.emailIndex[input.user.email.toLowerCase()] = input.user.id;
+    await this.saveState(state);
+    return { value: input.user };
+  }
+
+  async getUserByEmail(input: { email: string }) {
+    const state = await this.loadState();
+    const userId = state.emailIndex[input.email.toLowerCase()];
+
+    if (!userId) {
+      return { error: "User not found." };
+    }
+
+    const user = state.users[userId];
+    if (!user) {
+      return { error: "User not found." };
+    }
+
+    return { value: user };
   }
 }

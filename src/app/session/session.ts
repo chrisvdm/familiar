@@ -16,6 +16,8 @@ export type BrowserSession = {
   threads: ChatThreadSummary[];
   globalMemory: GlobalMemory;
   selectedModel: string;
+  apiToken?: string;
+  selectedIntegrationId?: string;
 };
 
 type LegacyBrowserSession = {
@@ -46,6 +48,14 @@ export const normalizeBrowserSession = (
         typeof session.selectedModel === "string" && session.selectedModel.trim()
           ? session.selectedModel.trim()
           : "openai/gpt-4o-mini",
+      apiToken:
+        typeof session.apiToken === "string" && session.apiToken.trim()
+          ? session.apiToken.trim()
+          : undefined,
+      selectedIntegrationId:
+        typeof session.selectedIntegrationId === "string" && session.selectedIntegrationId.trim()
+          ? session.selectedIntegrationId.trim()
+          : undefined,
     };
   }
 

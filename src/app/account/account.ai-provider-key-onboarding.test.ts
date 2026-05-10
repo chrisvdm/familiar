@@ -340,6 +340,7 @@ test("normalizeAccountRegistryState backfills aiApiKey null on integration recor
       setup_legacy: {
         id: "setup_legacy",
         accountId: "acct_123",
+        name: "Legacy Integration",
         baseUrl: null,
         aiApiKey: null,
         createdAt: "2026-01-01T00:00:00.000Z",

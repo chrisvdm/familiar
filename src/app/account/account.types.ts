@@ -10,6 +10,7 @@ export type FamiliarAccount = {
 export type FamiliarIntegrationConfig = {
   id: string;
   accountId: string;
+  name: string;
   baseUrl: string | null;
   aiApiKey: string | null;
   createdAt: string;
@@ -33,12 +34,23 @@ export type FamiliarCliSession = {
   expiresAt: string;
 };
 
+export type FamiliarUser = {
+  id: string;
+  email: string;
+  passwordHash: string;
+  accountId: string;
+  apiTokenValue: string;
+  createdAt: string;
+};
+
 export type FamiliarAccountRegistryState = {
   accounts: Record<string, FamiliarAccount>;
   integrations: Record<string, FamiliarIntegrationConfig>;
   tokens: Record<string, FamiliarApiToken>;
   tokenIndex: Record<string, string>;
   cliSessions: Record<string, FamiliarCliSession>;
+  users: Record<string, FamiliarUser>;
+  emailIndex: Record<string, string>;
 };
 
 export type FamiliarTokenAuth = {

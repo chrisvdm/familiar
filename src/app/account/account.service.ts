@@ -7,6 +7,7 @@ import type {
   FamiliarCliSession,
   FamiliarIntegrationConfig,
   FamiliarTokenAuth,
+  FamiliarUser,
 } from "./account.types";
 
 type AccountRegistryStub = {
@@ -48,6 +49,15 @@ type AccountRegistryStub = {
   getAccountUsage: (input: {
     accountId: string;
   }) => Promise<{ value: { actionCount: number; freeActionsUsed: number; freeActionsRemaining: number | null; plan: "free" | "paid" } } | { error: string }>;
+  listAccountIntegrations: (input: {
+    accountId: string;
+  }) => Promise<{ value: FamiliarIntegrationConfig[] } | { error: string }>;
+  createUser: (input: {
+    user: FamiliarUser;
+  }) => Promise<{ value: FamiliarUser } | { error: string }>;
+  getUserByEmail: (input: {
+    email: string;
+  }) => Promise<{ value: FamiliarUser } | { error: string }>;
 };
 
 const accountEnv = env as typeof env & {
@@ -151,6 +161,7 @@ export const createAccountWithInitialToken = async ({
   const integration: FamiliarIntegrationConfig = {
     id: setupId,
     accountId: account.id,
+    name: "Default Integration",
     baseUrl: null,
     aiApiKey: null,
     createdAt: account.createdAt,
@@ -245,6 +256,134 @@ export const getAccountUsage = async (accountId: string) => {
     throw new Error(result.error);
   }
   return result.value;
+};
+
+export const listAccountIntegrations = async (accountId: string) => {
+  const result = await getAccountRegistryStub().listAccountIntegrations({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.value;
+};
+
+const hexToBytes = (hex: string): ArrayBuffer => {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+};
+
+export const hashPassword = async (password: string): Promise<string> => {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength),
+      iterations: 100_000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256,
+  );
+  const saltHex = toHex(salt);
+  const keyHex = toHex(new Uint8Array(derivedBits));
+  return `${saltHex}:${keyHex}`;
+};
+
+export const verifyPassword = async (
+  password: string,
+  storedHash: string,
+): Promise<boolean> => {
+  const parts = storedHash.split(":");
+  if (parts.length !== 2) return false;
+  const [saltHex, keyHex] = parts;
+  const salt = hexToBytes(saltHex);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 100_000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256,
+  );
+  const derivedHex = toHex(new Uint8Array(derivedBits));
+  return derivedHex === keyHex;
+};
+
+export const registerAccountUser = async ({
+  email,
+  password,
+}: {
+  email: string;
+  password: string;
+}) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existing = await getAccountRegistryStub().getUserByEmail({
+    email: normalizedEmail,
+  });
+  if ("value" in existing) {
+    return { error: "Email already registered." } as const;
+  }
+
+  const passwordHash = await hashPassword(password);
+  const result = await createAccountWithInitialToken({});
+
+  const user: FamiliarUser = {
+    id: `usr_${randomHex(24)}`,
+    email: normalizedEmail,
+    passwordHash,
+    accountId: result.account.id,
+    apiTokenValue: result.token.value,
+    createdAt: new Date().toISOString(),
+  };
+
+  const created = await getAccountRegistryStub().createUser({ user });
+  if ("error" in created) {
+    return { error: created.error } as const;
+  }
+
+  return { value: { user: created.value, token: result.token.value } } as const;
+};
+
+export const authenticateUser = async ({
+  email,
+  password,
+}: {
+  email: string;
+  password: string;
+}) => {
+  const result = await getAccountRegistryStub().getUserByEmail({
+    email: email.trim().toLowerCase(),
+  });
+
+  if ("error" in result) {
+    return { error: "Invalid email or password." } as const;
+  }
+
+  const valid = await verifyPassword(password, result.value.passwordHash);
+  if (!valid) {
+    return { error: "Invalid email or password." } as const;
+  }
+
+  return { value: result.value } as const;
 };
 
 export const getIntegrationStatus = async ({

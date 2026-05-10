@@ -6,6 +6,8 @@ export const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
   tokens: {},
   tokenIndex: {},
   cliSessions: {},
+  users: {},
+  emailIndex: {},
 });
 
 const normalizeAccountRecord = (
@@ -24,10 +26,22 @@ const normalizeIntegrationRecord = (
 ): import("./account.types").FamiliarIntegrationConfig => ({
   id: record.id as string,
   accountId: record.accountId as string,
+  name: (record.name as string) || "Integration",
   baseUrl: (record.baseUrl as string | null) ?? null,
   aiApiKey: (record.aiApiKey as string | null) ?? null,
   createdAt: record.createdAt as string,
   updatedAt: record.updatedAt as string,
+});
+
+const normalizeUserRecord = (
+  record: Record<string, unknown>,
+): import("./account.types").FamiliarUser => ({
+  id: record.id as string,
+  email: record.email as string,
+  passwordHash: record.passwordHash as string,
+  accountId: record.accountId as string,
+  apiTokenValue: record.apiTokenValue as string,
+  createdAt: record.createdAt as string,
 });
 
 export const normalizeAccountRegistryState = (
@@ -59,5 +73,18 @@ export const normalizeAccountRegistryState = (
   cliSessions:
     state?.cliSessions && typeof state.cliSessions === "object"
       ? state.cliSessions
+      : {},
+  users:
+    state?.users && typeof state.users === "object"
+      ? Object.fromEntries(
+          Object.entries(state.users).map(([k, v]) => [
+            k,
+            normalizeUserRecord(v as Record<string, unknown>),
+          ]),
+        )
+      : {},
+  emailIndex:
+    state?.emailIndex && typeof state.emailIndex === "object"
+      ? state.emailIndex
       : {},
 });
