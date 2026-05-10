@@ -347,6 +347,39 @@ export const validateToolInputMode = (tool: {
   }
 };
 
+export const validateToolSchema = (tool: {
+  tool_name?: string;
+  description?: string;
+  input_schema?: unknown;
+  input_mode?: unknown;
+  status?: unknown;
+}) => {
+  if (!tool.tool_name || typeof tool.tool_name !== "string" || !tool.tool_name.trim()) {
+    throw new Error("Each tool must have a non-empty tool_name string.");
+  }
+
+  if (!tool.description || typeof tool.description !== "string" || !tool.description.trim()) {
+    throw new Error(`Tool ${tool.tool_name} must have a non-empty description string.`);
+  }
+
+  if (!tool.input_schema || typeof tool.input_schema !== "object" || Array.isArray(tool.input_schema)) {
+    throw new Error(`Tool ${tool.tool_name} must have a valid input_schema object.`);
+  }
+
+  const schema = tool.input_schema as Record<string, unknown>;
+  if (schema.type !== "object") {
+    throw new Error(`Tool ${tool.tool_name} input_schema must have type "object".`);
+  }
+
+  if (tool.input_mode !== undefined && tool.input_mode !== "processed" && tool.input_mode !== "raw") {
+    throw new Error(`Tool ${tool.tool_name} input_mode must be "processed" or "raw".`);
+  }
+
+  if (tool.status !== undefined && tool.status !== "active" && tool.status !== "disabled") {
+    throw new Error(`Tool ${tool.tool_name} status must be "active" or "disabled".`);
+  }
+};
+
 export const parseToolShortcutInvocation = ({
   content,
   tools,

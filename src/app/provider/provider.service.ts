@@ -70,6 +70,7 @@ import {
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
   TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
   validateToolInputMode,
+  validateToolSchema,
 } from "./provider.logic";
 import {
   loadOrCreateProviderUserContext,
@@ -216,6 +217,8 @@ const normalizeAllowedTools = (
   }>,
 ): AllowedTool[] =>
   tools.map((tool) => {
+    validateToolSchema(tool);
+
     const normalizedTool = {
       toolName: tool.tool_name,
       description: tool.description,
