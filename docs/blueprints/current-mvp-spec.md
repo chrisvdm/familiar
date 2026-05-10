@@ -367,7 +367,58 @@ Behavior:
 - decide direct reply, clarification, or tool call
 - persist the conversation state
 
-### 7. Sync tools
+### 7. Simulate conversation input (dry run)
+
+`POST /api/v1/input/simulate`
+
+Purpose:
+
+- test what familiar would do without persisting state, executing tools, or consuming quota
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+Content-Type: application/json
+```
+
+Request:
+
+Same shape as `POST /api/v1/input`.
+
+Response:
+
+```json
+{
+  "integration_id": "setup_123",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "simulated": true,
+  "response": {
+    "type": "tool_call",
+    "content": "spreadsheet.update_row",
+    "reasoning": "The user wants to update a row in the client spreadsheet.",
+    "task_status": "accepted"
+  },
+  "execution": {
+    "state": "accepted",
+    "execution_id": null
+  },
+  "model": "openai/gpt-4o-mini"
+}
+```
+
+Rules:
+
+- `simulated` is always `true`
+- `response.type` can be `direct_reply`, `clarification`, or `tool_call`
+- `execution.state` may be `null` when no tool was chosen
+- does **not** persist messages to the thread
+- does **not** trigger tool execution
+- does **not** increment action count or consume free quota
+- does **not** schedule background memory refresh
+
+### 8. Sync tools
 
 `POST /api/v1/tools/sync`
 
@@ -411,7 +462,7 @@ Rules:
 - response may still include `integration_id` as the resolved backing setup id
 - compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 
-### 8. Thread endpoints
+### 9. Thread endpoints
 
 Required thread/runtime endpoints:
 
@@ -429,7 +480,7 @@ The short explanation:
 - mutate or delete threads
 - inspect shared memory and thread memory for debugging/admin visibility
 
-### 9. Async executor callback
+### 10. Async executor callback
 
 `POST /api/v1/webhooks/executor`
 
@@ -461,7 +512,7 @@ Rules:
 - `Idempotency-Key` is supported
 - if no idempotency key is provided, the system may fall back to `result.execution_id`
 
-### 10. Query audit events
+### 11. Query audit events
 
 `GET /api/v1/audit/events`
 

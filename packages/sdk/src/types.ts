@@ -121,6 +121,24 @@ export type AuditListResult = {
   events: AuditEvent[];
 };
 
+export type SimulateInputResult = {
+  integrationId?: string;
+  userId?: string;
+  threadId: string;
+  simulated: true;
+  response: {
+    type: string;
+    content: string;
+    reasoning: string | null;
+    task_status: string | null;
+  };
+  execution: {
+    state: string | null;
+    execution_id: string | null;
+  } | null;
+  model: string;
+};
+
 export type FamiliarErrorCode =
   | "unauthenticated"
   | "forbidden"

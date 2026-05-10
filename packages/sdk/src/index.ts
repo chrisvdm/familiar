@@ -12,6 +12,7 @@ import type {
   ThreadCreateResult,
   ThreadDeleteResult,
   AuditListResult,
+  SimulateInputResult,
 } from "./types.js";
 
 export { FamiliarError } from "./client.js";
@@ -79,15 +80,48 @@ export class Familiar {
     integrationId?: string;
     tools?: Tool[];
   }): Promise<InputResult> {
-    const payload = await request<{
-      thread_id: string;
-      integration_id?: string;
-      messages: Array<{ message_id: string; role: "user" | "assistant"; content: string; created_at?: string }>;
-      execution: { state: string; execution_id?: string };
-    }>({
+    return this._input({ text, channel, userId, threadId, integrationId, tools, simulate: false }) as Promise<InputResult>;
+  }
+
+  async simulate({
+    text,
+    channel,
+    userId,
+    threadId,
+    integrationId,
+    tools,
+  }: {
+    text: string;
+    channel: Channel;
+    userId?: string;
+    threadId?: string;
+    integrationId?: string;
+    tools?: Tool[];
+  }): Promise<SimulateInputResult> {
+    return this._input({ text, channel, userId, threadId, integrationId, tools, simulate: true }) as Promise<SimulateInputResult>;
+  }
+
+  private async _input({
+    text,
+    channel,
+    userId,
+    threadId,
+    integrationId,
+    tools,
+    simulate,
+  }: {
+    text: string;
+    channel: Channel;
+    userId?: string;
+    threadId?: string;
+    integrationId?: string;
+    tools?: Tool[];
+    simulate: boolean;
+  }): Promise<InputResult | SimulateInputResult> {
+    const payload = await request<any>({
       host: this.host,
       method: "POST",
-      path: "/api/v1/input",
+      path: simulate ? "/api/v1/input/simulate" : "/api/v1/input",
       token: this.token,
       body: {
         input: { kind: "text", text },
@@ -99,10 +133,31 @@ export class Familiar {
       },
     });
 
+    if (simulate) {
+      return {
+        threadId: payload.thread_id,
+        integrationId: payload.integration_id,
+        simulated: payload.simulated as true,
+        response: {
+          type: payload.response.type as string,
+          content: payload.response.content as string,
+          reasoning: payload.response.reasoning as string | null,
+          task_status: payload.response.task_status as string | null,
+        },
+        execution: payload.execution
+          ? {
+              state: payload.execution.state as string | null,
+              execution_id: payload.execution.execution_id as string | null,
+            }
+          : null,
+        model: payload.model as string,
+      };
+    }
+
     return {
       threadId: payload.thread_id,
       integrationId: payload.integration_id,
-      messages: payload.messages.map((m) => ({
+      messages: payload.messages.map((m: { message_id: string; role: string; content: string; created_at?: string }) => ({
         messageId: m.message_id,
         role: m.role,
         content: m.content,

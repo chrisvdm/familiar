@@ -108,6 +108,22 @@ Create a new account. Returns `{ account, token }`. No token required.
 
 Send a conversation turn. Returns `{ threadId, messages, execution }`.
 
+### `familiar.simulate({ text, channel, userId?, threadId?, integrationId?, tools? })`
+
+Dry-run a conversation turn. Returns what familiar would do without persisting messages, executing tools, or consuming quota.
+
+```typescript
+const result = await familiar.simulate({
+  text: "Update the sales sheet",
+  channel: { type: "web", id: "session_123" },
+});
+
+console.log(result.response.type);     // "direct_reply" | "clarification" | "tool_call"
+console.log(result.response.content);  // the planned response text or tool name
+console.log(result.response.reasoning);// model reasoning
+console.log(result.simulated);         // true
+```
+
 ### `familiar.tools.sync({ tools })`
 
 Sync the tool set for the current token-backed integration.

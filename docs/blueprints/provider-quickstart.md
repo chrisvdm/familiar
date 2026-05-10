@@ -165,7 +165,64 @@ Important input rule:
 - if your product supports voice notes or speech input, transcribe or otherwise normalize that upstream before calling `/api/v1/input`
 - large transcription blocks are fine as long as they arrive as plain `input.text`
 
-## Step 5: Expose `/tools/execute`
+## Step 5: Simulate input (dry run)
+
+Test what familiar would do without persisting messages, executing tools, or burning quota:
+
+```shell
+curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input/simulate \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {
+      "kind": "text",
+      "text": "Update the sales sheet and mark Acme as contacted"
+    },
+    "channel": {
+      "type": "email",
+      "id": "chris@example.com"
+    }
+  }'
+```
+
+Response:
+
+```json
+{
+  "integration_id": "setup_123",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "simulated": true,
+  "response": {
+    "type": "tool_call",
+    "content": "spreadsheet.update_row",
+    "reasoning": "The user wants to update a row in the sales sheet.",
+    "task_status": "accepted"
+  },
+  "execution": {
+    "state": "accepted",
+    "execution_id": null
+  },
+  "model": "openai/gpt-4o-mini"
+}
+```
+
+What simulate does:
+
+- loads thread and memory context
+- runs the decision model to classify intent and choose a tool
+- returns the planned response, reasoning, and execution state
+
+What simulate does **not** do:
+
+- persist messages to the thread
+- trigger tool execution
+- increment action count or consume free quota
+- schedule background memory refresh
+
+Use this to test new tools, debug routing, or preview behavior before going live.
+
+## Step 6: Expose `/tools/execute`
 
 If familiar decides that a tool should run, it will call:
 
@@ -197,7 +254,7 @@ Important:
 - shortcut-forced tool mode may also include `context.raw_input_text`
 - async executors may receive `context.executor_result_webhook_url` and can call it later when work finishes
 
-### Step 6: Send an async result back to familiar
+### Step 7: Send an async result back to familiar
 
 If your executor launches work and returns `accepted` or `in_progress`, keep the first response short and user-facing, for example:
 

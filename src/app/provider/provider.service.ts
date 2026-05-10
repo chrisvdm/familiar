@@ -1078,7 +1078,7 @@ const buildPendingConfirmationReminder = ({
   return `I was asking whether you wanted me to use ${toolLabel}. Please answer yes or no.`;
 };
 
-const decideConversationAction = async ({
+export const decideConversationAction = async ({
   content,
   messages,
   memoryContext,
@@ -2430,6 +2430,180 @@ export const handleProviderConversationInput = async ({
           }
         : null,
     model: model || finalContext.selectedModel,
+  };
+};
+
+export const simulateConversationInput = async ({
+  input,
+  providerConfig,
+  requestId,
+}: {
+  input: NormalizedProviderConversationInput;
+  providerConfig: ProviderConfig;
+  requestId?: string;
+}) => {
+  const model = input.model?.trim() || DEFAULT_MODEL;
+  const timeZone = getRequestTimeZone(input.timezone);
+  const context = await loadOrCreateProviderUserContext({
+    providerId: input.integration_id,
+    userId: input.user_id,
+  });
+  const content = input.input.text.trim();
+
+  if (!content) {
+    throw new Error("Input text is required.");
+  }
+
+  const threadId = await resolveThreadId({
+    context,
+    providedThreadId: input.thread_id,
+    channel: input.channel,
+    content,
+  });
+
+  if (!threadId) {
+    throw new Error("No thread found or created for simulation.");
+  }
+
+  const thread = context.threads.find((entry) => entry.id === threadId);
+
+  if (!thread) {
+    throw new Error("Thread not found.");
+  }
+
+  const currentState = await loadChatSession(threadId);
+  const memoryScope = selectProviderGlobalMemory({
+    memoryPolicy: context.memoryPolicy,
+    globalMemory: context.globalMemory,
+    isPrivate: thread.isTemporary,
+  });
+  const memoryBackend = createMemoryBackend();
+  const memoryContext =
+    context.memoryPolicy.mode === "external"
+      ? input.context?.external_memories?.join("\n") || null
+      : await memoryBackend.retrieve({
+          userId: input.user_id ?? "",
+          integrationId: input.integration_id ?? "",
+          threadId,
+          userMessage: content,
+          messages: currentState.messages,
+          threadMemory: currentState.memory,
+          globalMemory: memoryScope,
+          policy: context.memoryPolicy,
+          timeZone,
+          aiApiKey: providerConfig.aiApiKey,
+        });
+
+  const decision = await decideConversationAction({
+    content,
+    messages: currentState.messages,
+    memoryContext,
+    tools: context.allowedTools,
+    replyModel: model,
+    timeZone,
+    aiApiKey: providerConfig.aiApiKey,
+  });
+
+  let assistantContent = "";
+  let action: "direct_reply" | "clarification" | "tool_call" | "command" = "direct_reply";
+  let executionState: ProviderExecutionState | undefined;
+  let decisionReasoning: string | null = null;
+  let pendingToolConfirmation: PendingToolConfirmation | null = null;
+
+  if (decision.action === "direct_reply") {
+    assistantContent = decision.reply;
+    action = "direct_reply";
+    decisionReasoning = decision.reasoning ?? null;
+  } else if (decision.action === "clarification") {
+    assistantContent = decision.question;
+    action = "clarification";
+    executionState = "needs_clarification";
+    decisionReasoning = decision.reasoning ?? null;
+  } else if (decision.action === "tool_follow_up") {
+    const confidence = clampDecisionConfidence(decision.confidence);
+    const tool = context.allowedTools.find(
+      (entry) => entry.toolName === decision.tool_name,
+    );
+    const normalizedInput = normalizeToolExecutionInput({
+      tool,
+      args: decision.arguments,
+      content,
+    });
+    assistantContent = decision.question;
+    action = "clarification";
+    executionState = "needs_clarification";
+    decisionReasoning = decision.reasoning ?? null;
+    pendingToolConfirmation = {
+      mode: "follow_up",
+      toolName: decision.tool_name,
+      arguments: normalizedInput.arguments,
+      rawInputText: normalizedInput.rawInputText,
+      confidence,
+      createdAt: new Date().toISOString(),
+      question: decision.question,
+    };
+  } else {
+    const confidence = clampDecisionConfidence(decision.confidence);
+    const tool = context.allowedTools.find(
+      (entry) => entry.toolName === decision.tool_name,
+    );
+    const normalizedInput = normalizeToolExecutionInput({
+      tool,
+      args: decision.arguments,
+      content,
+    });
+    const confidenceAction = getToolDecisionConfidenceAction(confidence);
+
+    if (confidenceAction === "clarify") {
+      assistantContent = buildLowConfidenceToolQuestion();
+      action = "clarification";
+      executionState = "needs_clarification";
+      decisionReasoning = decision.reasoning ?? null;
+    } else if (confidenceAction === "confirm") {
+      assistantContent = buildToolConfirmationQuestion({ tool });
+      action = "clarification";
+      executionState = "needs_clarification";
+      decisionReasoning = decision.reasoning ?? null;
+      pendingToolConfirmation = {
+        mode: "confirmation",
+        toolName: decision.tool_name,
+        arguments: normalizedInput.arguments,
+        rawInputText: normalizedInput.rawInputText,
+        confidence,
+        createdAt: new Date().toISOString(),
+      };
+    } else {
+      assistantContent = `[Simulated] Would execute ${decision.tool_name} with arguments: ${JSON.stringify(normalizedInput.arguments)}`;
+      action = "tool_call";
+      executionState = "simulated" as ProviderExecutionState;
+      decisionReasoning = decision.reasoning ?? null;
+    }
+  }
+
+  return {
+    integration_id: input.integration_id,
+    user_id: input.user_id,
+    thread_id: threadId,
+    simulated: true,
+    response: {
+      type: getConversationResponseKind({
+        action,
+        executionState,
+        pendingToolConfirmation,
+      }),
+      content: assistantContent,
+      reasoning: decisionReasoning,
+      task_status:
+        executionState ?? (action === "tool_call" ? "completed" : null),
+    },
+    execution:
+      executionState || action === "tool_call"
+        ? {
+            state: executionState ?? null,
+            execution_id: null,
+          }
+        : null,
+    model,
   };
 };
 

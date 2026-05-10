@@ -330,7 +330,59 @@ Example rate-limited response:
 }
 ```
 
-### 3. Create thread
+### 3. Simulate conversation input (dry run)
+
+`POST /api/v1/input/simulate`
+
+Purpose:
+
+- test what familiar would do without persisting state, executing tools, or consuming quota
+
+Request:
+
+Same shape as `POST /api/v1/input`.
+
+Response:
+
+```json
+{
+  "integration_id": "integration_a",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "simulated": true,
+  "response": {
+    "type": "tool_call",
+    "content": "spreadsheet.update_row",
+    "reasoning": "The user wants to update a row in the client spreadsheet.",
+    "task_status": "accepted"
+  },
+  "execution": {
+    "state": "accepted",
+    "execution_id": null
+  },
+  "model": "openai/gpt-4o-mini"
+}
+```
+
+Rules:
+
+- `simulated` is always `true`
+- `response.type` can be `direct_reply`, `clarification`, or `tool_call`
+- `execution.state` may be `null` when no tool was chosen
+- does **not** persist messages to the thread
+- does **not** trigger tool execution
+- does **not** increment action count or consume free quota
+- does **not** schedule background memory refresh
+
+Status codes:
+
+- `200` success
+- `400` invalid payload
+- `401` unauthenticated
+- `403` integration mismatch
+- `429` rate limited
+
+### 4. Create thread
 
 `POST /api/v1/threads`
 
@@ -364,7 +416,7 @@ Success response:
 }
 ```
 
-### 4. List threads
+### 5. List threads
 
 `GET /api/v1/integrations/:integration_id/users/:user_id/threads`
 
@@ -387,7 +439,7 @@ Success response:
 }
 ```
 
-### 5. Rename thread
+### 6. Rename thread
 
 `PATCH /api/v1/threads/:thread_id`
 
@@ -401,7 +453,7 @@ Request:
 }
 ```
 
-### 6. Delete thread
+### 7. Delete thread
 
 `DELETE /api/v1/threads/:thread_id`
 
@@ -421,7 +473,7 @@ Behavior:
 - remove thread from user-visible thread list
 - remove any shared-memory entries that depend only on this thread, according to the implemented provenance model
 
-### 7. Read shared memory
+### 8. Read shared memory
 
 `GET /api/v1/integrations/:integration_id/users/:user_id/memory`
 
@@ -435,7 +487,7 @@ This is primarily useful for:
 - admin tooling
 - future user-facing memory inspection
 
-### 8. Read thread memory
+### 9. Read thread memory
 
 `GET /api/v1/threads/:thread_id/memory`
 
@@ -443,7 +495,7 @@ Purpose:
 
 - inspect thread-local memory for one thread
 
-### 9. Executor result callback
+### 10. Executor result callback
 
 `POST /api/v1/webhooks/executor`
 
@@ -505,7 +557,7 @@ Success response:
 }
 ```
 
-### 10. Get integration status
+### 11. Get integration status
 
 `GET /api/v1/integration/status`
 
@@ -545,7 +597,7 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
-### 11. Get account usage
+### 12. Get account usage
 
 `GET /api/v1/account/usage`
 
@@ -571,7 +623,7 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
-### 12. Query audit events
+### 13. Query audit events
 
 `GET /api/v1/audit/events`
 

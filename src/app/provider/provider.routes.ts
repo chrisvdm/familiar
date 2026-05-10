@@ -15,6 +15,7 @@ import {
   getProviderMemory,
   getProviderThreadMemory,
   listProviderThreads,
+  simulateConversationInput,
 } from "./provider.service";
 import { loadOrCreateProviderUserContext } from "./provider.storage";
 
@@ -27,6 +28,67 @@ export const providerRoutes = [
   ),
   route("/api/v1/input", handleConversationInputEndpoint),
   route("/api/v1/conversation/input", handleConversationInputEndpoint),
+  route("/api/v1/input/simulate", async ({ request }) => {
+    const requestId = getRequestId(request);
+
+    if (request.method !== "POST") {
+      return jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    try {
+      const body = await request.json() as {
+        input?: { text?: string };
+        channel?: { type: string; id: string };
+        thread_id?: string;
+        tools?: unknown;
+        model?: string;
+        timezone?: string;
+      };
+      const auth = await authenticateProviderRequest({ request, requestId });
+
+      if (!auth.ok) {
+        return jsonError({
+          requestId,
+          status: auth.status,
+          code: auth.error.code,
+          message: auth.error.message,
+        });
+      }
+
+      const result = await simulateConversationInput({
+        input: {
+          integration_id: auth.providerId,
+          user_id: "default",
+          input: { kind: "text" as const, text: body.input?.text ?? "" },
+          channel: body.channel ?? { type: "web", id: "simulate" },
+          ...(body.thread_id ? { thread_id: body.thread_id } : {}),
+          ...(body.tools ? { tools: body.tools as unknown[] } : {}),
+          ...(body.model ? { model: body.model } : {}),
+          ...(body.timezone ? { timezone: body.timezone } : {}),
+        } as any,
+        providerConfig: { token: "" },
+        requestId,
+      });
+
+      return jsonResponse({
+        requestId,
+        body: result as unknown as Record<string, unknown>,
+      });
+    } catch (error) {
+      return jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message:
+          error instanceof Error ? error.message : "Invalid simulate request.",
+      });
+    }
+  }),
   route("/api/v1/webhooks/executor", handleExecutorResultEndpoint),
   route("/api/v1/threads", async ({ request, params }) => {
     if (request.method === "POST") {
