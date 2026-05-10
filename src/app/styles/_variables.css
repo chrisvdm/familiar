@@ -1,0 +1,14 @@
+:root {
+    /* COLOUR SCHEME */
+    --primary: #21322F;
+    --secondary:#E2F5F1;
+
+    /* FONTS */
+    --sans: "Avenir Book", Avenir, "Avenir Next", "Helvetica Neue", sans-serif;
+    --serif: "Shippori Mincho", "Iowan Old Style", "Times New Roman", serif;
+
+    /* SPACING */
+    --s-space: 0.625rem;
+    --m-space: 1.2rem;
+    --l-space: 2rem;
+}

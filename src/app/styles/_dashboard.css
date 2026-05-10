@@ -1,0 +1,260 @@
+.dashboard-page {
+  min-height: 100vh;
+  padding: 0 24px 88px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.dashboard-page * {
+  box-sizing: border-box;
+}
+
+.dashboard-shell {
+  width: min(960px, 100%);
+  margin: 0 auto;
+}
+
+.dashboard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  max-height: 56px;
+  padding: 18px 0 12px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.dashboard-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.dashboard-nav-logo {
+  width: 28px;
+  height: auto;
+}
+
+.dashboard-nav-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.dashboard-section {
+  margin-top: 80px;
+}
+
+.dashboard-section:first-of-type {
+  margin-top: 48px;
+}
+
+.section-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.section-title {
+  margin: 12px 0 0;
+  font-family: var(--serif);
+  color: var(--heading);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.status-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 48px;
+}
+
+.status-metric {
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.status-metric-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.status-metric-value {
+  margin: 14px 0 0;
+  font-family: var(--serif);
+  color: var(--heading);
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.health-card {
+  margin-top: 48px;
+  padding: 32px 28px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.health-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.health-metric:last-child {
+  border-bottom: none;
+}
+
+.health-metric-label {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.health-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.health-status--healthy {
+  background: rgba(74, 222, 128, 0.12);
+  color: #15803d;
+}
+
+.health-status--warning {
+  background: rgba(251, 191, 36, 0.12);
+  color: #b45309;
+}
+
+.health-status--degraded {
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+}
+
+.events-list {
+  margin-top: 48px;
+  display: grid;
+  gap: 0;
+}
+
+.event-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 80px;
+  gap: 24px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.event-row:last-child {
+  border-bottom: none;
+}
+
+.event-time {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+}
+
+.event-name {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.event-status {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.event-status--ok {
+  color: #15803d;
+}
+
+.event-status--error {
+  color: #b91c1c;
+}
+
+.dashboard-empty {
+  margin-top: 120px;
+  text-align: center;
+}
+
+.dashboard-empty-title {
+  font-family: var(--serif);
+  color: var(--heading);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.dashboard-empty-body {
+  margin: 16px auto 0;
+  max-width: 480px;
+  color: rgba(28, 31, 87, 0.72);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.dashboard-empty-link {
+  display: inline-block;
+  margin-top: 32px;
+  padding: 14px 28px;
+  border-radius: 4px;
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 160ms ease;
+}
+
+.dashboard-empty-link:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 720px) {
+  .dashboard-page {
+    padding: 0 16px 64px;
+  }
+
+  .status-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .event-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .event-status {
+    text-align: left;
+  }
+}

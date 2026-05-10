@@ -1,104 +1,59 @@
-import { FamiliarMark } from "@/app/components/familiar-mark";
-import { FamiliarName } from "@/app/components/familiar-name";
+
+import Footer from "./Footer";
+import Hero from "./Hero";
+import Navigation from "./Navigation";
+import Section from "@/app/components/Section/Section";
+import Grid from "@/app/components/Grid/Grid"
 
 const FIXES = [
-  {
-    without: "SSH into server to check job status",
-    with: "\"Status?\" from WhatsApp → instant reply",
-  },
-  {
-    without: "Script finishes, you don't know",
-    with: "\"Done. 3 warnings.\" pushed to your watch",
-  },
-  {
-    without: "Every new tool needs custom integration",
-    with: "One JSON schema, familiar handles the rest",
-  },
-  {
-    without: "ChatGPT answers, but can't act",
-    with: "Ask, route, execute, remember — in one thread",
-  },
+  [
+     "SSH into server to check job status",
+     "\"Status?\" from WhatsApp → instant reply",
+  ],
+  [
+    "Script finishes, you don't know",
+     "\"Done. 3 warnings.\" pushed to your watch",
+  ],
+   ["Every new tool needs custom integration",
+    "One JSON schema, familiar handles the rest",
+  ],
+  
+    [
+      "ChatGPT answers, but can't act",
+    "Ask, route, execute, remember — in one thread",
+  ]
+  ,
 ];
 
+const PRICINGCOLUMNS = ['tier', 'price']
+
 const PRICING = [
-  {
-    tier: "First 10 actions",
-    price: "Free — try without commitment",
-  },
-  {
-    tier: "Per action",
-    price: "$0.10",
-  },
-  {
-    tier: "Custom integration",
-    price: "$500–2,000",
-  },
+  ["First 10 actions",
+   "Free — try without commitment",
+  ],
+  [
+    "Per action",
+     "$0.10",
+  ],
+  [
+    "Custom integration",
+    "$500–2,000",
+  ],
 ];
 
 export const Home = () => (
   <main className="landing-page">
     <div className="landing-shell">
-      <nav className="landing-nav" aria-label="Primary">
-        <a className="landing-nav-brand" href="/" aria-label="familiar home">
-          <FamiliarMark className="landing-nav-logo" />
-        </a>
-        <div className="landing-nav-links">
-          <a className="landing-nav-link" href="#what-it-fixes">
-            About
-          </a>
-          <a className="landing-nav-link" href="/docs/">
-            Docs
-          </a>
-          <a className="landing-nav-link" href="/setup">
-            Setup
-          </a>
-        </div>
-      </nav>
+      
+      <Navigation/>
 
-      <header className="hero" id="hero">
-        <div className="hero-panel">
-          <div className="hero-copy">
-            <h1 className="hero-title"><FamiliarName/></h1>
-            <p className="hero-subtitle">
-              Your scripts, but you can text them.
-            </p>
-            <p className="hero-detail">
-              You have tools that do things — backups, imports, checks, jobs.
-              But you have to be at your computer to run them, and they never
-              remember what happened last time.
-            </p>
-            <p className="hero-detail">
-              familiar adds three things:{" "}
-              <strong>reach</strong> (from any channel),{" "}
-              <strong>memory</strong> (context across sessions), and{" "}
-              <strong>routing</strong> (the right tool gets the right
-              arguments, automatically).
-            </p>
-          </div>
-        </div>
-      </header>
+      <Hero/>
 
-      <section className="landing-section" id="what-it-fixes">
-        <div className="section-heading">
-          <p className="section-kicker">What it fixes</p>
-        </div>
-        <div className="fixes-grid">
-          <div className="fix-row fix-header-row">
-            <div className="fix-cell fix-header">Without familiar</div>
-            <div className="fix-cell fix-header">With familiar</div>
-          </div>
-          {FIXES.map((item, index) => (
-            <div key={index} className="fix-row">
-              <div className="fix-cell fix-without">
-                <p>{item.without}</p>
-              </div>
-              <div className="fix-cell fix-with">
-                <p>{item.with}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Section id="what-it-fixes" title="What it fixes?">
+        <Grid 
+        columns={['Without familiar', 'With familiar']}
+        rows={FIXES} />
+      </Section>
 
       <section className="landing-section">
         <div className="section-heading">
@@ -160,30 +115,12 @@ export const Home = () => (
         </div>
       </section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Pricing</p>
-        </div>
-        <div className="fixes-grid">
-          <div className="fix-row fix-header-row">
-            <div className="fix-cell fix-header">Tier</div>
-            <div className="fix-cell fix-header">Price</div>
-          </div>
-          {PRICING.map((item, index) => (
-            <div key={index} className="fix-row">
-              <div className="fix-cell fix-without">
-                <p>{item.tier}</p>
-              </div>
-              <div className="fix-cell fix-with">
-                <p>{item.price}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+      <Section title="Pricing">
+        <Grid columns={PRICINGCOLUMNS} rows={PRICING} />
         <p className="section-closing">
           Usage-based. No subscription for silence.
         </p>
-      </section>
+      </Section>
 
       <section className="landing-section">
         <div className="section-heading">
@@ -213,14 +150,7 @@ export const Home = () => (
         </div>
       </section>
 
-      <footer className="landing-footer">
-        <div>
-          <p className="footer-name">familiar</p>
-          <p className="footer-copy">
-            Your scripts, with a conversation layer.
-          </p>
-        </div>
-      </footer>
+          <Footer/>
 
       <script
         dangerouslySetInnerHTML={{
