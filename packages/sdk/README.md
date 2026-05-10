@@ -230,6 +230,24 @@ Delete a thread by ID.
 await familiar.threads.delete({ threadId: "thread_abc" });
 ```
 
+### `familiar.memory.getUserMemory({ userId? })`
+
+Get shared memory for the current integration user.
+
+```typescript
+const { memory } = await familiar.memory.getUserMemory();
+console.log(memory);
+```
+
+### `familiar.memory.getThreadMemory({ threadId })`
+
+Get thread-local memory for a specific thread.
+
+```typescript
+const { memory } = await familiar.memory.getThreadMemory({ threadId: "thread_abc" });
+console.log(memory);
+```
+
 ### `familiar.audit.events({ status?, limit? })`
 
 Query recent audit events for the current integration.

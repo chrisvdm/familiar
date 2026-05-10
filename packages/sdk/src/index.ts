@@ -441,6 +441,38 @@ export class Familiar {
     },
   };
 
+  memory = {
+    getUserMemory: async ({ userId }: { userId?: string } = {}): Promise<{ memory: string }> => {
+      const path = userId
+        ? `/api/v1/users/${encodeURIComponent(userId)}/memory`
+        : "/api/v1/users/default/memory";
+
+      const payload = await request<{
+        memory?: string;
+      }>({
+        host: this.host,
+        method: "GET",
+        path,
+        token: this.token,
+      });
+
+      return { memory: payload.memory ?? "" };
+    },
+
+    getThreadMemory: async ({ threadId }: { threadId: string }): Promise<{ memory: string }> => {
+      const payload = await request<{
+        memory?: string;
+      }>({
+        host: this.host,
+        method: "GET",
+        path: `/api/v1/threads/${encodeURIComponent(threadId)}/memory`,
+        token: this.token,
+      });
+
+      return { memory: payload.memory ?? "" };
+    },
+  };
+
   threads = {
     list: async ({ userId }: { userId?: string } = {}): Promise<ThreadListResult> => {
       const path = userId

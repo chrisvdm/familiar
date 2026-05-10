@@ -441,6 +441,22 @@ curl -X DELETE https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc 
   -H "Content-Type: application/json"
 ```
 
+### Query memory
+
+Shared memory (per integration user):
+
+```shell
+curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/users/default/memory \
+  -H "Authorization: Bearer fam_your_token"
+```
+
+Thread-local memory:
+
+```shell
+curl -s "https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc/memory?user_id=default" \
+  -H "Authorization: Bearer fam_your_token"
+```
+
 ### Query audit events
 
 ```shell
