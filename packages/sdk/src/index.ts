@@ -6,6 +6,7 @@ import type {
   SyncToolsResult,
   Integration,
   IntegrationStatus,
+  IntegrationHealth,
   CreateAccountResult,
   AccountUsage,
   ThreadListResult,
@@ -26,6 +27,7 @@ export type {
   SyncToolsResult,
   Integration,
   IntegrationStatus,
+  IntegrationHealth,
   Account,
   Token,
   CreateAccountResult,
@@ -273,6 +275,31 @@ export class Familiar {
         integrationId: payload.integration_id,
         syncedTools: payload.synced_tools,
         status: payload.status,
+      };
+    },
+
+    health: async (): Promise<IntegrationHealth> => {
+      const payload = await request<{
+        integration: { id: string; configured: boolean };
+        executor: { base_url_configured: boolean; recent_failures: number };
+        tools: { count: number; active: number };
+        callbacks: { recent_activity: boolean; recent_count: number };
+        delivery: { recent_failures: number };
+        overall: "healthy" | "warning" | "degraded";
+      }>({
+        host: this.host,
+        method: "GET",
+        path: "/api/v1/integration/health",
+        token: this.token,
+      });
+
+      return {
+        integration: payload.integration,
+        executor: payload.executor,
+        tools: payload.tools,
+        callbacks: payload.callbacks,
+        delivery: payload.delivery,
+        overall: payload.overall,
       };
     },
   };

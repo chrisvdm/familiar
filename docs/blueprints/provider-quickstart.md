@@ -83,6 +83,22 @@ curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/integration/status \
 
 This returns your integration config, account plan/usage, and runtime stats (tool count, thread count).
 
+### Check integration health
+
+```shell
+curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/integration/health \
+  -H "Authorization: Bearer fam_your_token"
+```
+
+Returns:
+
+- `overall` — `"healthy"`, `"warning"`, or `"degraded"`
+- `executor.base_url_configured` — whether an executor URL is set
+- `executor.recent_failures` — tool execution failures in the last 24h
+- `tools.active` — number of active synced tools
+- `callbacks.recent_activity` — whether async callbacks have been received
+- `delivery.recent_failures` — delivery failures in the last 24h
+
 ### Check account usage
 
 ```shell

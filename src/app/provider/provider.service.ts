@@ -3348,3 +3348,70 @@ export const handleProviderExecutorResult = async ({
     channel_delivery: channelDelivery,
   };
 };
+
+export const getProviderHealth = async ({
+  providerId,
+  userId,
+  providerConfig,
+}: {
+  providerId: string;
+  userId: string;
+  providerConfig: ProviderConfig;
+}) => {
+  const context = await loadOrCreateProviderUserContext({
+    providerId,
+    userId,
+  });
+
+  const activeTools = context.allowedTools.filter(
+    (tool) => tool.status === "active",
+  );
+
+  const recentEvents = context.auditLog ?? [];
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const last24h = recentEvents.filter((e) => e.at >= cutoff);
+
+  const toolExecutionFailures = last24h.filter(
+    (e) =>
+      e.event === "provider.tool.executed" && e.status === "error",
+  ).length;
+
+  const deliveryFailures = last24h.filter(
+    (e) =>
+      e.event === "provider.executor_result.received" && e.status === "error",
+  ).length;
+
+  const recentCallbacks = last24h.filter(
+    (e) => e.event === "provider.executor_result.received",
+  ).length;
+
+  const overall =
+    toolExecutionFailures > 3 || deliveryFailures > 3
+      ? "degraded"
+      : toolExecutionFailures > 0 || deliveryFailures > 0
+        ? "warning"
+        : "healthy";
+
+  return {
+    integration: {
+      id: providerId,
+      configured: true,
+    },
+    executor: {
+      base_url_configured: !!providerConfig.baseUrl,
+      recent_failures: toolExecutionFailures,
+    },
+    tools: {
+      count: context.allowedTools.length,
+      active: activeTools.length,
+    },
+    callbacks: {
+      recent_activity: recentCallbacks > 0,
+      recent_count: recentCallbacks,
+    },
+    delivery: {
+      recent_failures: deliveryFailures,
+    },
+    overall,
+  };
+};

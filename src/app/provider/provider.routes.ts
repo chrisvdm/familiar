@@ -12,6 +12,7 @@ import {
   jsonResponse,
 } from "./provider.http";
 import {
+  getProviderHealth,
   getProviderMemory,
   getProviderThreadMemory,
   handleStreamConversationInput,
@@ -431,6 +432,50 @@ export const providerRoutes = [
         code: "invalid_request",
         message:
           error instanceof Error ? error.message : "Unable to load thread memory.",
+      });
+    }
+  }),
+  route("/api/v1/integration/health", async ({ request }) => {
+    const requestId = getRequestId(request);
+
+    if (request.method !== "GET") {
+      return jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    try {
+      const auth = await authenticateProviderRequest({ request, requestId });
+
+      if (!auth.ok) {
+        return jsonError({
+          requestId,
+          status: auth.status,
+          code: auth.error.code,
+          message: auth.error.message,
+        });
+      }
+
+      const result = await getProviderHealth({
+        providerId: auth.providerId,
+        userId: "default",
+        providerConfig: auth.providerConfig,
+      });
+
+      return jsonResponse({
+        requestId,
+        body: result,
+      });
+    } catch (error) {
+      return jsonError({
+        requestId,
+        status: 400,
+        code: "invalid_request",
+        message:
+          error instanceof Error ? error.message : "Unable to load health.",
       });
     }
   }),

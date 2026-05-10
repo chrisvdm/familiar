@@ -650,7 +650,55 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
-### 13. Get account usage
+### 13. Get integration health
+
+`GET /api/v1/integration/health`
+
+Purpose:
+
+- check the operational health of the current integration
+
+Response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "configured": true
+  },
+  "executor": {
+    "base_url_configured": true,
+    "recent_failures": 0
+  },
+  "tools": {
+    "count": 3,
+    "active": 3
+  },
+  "callbacks": {
+    "recent_activity": false,
+    "recent_count": 0
+  },
+  "delivery": {
+    "recent_failures": 0
+  },
+  "overall": "healthy"
+}
+```
+
+Rules:
+
+- `overall` is `"healthy"`, `"warning"`, or `"degraded"`
+- based on passive health from observed audit events in the last 24 hours
+- `warning` when there are any recent failures
+- `degraded` when there are more than 3 recent failures in any category
+
+Status codes:
+
+- `200` success
+- `401` unauthenticated
+- `403` forbidden
+
+### 14. Get account usage
 
 `GET /api/v1/account/usage`
 
@@ -676,7 +724,7 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
-### 14. Query audit events
+### 15. Query audit events
 
 `GET /api/v1/audit/events`
 

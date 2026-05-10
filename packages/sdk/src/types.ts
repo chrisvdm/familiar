@@ -139,6 +139,29 @@ export type SimulateInputResult = {
   model: string;
 };
 
+export type IntegrationHealth = {
+  integration: {
+    id: string;
+    configured: boolean;
+  };
+  executor: {
+    base_url_configured: boolean;
+    recent_failures: number;
+  };
+  tools: {
+    count: number;
+    active: number;
+  };
+  callbacks: {
+    recent_activity: boolean;
+    recent_count: number;
+  };
+  delivery: {
+    recent_failures: number;
+  };
+  overall: "healthy" | "warning" | "degraded";
+};
+
 export type InputStreamEvent =
   | { event: "decision"; action: string; reasoning?: string | null }
   | { event: "delta"; content: string }

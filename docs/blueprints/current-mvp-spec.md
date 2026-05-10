@@ -274,7 +274,51 @@ Rules:
 - `tool_count` is the number of active synced tools
 - `thread_count` is the number of threads in the provider user context
 
-### 5. Get account usage
+### 5. Get integration health
+
+`GET /api/v1/integration/health`
+
+Headers:
+
+```text
+Authorization: Bearer <api-token>
+```
+
+Response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "configured": true
+  },
+  "executor": {
+    "base_url_configured": true,
+    "recent_failures": 0
+  },
+  "tools": {
+    "count": 3,
+    "active": 3
+  },
+  "callbacks": {
+    "recent_activity": false,
+    "recent_count": 0
+  },
+  "delivery": {
+    "recent_failures": 0
+  },
+  "overall": "healthy"
+}
+```
+
+Rules:
+
+- `overall` is `"healthy"`, `"warning"`, or `"degraded"`
+- degrades to `"warning"` if there are any recent failures
+- degrades to `"degraded"` if there are more than 3 recent failures in any category
+- `recent_*` counts are from the last 24 hours of audit events
+
+### 6. Get account usage
 
 `GET /api/v1/account/usage`
 
@@ -302,7 +346,7 @@ Rules:
 - `free_actions_remaining` is `null` for paid accounts
 - `action_count` increments after each successful conversation turn
 
-### 6. Send conversation input
+### 7. Send conversation input
 
 `POST /api/v1/input`
 
@@ -367,7 +411,7 @@ Behavior:
 - decide direct reply, clarification, or tool call
 - persist the conversation state
 
-### 7. Stream conversation input
+### 8. Stream conversation input
 
 `POST /api/v1/input/stream`
 
@@ -420,7 +464,7 @@ Rules:
 - only `direct_reply` content is streamed
 - `done` always includes the full conversation state
 
-### 8. Simulate conversation input (dry run)
+### 9. Simulate conversation input (dry run)
 
 `POST /api/v1/input/simulate`
 
@@ -471,7 +515,7 @@ Rules:
 - does **not** increment action count or consume free quota
 - does **not** schedule background memory refresh
 
-### 9. Sync tools
+### 10. Sync tools
 
 `POST /api/v1/tools/sync`
 
@@ -515,7 +559,7 @@ Rules:
 - response may still include `integration_id` as the resolved backing setup id
 - compatibility routes with `user_id` in the URL still exist, but they are no longer the primary MVP path
 
-### 10. Thread endpoints
+### 11. Thread endpoints
 
 Required thread/runtime endpoints:
 
@@ -533,7 +577,7 @@ The short explanation:
 - mutate or delete threads
 - inspect shared memory and thread memory for debugging/admin visibility
 
-### 11. Async executor callback
+### 12. Async executor callback
 
 `POST /api/v1/webhooks/executor`
 
@@ -565,7 +609,7 @@ Rules:
 - `Idempotency-Key` is supported
 - if no idempotency key is provided, the system may fall back to `result.execution_id`
 
-### 12. Query audit events
+### 13. Query audit events
 
 `GET /api/v1/audit/events`
 

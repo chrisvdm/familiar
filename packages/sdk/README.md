@@ -175,6 +175,20 @@ console.log(status.runtime.toolCount);   // number of synced tools
 console.log(status.runtime.threadCount); // number of threads
 ```
 
+### `familiar.integration.health()`
+
+Get the operational health of the current integration.
+
+```typescript
+const health = await familiar.integration.health();
+console.log(health.overall);                    // "healthy" | "warning" | "degraded"
+console.log(health.executor.base_url_configured); // boolean
+console.log(health.executor.recent_failures);     // failures in last 24h
+console.log(health.tools.active);                 // number of active tools
+console.log(health.callbacks.recent_activity);    // any async callbacks recently
+console.log(health.delivery.recent_failures);     // delivery failures in last 24h
+```
+
 ### `familiar.account.usage()`
 
 Get current usage stats for the authenticated account.
