@@ -189,6 +189,17 @@ console.log(health.callbacks.recent_activity);    // any async callbacks recentl
 console.log(health.delivery.recent_failures);     // delivery failures in last 24h
 ```
 
+### `familiar.account.get()`
+
+Get the authenticated account and token info.
+
+```typescript
+const { account, token } = await familiar.account.get();
+console.log(account.id);
+console.log(token.prefix);
+console.log(token.lastUsedAt);
+```
+
 ### `familiar.account.usage()`
 
 Get current usage stats for the authenticated account.
@@ -220,6 +231,14 @@ const thread = await familiar.threads.create({
   title: "My thread",
 });
 console.log(thread.threadId);
+```
+
+### `familiar.threads.update({ threadId, title, userId?, integrationId? })`
+
+Rename a thread.
+
+```typescript
+await familiar.threads.update({ threadId: "thread_abc", title: "New title" });
 ```
 
 ### `familiar.threads.delete({ threadId, userId?, integrationId? })`

@@ -374,6 +374,32 @@ export class Familiar {
   };
 
   account = {
+    get: async (): Promise<{ account: { id: string; createdAt: string }; token: { id: string; prefix: string; lastFour: string; createdAt: string; lastUsedAt?: string } }> => {
+      const payload = await request<{
+        account: { id: string; created_at: string };
+        token: { id: string; prefix: string; last_four: string; created_at: string; last_used_at?: string };
+      }>({
+        host: this.host,
+        method: "GET",
+        path: "/api/v1/account",
+        token: this.token,
+      });
+
+      return {
+        account: {
+          id: payload.account.id,
+          createdAt: payload.account.created_at,
+        },
+        token: {
+          id: payload.token.id,
+          prefix: payload.token.prefix,
+          lastFour: payload.token.last_four,
+          createdAt: payload.token.created_at,
+          lastUsedAt: payload.token.last_used_at,
+        },
+      };
+    },
+
     usage: async (): Promise<AccountUsage> => {
       const payload = await request<{
         account_id: string;
@@ -530,6 +556,42 @@ export class Familiar {
           ...(title ? { title } : {}),
           ...(isPrivate !== undefined ? { is_private: isPrivate } : {}),
           channel,
+          ...(userId ? { user_id: userId } : {}),
+          ...(integrationId ? { integration_id: integrationId } : {}),
+        },
+      });
+
+      return {
+        threadId: payload.thread_id,
+        title: payload.title,
+        isPrivate: payload.is_private,
+        status: payload.status,
+      };
+    },
+
+    update: async ({
+      threadId,
+      title,
+      userId,
+      integrationId,
+    }: {
+      threadId: string;
+      title: string;
+      userId?: string;
+      integrationId?: string;
+    }): Promise<ThreadCreateResult> => {
+      const payload = await request<{
+        thread_id: string;
+        title: string;
+        is_private: boolean;
+        status: string;
+      }>({
+        host: this.host,
+        method: "PATCH",
+        path: `/api/v1/threads/${encodeURIComponent(threadId)}`,
+        token: this.token,
+        body: {
+          title,
           ...(userId ? { user_id: userId } : {}),
           ...(integrationId ? { integration_id: integrationId } : {}),
         },
