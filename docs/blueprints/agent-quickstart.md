@@ -24,6 +24,8 @@ const { account, token } = await Familiar.createAccount();
 // Store token.value — shown once
 ```
 
+This is a programmatic account creation. No email or password is required — the token itself is the credential. This is the right path for AI agents, automation, and non-interactive setups.
+
 ### 2. Set the AI provider key
 
 ```typescript

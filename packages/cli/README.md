@@ -22,6 +22,8 @@ familiar init
 
 This stores the token globally and prints your next steps.
 
+You can also create an account through the web at `/setup` if you prefer a browser.
+
 ### 2. Add your token to the project
 
 In your project root, add the token to `.dev.vars`:
@@ -90,6 +92,28 @@ Requires [cloudflared](https://developers.cloudflare.com/cloudflare-one/connecti
 
 Create a familiar account and issue the first API token. Stores the token globally.
 
+This calls `POST /api/v1/accounts` and saves the returned token to `~/.familiar/config.json`.
+
+### `familiar login`
+
+Connect an existing account to the CLI. Two modes:
+
+**Browser-assisted (default):**
+
+```shell
+familiar login
+```
+
+Creates a CLI session, opens a browser to `/auth/cli`, and waits for you to log in or create an account. Once the browser completes the flow, the CLI receives the token and stores it locally.
+
+**Direct token import:**
+
+```shell
+familiar login --token fam_your_token
+```
+
+Skips the browser and stores the token directly. Use this if you already have a token from the web dashboard or another source.
+
 ### `familiar set-key <key>`
 
 Set the OpenRouter AI provider key for the current project integration. Reads `FAMILIAR_TOKEN` from `.dev.vars` in the current directory.
@@ -105,6 +129,18 @@ Start a local tunnel to the given port, register it with familiar, and keep it a
 ### `familiar account show` / `familiar whoami`
 
 Show the account details for the current token.
+
+## Authentication
+
+The CLI uses API tokens for all operations. Tokens are long-lived machine credentials.
+
+Token sources (checked in order):
+
+1. `--token <token>` flag (explicit override)
+2. `FAMILIAR_TOKEN` in `.dev.vars` (project-level)
+3. `~/.familiar/config.json` (global, set by `familiar init` or `familiar login`)
+
+Web dashboard users can find their full API token on the dashboard and import it with `familiar login --token <token>`.
 
 ## Options
 

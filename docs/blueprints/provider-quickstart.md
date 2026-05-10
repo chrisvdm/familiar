@@ -42,6 +42,8 @@ Long term, explicit `integration_id` will matter again once one account can mana
 
 ## Step 1: Create an account and get a token
 
+### Programmatic (curl, SDK, CLI)
+
 ```shell
 curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
   -H "Content-Type: application/json" \
@@ -53,7 +55,22 @@ This returns:
 - `account.id`
 - the first API token
 
-That token is the main machine credential in the current MVP.
+That token is the main machine credential.
+
+Or use the CLI:
+
+```shell
+familiar init
+```
+
+### Web setup
+
+Visit `/setup` in a browser. Two options:
+
+- **Quick start** — one click, no credentials. Creates an account + token immediately.
+- **Register with email** — creates a password-protected account for easy dashboard login later.
+
+After web registration, your API token is visible on the `/dashboard` page.
 
 ## Step 2: Set your AI provider key
 

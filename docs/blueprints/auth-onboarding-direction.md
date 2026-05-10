@@ -24,9 +24,9 @@ So the first auth slice should optimize for token issuance, not browser-native i
 
 ## Recommended Roadmap
 
-### MVP
+### MVP (Implemented)
 
-The first hosted onboarding slice should be:
+The first hosted onboarding slice is:
 
 1. create account
 2. issue first API token immediately
@@ -47,6 +47,11 @@ That makes the product much easier for:
 - curl users
 - CLI users
 - AI agents
+
+Two account creation paths exist:
+
+- `POST /api/v1/accounts` — programmatic, no credentials. Returns token immediately.
+- `/setup` web form — human-facing. Offers both quick account creation (no credentials) and email/password registration.
 
 ### Next Step
 
@@ -116,20 +121,18 @@ Recommended account-state rule:
 - machine-first bootstrap creates a provisional account
 - browser-authenticated ownership converts that account into a claimed account
 
-### Browser-Assisted CLI Login
+### Browser-Assisted CLI Login (Implemented)
 
-A future `familiar login` flow can work similarly to Cloudflare's browser-assisted login flow.
+The `familiar login` flow works like Cloudflare's browser-assisted login:
 
-Recommended shape:
-
-1. the CLI starts a login flow
-2. the CLI opens a browser window
-3. the browser flow signs the human in with Google or passkey
-4. the hosted app links that human to an existing provisional account or creates a new claimed one
-5. the hosted app returns or issues a machine-usable API token for the CLI
+1. the CLI starts a login flow (`POST /api/v1/auth/cli/sessions`)
+2. the CLI opens a browser window to `/auth/cli?session=...`
+3. the browser flow either uses a stored token or creates a new account
+4. the hosted app completes the CLI session with the token
+5. the CLI polls and receives the token
 6. the CLI stores that token locally for future commands
 
-The browser flow should not make the browser session itself the CLI credential.
+The browser flow does not make the browser session itself the CLI credential.
 
 Instead:
 
@@ -140,7 +143,7 @@ If the CLI already has a local token for a provisional account, the login flow s
 
 1. use that local token to start a claim request
 2. create a short-lived browser claim session
-3. let the browser authenticate the human with Google or passkey
+3. let the browser authenticate the human
 4. attach that human to the provisional account
 5. mark the account as claimed
 
@@ -148,6 +151,21 @@ The important rule is:
 
 - the long-lived credential stays on the local machine as an API token
 - any browser claim bridge should be short-lived
+
+### Email/Password Auth (Implemented)
+
+Email and password are available as an optional human web-auth layer on top of the token system.
+
+- `/setup` offers both quick account creation and email/password registration
+- `/dashboard/login` accepts email/password OR an API token
+- Passwords are hashed with PBKDF2-SHA-256 (100k iterations)
+- The user's API token is stored on their user record for retrieval after login
+- This does not affect CLI or AI-agent flows, which still use tokens directly
+
+This aligns with the provisional/claimed account model:
+
+- machine-first bootstrap creates a provisional account (token only)
+- browser email/password registration creates a claimed account (human identity + token)
 
 ### Local CLI Auth Storage
 
@@ -185,24 +203,24 @@ If no local token exists, the CLI can either:
 
 That allows low-friction AI-agent bootstrap without forcing a browser at the first step.
 
-### Later Web Dashboard
+### Web Dashboard (Implemented)
 
-Once the account and token workflow is stable, add a hosted dashboard.
+The hosted dashboard at `/dashboard` supports:
 
-That dashboard can support:
+- viewing integration health and recent events
+- viewing account usage (plan, actions, free tier status)
+- viewing the API token
+- integration switching (for accounts with multiple integrations)
 
-- account details
-- token management
-- tool registry management
-- executor configuration
+Dashboard auth:
 
-This is the stage where passkeys become more attractive.
+- email/password login
+- API token login (paste token directly)
+- both methods store the API token in the browser session cookie
 
-Passkeys fit well for:
+### Later Passkeys
 
-- web login
-- returning human users
-- phishing-resistant dashboard access
+Passkeys may be added later for phishing-resistant dashboard access.
 
 They do not replace the need for API tokens.
 
