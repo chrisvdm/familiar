@@ -13,3 +13,7 @@
 .border-top {
     border-top: solid 1px var(--accent);
 }
+
+.border-right {
+    border-right: solid 1px var(--accent);
+}

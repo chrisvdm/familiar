@@ -130,13 +130,7 @@ export const Home = () => (
         </p>
       </Section>
 
-      <Section id='get-started' title='Get Started'>
-        <div className="get-started-snippet">
-          <pre className="hero-snippet-code">{`npx familiar-cli init`}</pre>
-          <p className="hero-snippet-label">Or via API:</p>
-          <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts`}</pre>
-        </div>
-      </Section>
+      <LiveDemo/>
 
       <Section id="docs" title="Docs">
         <div className="docs-links">

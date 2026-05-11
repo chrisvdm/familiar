@@ -12,6 +12,8 @@
 
 @import './_grid.css';
 
+@import './_forms.css';
+
 @import './_dashboard.css';
 
 @import './_contact.css';
@@ -20,4 +22,3 @@
 
 @import './_navigation.css';
 
-@import './_hero.css';

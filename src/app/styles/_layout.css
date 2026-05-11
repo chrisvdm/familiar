@@ -26,6 +26,10 @@ body {
     width: calc(50% - var(--m-space));
 }
 
+.width--3 {
+    flex-grow: 0.3;
+}
+
 /* FLEX */
 
 .flex--row {
@@ -44,6 +48,10 @@ body {
 
 .flex--gap-s {
     gap: var(--s-space);
+}
+
+.flex--1 {
+    flex-grow: 1;
 }
 
 /* PADDING */

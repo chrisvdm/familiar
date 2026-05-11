@@ -1,4 +1,4 @@
-* {
+body {
     color: var(--primary);
     font-family: var(--sans);
 }
@@ -33,4 +33,23 @@
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: -0.03em;
+}
+
+code {
+    background-color: var(--accent);
+    padding: 0 var(--xs-space);
+    color: var(--secondary);
+    border-radius: 2px;
+}
+
+a,
+a:visited,
+a:focus {
+    color: inherit;
+    transition: all ease-in-out 0.25s;
+}
+
+a:hover {
+    cursor:pointer;
+    color: #d0a3d0;
 }
