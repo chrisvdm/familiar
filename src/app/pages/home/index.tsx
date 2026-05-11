@@ -4,22 +4,23 @@ import Hero from "./Hero";
 import Navigation from "./Navigation";
 import Section from "@/app/components/Section/Section";
 import Grid from "@/app/components/Grid/Grid"
+import Code from "@/app/components/Code/Code"
 
 const FIXES = [
   [
-     "SSH into server to check job status",
-     "\"Status?\" from WhatsApp → instant reply",
+    "SSH into server to check job status",
+    "\"Status?\" from WhatsApp → instant reply",
   ],
   [
     "Script finishes, you don't know",
-     "\"Done. 3 warnings.\" pushed to your watch",
+    "\"Done. 3 warnings.\" pushed to your watch",
   ],
-   ["Every new tool needs custom integration",
+  ["Every new tool needs custom integration",
     "One JSON schema, familiar handles the rest",
   ],
-  
-    [
-      "ChatGPT answers, but can't act",
+
+  [
+    "ChatGPT answers, but can't act",
     "Ask, route, execute, remember — in one thread",
   ]
   ,
@@ -29,11 +30,11 @@ const PRICINGCOLUMNS = ['tier', 'price']
 
 const PRICING = [
   ["First 10 actions",
-   "Free — try without commitment",
+    "Free — try without commitment",
   ],
   [
     "Per action",
-     "$0.10",
+    "$0.10",
   ],
   [
     "Custom integration",
@@ -42,78 +43,81 @@ const PRICING = [
 ];
 
 export const Home = () => (
-  <main className="landing-page">
-    <div className="landing-shell">
-      
-      <Navigation/>
+  <main className="page">
+    <div className="page__shell">
 
-      <Hero/>
+      <Navigation />
 
-      <Section id="what-it-fixes" title="What it fixes?">
-        <Grid 
-        columns={['Without familiar', 'With familiar']}
-        rows={FIXES} />
+      <Hero />
+
+      <Section id="the-problem" title="The problem">
+        <Grid
+          columns={['Without familiar', 'With familiar']}
+          rows={FIXES} />
       </Section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">How it works</p>
-        </div>
-        <div className="steps-grid">
-          <div className="steps-list">
-            <article className="step-item">
-              <span className="step-number">01</span>
-              <div>
-                <h3 className="step-title">You define tools</h3>
-                <p className="step-body">
-                  What they do, what they need, in familiar.tools.json
-                </p>
-              </div>
-            </article>
-            <article className="step-item">
-              <span className="step-number">02</span>
-              <div>
-                <h3 className="step-title">You expose an endpoint</h3>
-                <p className="step-body">One URL where your code runs</p>
-              </div>
-            </article>
-            <article className="step-item">
-              <span className="step-number">03</span>
-              <div>
-                <h3 className="step-title">familiar handles the rest</h3>
-                <p className="step-body">
-                  Receives text, picks the tool, calls your code, stores what
-                  happened, replies where you are
-                </p>
-              </div>
-            </article>
-          </div>
+      <Section id="how-it-works" title="How it works">
+        <div className="steps-list">
+          <article className="step-item">
+            <div>
+              <h3 className="step-title">01. You define tools</h3>
+              <p className="step-body">
+                What they do, what they need, in familiar.tools.json or via CLI.
+              </p>
+              <Code>{ `[
+  {
+    "tool_name": "todoList",
+    "description": "Add an item to a todolist",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "item": { "type": "string" },
+      },
+      "required": ["item",]
+    },
+    "status": "active"
+  }
+]`}
+              </Code>
+
+            </div>
+          </article>
+          <article className="step-item">
+            <div>
+              <h3 className="step-title">02. You expose an endpoint</h3>
+              <p className="step-body">One URL where your code runs</p>
+            </div>
+          </article>
+          <article className="step-item">
+            <div>
+              <h3 className="step-title">03. familiar handles the rest</h3>
+              <p className="step-body">
+                Receives text, picks the tool, calls your code, stores what
+                happened, replies where you are
+              </p>
+            </div>
+          </article>
         </div>
         <p className="section-closing">
           Your code. Your logic. familiar adds the conversation layer you don't
           want to build again.
         </p>
-      </section>
+      </Section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Who it's for</p>
+      <Section id="who-its-for" title="Who it's for">
+        <div className="overview-copy">
+          <p>
+            People with /scripts folders. People who cron jobs and curl APIs.
+            People who want their personal software to feel like one system,
+            not ten disconnected tools.
+          </p>
+          <p>
+            AI agents can build with familiar too — it's schema-first,
+            code-friendly, minimal approval needed. But it's built for humans
+            who own their tools.
+          </p>
         </div>
-        <div className="overview-grid">
-          <div className="overview-copy">
-            <p>
-              People with /scripts folders. People who cron jobs and curl APIs.
-              People who want their personal software to feel like one system,
-              not ten disconnected tools.
-            </p>
-            <p>
-              AI agents can build with familiar too — it's schema-first,
-              code-friendly, minimal approval needed. But it's built for humans
-              who own their tools.
-            </p>
-          </div>
-        </div>
-      </section>
+      </Section>
 
       <Section title="Pricing">
         <Grid columns={PRICINGCOLUMNS} rows={PRICING} />
@@ -122,21 +126,15 @@ export const Home = () => (
         </p>
       </Section>
 
-      <section className="landing-section">
-        <div className="section-heading">
-          <p className="section-kicker">Get started</p>
-        </div>
+      <Section id='get-started' title='Get Started'>
         <div className="get-started-snippet">
           <pre className="hero-snippet-code">{`npx familiar-cli init`}</pre>
           <p className="hero-snippet-label">Or via API:</p>
           <pre className="hero-snippet-code">{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts`}</pre>
         </div>
-      </section>
+      </Section>
 
-      <section className="landing-section landing-section-docs">
-        <div className="section-heading">
-          <p className="section-kicker">Docs</p>
-        </div>
+      <Section id="docs" title="Docs">
         <div className="docs-links">
           <a href="/docs/cli">CLI</a>
           <span>·</span>
@@ -148,9 +146,9 @@ export const Home = () => (
           <span>·</span>
           <a href="/docs/quickstart">Cookbook</a>
         </div>
-      </section>
+      </Section>
 
-          <Footer/>
+      <Footer />
 
       <script
         dangerouslySetInnerHTML={{

@@ -1,0 +1,20 @@
+.grid {
+    /* display: flex; */
+    border: solid 1px var(--accent)
+}
+
+.grid__row {
+    display: flex;
+    flex-direction: row;
+}
+
+.grid__cell {
+    flex: 1;
+    padding: var(--xs-space);
+    border: 1px solid var(--accent);
+    border-collapse: collapse;
+}
+
+.grid__row--header {
+    font-weight: 700;
+}

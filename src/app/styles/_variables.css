@@ -2,13 +2,22 @@
     /* COLOUR SCHEME */
     --primary: #21322F;
     --secondary:#E2F5F1;
+    --background: #ffffff;
+
+    --accent: #818e8b;
 
     /* FONTS */
-    --sans: "Avenir Book", Avenir, "Avenir Next", "Helvetica Neue", sans-serif;
+    --sans: courier;
+    /* --sans: "Avenir Book", Avenir, "Avenir Next", "Helvetica Neue", sans-serif; */
     --serif: "Shippori Mincho", "Iowan Old Style", "Times New Roman", serif;
+    --code: "Consolas", "Monaco", "Lucida Console", "Courier New", monospace;
+
+
 
     /* SPACING */
+    --xs-space: 0.5em;
     --s-space: 0.625rem;
     --m-space: 1.2rem;
     --l-space: 2rem;
+    --xl-space: 2.25rem;
 }

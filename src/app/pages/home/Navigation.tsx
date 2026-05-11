@@ -1,12 +1,13 @@
-import { FamiliarMark } from "@/app/components/familiar-mark";
+import { FamiliarName } from "@/app/components/familiar-name";
 
 
 const Navigation = () => (
-    <nav className="landing-nav" aria-label="Primary">
+    <nav className="public-nav width--100 flex--row flex--space-between" aria-label="Primary">
         <a className="landing-nav-brand" href="/" aria-label="familiar home">
-          <FamiliarMark className="landing-nav-logo" />
+          <FamiliarName className="landing-nav-logo" />
+          <h1 hidden>familiar</h1>
         </a>
-        <div className="landing-nav-links">
+        <div className="flex--row flex--gap-s">
           <a className="landing-nav-link" href="#what-it-fixes">
             About
           </a>

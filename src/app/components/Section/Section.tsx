@@ -1,7 +1,7 @@
 const Section = ({title, children, id = ''}: {title: string, children: any, id?: string}) => (
-      <section className="section" id={id}>
+      <section className="section padding--large" id={id}>
         <header className="section__header">
-          <h2 className="section__title">{title}</h2>
+          <h2 className="section__title section-kicker">{title}</h2>
         </header>
         <div className='section__content'>
 

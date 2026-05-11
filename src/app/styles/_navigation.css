@@ -1,0 +1,7 @@
+.public-nav {
+    position: fixed;
+    top: 0;
+    max-width: 1024px;
+    background-color: #ffffffc0;
+    padding: var(--xs-space) 0;
+}

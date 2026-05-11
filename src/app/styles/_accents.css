@@ -1,0 +1,11 @@
+.border-radius--xs {
+    border-radius: var(--xs-space);
+}
+
+.border--thin {
+    border: solid 1px var(--accent);
+}
+
+.border--thick {
+    border: solid 2px var(--accent);
+}
