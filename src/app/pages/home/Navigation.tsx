@@ -8,8 +8,8 @@ const Navigation = () => (
           <h1 hidden>familiar</h1>
         </a>
         <div className="flex--row flex--gap-s">
-          <a className="landing-nav-link" href="#what-it-fixes">
-            About
+            <a className="landing-nav-link" href="/contact">
+            Contact
           </a>
           <a className="landing-nav-link" href="/docs/">
             Docs
@@ -17,9 +17,7 @@ const Navigation = () => (
           <a className="landing-nav-link" href="/setup">
             Setup
           </a>
-          <a className="landing-nav-link" href="/contact">
-            Contact
-          </a>
+          
         </div>
       </nav>
 )

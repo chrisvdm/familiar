@@ -6,6 +6,8 @@ import Section from "@/app/components/Section/Section";
 import Grid from "@/app/components/Grid/Grid"
 import Code from "@/app/components/Code/Code"
 
+import LiveDemo from "./LiveDemo";
+
 const FIXES = [
   [
     "SSH into server to check job status",
@@ -23,7 +25,7 @@ const FIXES = [
   //   "ChatGPT answers, but can't act",
   //   "Ask, route, execute, remember — in one thread",
   // ]
-  ,
+  
 ];
 
 const PRICINGCOLUMNS = ['tier', 'price']

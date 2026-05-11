@@ -1,5 +1,17 @@
 .contact-hero {
-  padding: 80px 0 48px;
+  padding: var(--xl-space) 0 var(--l-space);
+  text-align: center;
+}
+
+.contact-success {
+  margin: 0 auto var(--l-space);
+  max-width: 720px;
+  padding: var(--s-space) var(--m-space);
+  border-radius: var(--xs-space);
+  background: rgba(74, 222, 128, 0.12);
+  color: #15803d;
+  font-size: 15px;
+  font-weight: 600;
   text-align: center;
 }
 

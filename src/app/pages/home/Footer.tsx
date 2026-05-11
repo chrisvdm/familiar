@@ -12,7 +12,7 @@ const Footer = () => {
             </div>
 
             <div className="flex--row flex--gap-s">
-                <a href="/contact-us">Contact Us</a>
+                <a href="/contact">Contact</a>
                 <a href="/docs">Docs</a>
                 <a href="/setup">Setup</a>
             </div>

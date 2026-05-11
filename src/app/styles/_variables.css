@@ -6,6 +6,14 @@
 
     --accent: #818e8b;
 
+    /* ALIASES — shared across all pages */
+    --ink: var(--primary);
+    --heading: var(--primary);
+    --muted: var(--accent);
+    --line: var(--accent);
+    --soft: var(--secondary);
+    --paper: var(--background);
+
     /* FONTS */
     --sans: courier;
     /* --sans: "Avenir Book", Avenir, "Avenir Next", "Helvetica Neue", sans-serif; */
