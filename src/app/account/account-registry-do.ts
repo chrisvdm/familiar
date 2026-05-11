@@ -57,6 +57,7 @@ export class AccountRegistryDurableObject extends DurableObject {
     baseUrl: string | null;
     aiApiKey: string | null;
     name?: string;
+    toolUrls?: Record<string, string>;
   }) {
     const state = await this.loadState();
     const account = state.accounts[input.accountId];
@@ -73,6 +74,7 @@ export class AccountRegistryDurableObject extends DurableObject {
           baseUrl: input.baseUrl,
           aiApiKey: input.aiApiKey,
           ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.toolUrls !== undefined ? { toolUrls: input.toolUrls } : {}),
           updatedAt: now,
         }
       : {
@@ -81,6 +83,7 @@ export class AccountRegistryDurableObject extends DurableObject {
           name: input.name || "Integration",
           baseUrl: input.baseUrl,
           aiApiKey: input.aiApiKey,
+          toolUrls: input.toolUrls ?? {},
           createdAt: now,
           updatedAt: now,
         };
@@ -189,8 +192,10 @@ export class AccountRegistryDurableObject extends DurableObject {
     const integration: FamiliarIntegrationConfig = existingIntegration ?? {
       id: account.defaultSetupId,
       accountId: account.id,
+      name: "Default Integration",
       baseUrl: null,
       aiApiKey: null,
+      toolUrls: {},
       createdAt: account.createdAt,
       updatedAt: account.createdAt,
     };

@@ -3,6 +3,24 @@ import test from "node:test";
 
 import { normalizeAccountRegistryState } from "./account-registry-state.ts";
 
+test("normalizeAccountRegistryState backfills toolUrls on legacy integrations", () => {
+  const normalized = normalizeAccountRegistryState({
+    integrations: {
+      setup_legacy: {
+        id: "setup_legacy",
+        accountId: "acct_123",
+        name: "Legacy",
+        baseUrl: null,
+        aiApiKey: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    },
+  } as unknown as Partial<import("./account.types").FamiliarAccountRegistryState>);
+
+  assert.deepEqual(normalized.integrations.setup_legacy.toolUrls, {});
+});
+
 test("normalizeAccountRegistryState backfills integrations for legacy state", () => {
   const normalized = normalizeAccountRegistryState({
     accounts: {

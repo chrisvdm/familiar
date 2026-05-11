@@ -30,6 +30,10 @@ const normalizeIntegrationRecord = (
   name: (record.name as string) || "Integration",
   baseUrl: (record.baseUrl as string | null) ?? null,
   aiApiKey: (record.aiApiKey as string | null) ?? null,
+  toolUrls:
+    record.toolUrls && typeof record.toolUrls === "object"
+      ? (record.toolUrls as Record<string, string>)
+      : {},
   createdAt: record.createdAt as string,
   updatedAt: record.updatedAt as string,
 });

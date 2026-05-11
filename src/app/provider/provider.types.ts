@@ -75,6 +75,7 @@ export type ProviderConfig = {
   token: string;
   baseUrl?: string;
   aiApiKey?: string;
+  toolUrls?: Record<string, string>;
 };
 
 export type ProviderChannelInput = {
@@ -132,6 +133,7 @@ export type ProviderToolSyncInput = {
     executor_payload?: unknown;
     policy?: Record<string, unknown>;
     status?: "active" | "disabled";
+    base_url?: string;
   }>;
 };
 

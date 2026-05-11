@@ -13,6 +13,7 @@ export type FamiliarIntegrationConfig = {
   name: string;
   baseUrl: string | null;
   aiApiKey: string | null;
+  toolUrls: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 };

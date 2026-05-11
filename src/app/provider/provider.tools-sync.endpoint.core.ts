@@ -95,6 +95,7 @@ export type ToolsSyncEndpointDeps = {
   syncProviderTools: (
     input: NormalizedProviderToolSyncInput,
     requestId?: string,
+    accountId?: string,
   ) => Promise<Record<string, unknown>>;
   isProviderRateLimitError: (
     error: unknown,
@@ -213,7 +214,7 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
           });
         }
 
-        const result = await deps.syncProviderTools(normalizedInput, requestId);
+        const result = await deps.syncProviderTools(normalizedInput, requestId, auth.accountId);
         const nextContext = deps.storeIdempotencyReplay({
           context: await deps.loadOrCreateProviderUserContext({
             providerId,
@@ -232,7 +233,7 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
         });
       }
 
-      const result = await deps.syncProviderTools(normalizedInput, requestId);
+      const result = await deps.syncProviderTools(normalizedInput, requestId, auth.accountId);
       return deps.jsonResponse({
         requestId,
         body: result,

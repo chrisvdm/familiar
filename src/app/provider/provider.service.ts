@@ -43,6 +43,7 @@ import type {
   ProviderToolSyncInput,
   ProviderUserContext,
 } from "./provider.types";
+import { updateIntegrationToolUrls } from "../account/account.service";
 import { logProviderAudit } from "./provider.audit";
 import {
   executeProviderToolRequest,
@@ -214,6 +215,7 @@ const normalizeAllowedTools = (
     executor_payload?: unknown;
     policy?: Record<string, unknown>;
     status?: "active" | "disabled";
+    base_url?: string;
   }>,
 ): AllowedTool[] =>
   tools.map((tool) => {
@@ -1681,6 +1683,7 @@ const runProfileSynthesis = async ({
 export const syncProviderTools = async (
   input: NormalizedProviderToolSyncInput,
   requestId?: string,
+  accountId?: string,
 ) => {
   const context = await loadOrCreateProviderUserContext({
     providerId: input.integration_id,
@@ -1695,6 +1698,22 @@ export const syncProviderTools = async (
   };
 
   await saveProviderUserContext(nextContext);
+
+  if (accountId) {
+    const toolUrls = Object.fromEntries(
+      input.tools
+        .filter((t) => typeof t.base_url === "string" && t.base_url.trim())
+        .map((t) => [t.tool_name, t.base_url!.trim()]),
+    );
+
+    if (Object.keys(toolUrls).length > 0) {
+      await updateIntegrationToolUrls({
+        accountId,
+        integrationId: input.integration_id,
+        toolUrls,
+      });
+    }
+  }
 
   logProviderAudit({
     event: "provider.tools.synced",

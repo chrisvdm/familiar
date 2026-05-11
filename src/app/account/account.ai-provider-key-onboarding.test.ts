@@ -28,10 +28,14 @@ const VALID_KEY_PREFIX = "sk-or-v1";
 const makeIntegration = (overrides: Partial<{
   aiApiKey: string | null;
   baseUrl: string | null;
+  toolUrls: Record<string, string>;
 }> = {}) => ({
   id: "setup_123",
+  accountId: "acct_123",
+  name: "Test Integration",
   baseUrl: null,
   aiApiKey: null,
+  toolUrls: {},
   createdAt: "2026-03-25T10:00:00.000Z",
   updatedAt: "2026-03-25T10:00:00.000Z",
   ...overrides,
@@ -248,7 +252,7 @@ test("conversation endpoint forwards aiApiKey from auth to handleProviderConvers
       freeActionsRemaining: 9,
       plan: "free" as const,
     }),
-    isProviderRateLimitError: () => false,
+    isProviderRateLimitError: (error: unknown): error is Error & { retryAfterSeconds: number } => false,
   });
 
   const response = await endpoint({
@@ -303,7 +307,7 @@ test("conversation endpoint returns 400 configuration_required when no AI key is
       freeActionsRemaining: 9,
       plan: "free" as const,
     }),
-    isProviderRateLimitError: () => false,
+    isProviderRateLimitError: (error: unknown): error is Error & { retryAfterSeconds: number } => false,
   });
 
   const response = await endpoint({
@@ -343,6 +347,7 @@ test("normalizeAccountRegistryState backfills aiApiKey null on integration recor
         name: "Legacy Integration",
         baseUrl: null,
         aiApiKey: null,
+        toolUrls: {},
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

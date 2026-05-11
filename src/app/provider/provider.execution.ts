@@ -208,7 +208,9 @@ export const executeProviderToolRequest = async ({
     };
   }
 
-  if (!providerConfig.baseUrl) {
+  const toolUrl = providerConfig.toolUrls?.[toolName] ?? providerConfig.baseUrl;
+
+  if (!toolUrl) {
     throw new Error("Executor base URL is not configured.");
   }
 
@@ -250,7 +252,7 @@ export const executeProviderToolRequest = async ({
         };
 
   try {
-    const response = await fetchImpl(buildExecutorToolUrl(providerConfig.baseUrl), {
+    const response = await fetchImpl(buildExecutorToolUrl(toolUrl), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${providerConfig.token}`,

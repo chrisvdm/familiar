@@ -91,5 +91,5 @@ test("callOpenRouter sends json_object response_format when jsonMode is true", a
     },
   });
 
-  assert.deepEqual(capturedBody?.response_format, { type: "json_object" });
+  assert.deepEqual((capturedBody as Record<string, unknown> | null)?.response_format, { type: "json_object" });
 });

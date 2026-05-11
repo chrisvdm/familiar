@@ -23,8 +23,9 @@ type AccountRegistryStub = {
   updateIntegration: (input: {
     integrationId: string;
     accountId: string;
-    baseUrl: string | null;
-    aiApiKey: string | null;
+    baseUrl?: string | null;
+    aiApiKey?: string | null;
+    toolUrls?: Record<string, string>;
   }) => Promise<{ value: FamiliarIntegrationConfig } | { error: string }>;
   authenticateToken: (input: {
     tokenHash: string;
@@ -58,6 +59,9 @@ type AccountRegistryStub = {
   getUserByEmail: (input: {
     email: string;
   }) => Promise<{ value: FamiliarUser } | { error: string }>;
+  storeContactSubmission: (input: {
+    submission: Record<string, unknown>;
+  }) => Promise<{ value: Record<string, unknown> } | { error: string }>;
 };
 
 const accountEnv = env as typeof env & {
@@ -164,6 +168,7 @@ export const createAccountWithInitialToken = async ({
     name: "Default Integration",
     baseUrl: null,
     aiApiKey: null,
+    toolUrls: {},
     createdAt: account.createdAt,
     updatedAt: account.createdAt,
   };
@@ -215,6 +220,28 @@ export const updateAccountIntegrationBaseUrl = async ({
     integrationId,
     baseUrl,
     aiApiKey,
+  });
+
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+
+  return result.value;
+};
+
+export const updateIntegrationToolUrls = async ({
+  accountId,
+  integrationId,
+  toolUrls,
+}: {
+  accountId: string;
+  integrationId: string;
+  toolUrls: Record<string, string>;
+}) => {
+  const result = await getAccountRegistryStub().updateIntegration({
+    accountId,
+    integrationId,
+    toolUrls,
   });
 
   if ("error" in result) {

@@ -161,6 +161,9 @@ export const authenticateProviderRequest = ({
         ...(accountAuth.integration.aiApiKey
           ? { aiApiKey: accountAuth.integration.aiApiKey }
           : {}),
+        ...(Object.keys(accountAuth.integration.toolUrls ?? {}).length > 0
+          ? { toolUrls: accountAuth.integration.toolUrls }
+          : {}),
       },
       accountId: accountAuth.account.id,
     };

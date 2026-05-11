@@ -366,7 +366,7 @@ export const providerDemoRoutes = [
         await resetProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
       }
 
-      const syncResult = await syncProviderTools(buildSyncBody(userId));
+      const syncResult = await syncProviderTools(buildSyncBody(userId), undefined, undefined);
       const textyResult = await handleProviderConversationInput({
         input: buildInputBody(userId, text, threadId),
         providerConfig: {
@@ -573,7 +573,7 @@ export const providerDemoRoutes = [
         await resetProviderUserContext({ providerId: COUNTDOWN_EXECUTOR_ID, userId });
       }
 
-      const syncResult = await syncProviderTools(buildCountdownSyncBody(userId));
+      const syncResult = await syncProviderTools(buildCountdownSyncBody(userId), undefined, undefined);
       const textyResult = await handleProviderConversationInput({
         input: buildCountdownInputBody(userId, text, threadId),
         providerConfig: {
@@ -868,7 +868,7 @@ export const providerDemoRoutes = [
         await resetProviderUserContext({ providerId: PINNED_TOOL_EXECUTOR_ID, userId });
       }
 
-      const syncResult = await syncProviderTools(buildPinnedToolSyncBody(userId));
+      const syncResult = await syncProviderTools(buildPinnedToolSyncBody(userId), undefined, undefined);
       const textyResult = await handleProviderConversationInput({
         input: buildPinnedToolInputBody(userId, text, threadId),
         providerConfig: {

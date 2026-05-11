@@ -240,6 +240,62 @@ test("executeProviderToolRequest supports integration-defined executor payload t
   assert.doesNotMatch(capturedBody, /"arguments":\{"row_id":"42"\}/);
 });
 
+test("executeProviderToolRequest uses per-tool URL when present", async () => {
+  let capturedRequestUrl = "";
+
+  await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example/root/",
+      toolUrls: {
+        "spreadsheet.update_row": "https://custom.example/sheet/",
+      },
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    fetchImpl: async (input) => {
+      capturedRequestUrl = String(input);
+      return {
+        ok: true,
+        json: async () => ({ ok: true, state: "completed" }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.equal(capturedRequestUrl, "https://custom.example/sheet/tools/execute");
+});
+
+test("executeProviderToolRequest falls back to baseUrl when no per-tool URL is present", async () => {
+  let capturedRequestUrl = "";
+
+  await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example/root/",
+      toolUrls: {
+        "other.tool": "https://other.example/",
+      },
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    fetchImpl: async (input) => {
+      capturedRequestUrl = String(input);
+      return {
+        ok: true,
+        json: async () => ({ ok: true, state: "completed" }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.equal(capturedRequestUrl, "https://executor.example/root/tools/execute");
+});
+
 test("sendProviderChannelMessage posts a text message payload", async () => {
   let capturedRequestUrl = "";
   let capturedBody = "";
