@@ -262,30 +262,30 @@ export default defineApp([
       return new Response("Unable to select integration", { status: 400 });
     }
   }),
-  route("/contact", async ({ request }) => {
-    if (request.method === "POST") {
-      try {
-        const formData = await request.formData();
-        const name = (formData.get("name")?.toString() ?? "").trim();
-        const email = (formData.get("email")?.toString() ?? "").trim();
-        const message = (formData.get("message")?.toString() ?? "").trim();
-
-        if (!name || !email || !message) {
-          return new Response("All fields are required", { status: 400 });
-        }
-
-        await storeContactSubmission({ name, email, message });
-
-        return new Response(null, {
-          status: 302,
-          headers: { Location: "/contact?sent=1" },
-        });
-      } catch {
-        return new Response("Unable to send message", { status: 400 });
-      }
+  route("/contact/submit", async ({ request }) => {
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
     }
 
-    return;
+    try {
+      const formData = await request.formData();
+      const name = (formData.get("name")?.toString() ?? "").trim();
+      const email = (formData.get("email")?.toString() ?? "").trim();
+      const message = (formData.get("message")?.toString() ?? "").trim();
+
+      if (!name || !email || !message) {
+        return new Response("All fields are required", { status: 400 });
+      }
+
+      await storeContactSubmission({ name, email, message });
+
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "/contact?sent=1" },
+      });
+    } catch {
+      return new Response("Unable to send message", { status: 400 });
+    }
   }),
   ...accountRoutes,
   ...providerRoutes,

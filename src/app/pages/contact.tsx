@@ -43,7 +43,7 @@ export const Contact = ({
             </p>
 
             <form
-              action="/contact"
+              action="/contact/submit"
               method="post"
               className="contact-form"
             >
