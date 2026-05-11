@@ -163,6 +163,36 @@ Request:
 }
 ```
 
+Per-tool URL override:
+
+- each tool may include an optional `base_url` field
+- when present, familiar calls that URL instead of the integration's default `base_url` for that specific tool
+- this is useful when different tools live on different services or sub-paths
+- if `base_url` is omitted, the integration's default `base_url` is used
+
+Example with per-tool URLs:
+
+```json
+{
+  "tools": [
+    {
+      "tool_name": "spreadsheet.update_row",
+      "description": "Update a spreadsheet row",
+      "base_url": "https://sheets.example.com",
+      "input_schema": { "type": "object" },
+      "status": "active"
+    },
+    {
+      "tool_name": "slack.send_message",
+      "description": "Send a Slack message",
+      "base_url": "https://slack-bot.example.com",
+      "input_schema": { "type": "object" },
+      "status": "active"
+    }
+  ]
+}
+```
+
 Curl-only convenience:
 
 - the endpoint also accepts a bare tools array without the wrapper object

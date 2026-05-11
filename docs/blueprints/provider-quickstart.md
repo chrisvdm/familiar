@@ -191,6 +191,33 @@ curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
 
 This gives familiar permission to reason over that tool for the current setup.
 
+### Per-tool URL overrides
+
+By default, all tool calls go to the integration's `base_url`. You can override this per-tool by adding `base_url` to individual tools during sync:
+
+```json
+{
+  "tools": [
+    {
+      "tool_name": "spreadsheet.update_row",
+      "description": "Update a row in a spreadsheet",
+      "base_url": "https://sheets.example.com",
+      "input_schema": { "type": "object" },
+      "status": "active"
+    },
+    {
+      "tool_name": "slack.send_message",
+      "description": "Send a Slack message",
+      "base_url": "https://slack-bot.example.com",
+      "input_schema": { "type": "object" },
+      "status": "active"
+    }
+  ]
+}
+```
+
+This is useful when different tools live on different services or sub-domains. If `base_url` is omitted, the integration's default URL is used.
+
 ### Curl-only tool syncing
 
 You can also send the tools array directly — no wrapper object needed. Save your tools to a file:

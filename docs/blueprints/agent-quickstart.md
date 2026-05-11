@@ -52,6 +52,19 @@ await familiar.tools.sync({
         required: ["title"],
       },
     },
+    {
+      toolName: "calendar.schedule",
+      description: "Schedule a meeting",
+      baseUrl: "https://calendar.example.com",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          startTime: { type: "string" },
+        },
+        required: ["title", "startTime"],
+      },
+    },
   ],
 });
 ```
@@ -62,6 +75,12 @@ Or sync from a JSON file:
 import tools from "./familiar.json" assert { type: "json" };
 await familiar.tools.sync({ tools });
 ```
+
+Per-tool URL override:
+
+- add `baseUrl` to any tool to route its execution to a different URL
+- useful when tools live on different services or sub-domains
+- if omitted, the integration's default base URL is used
 
 ### 4. Send input
 
