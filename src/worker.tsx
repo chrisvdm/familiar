@@ -34,7 +34,9 @@ import {
   createAccountWithInitialToken,
   registerAccountUser,
   authenticateUser,
+  storeContactSubmission,
 } from "@/app/account/account.service";
+import { Contact } from "@/app/pages/contact";
 
 export type AppContext = {
   session?: BrowserSession;
@@ -260,6 +262,31 @@ export default defineApp([
       return new Response("Unable to select integration", { status: 400 });
     }
   }),
+  route("/contact", async ({ request }) => {
+    if (request.method === "POST") {
+      try {
+        const formData = await request.formData();
+        const name = (formData.get("name")?.toString() ?? "").trim();
+        const email = (formData.get("email")?.toString() ?? "").trim();
+        const message = (formData.get("message")?.toString() ?? "").trim();
+
+        if (!name || !email || !message) {
+          return new Response("All fields are required", { status: 400 });
+        }
+
+        await storeContactSubmission({ name, email, message });
+
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/contact?sent=1" },
+        });
+      } catch {
+        return new Response("Unable to send message", { status: 400 });
+      }
+    }
+
+    return;
+  }),
   ...accountRoutes,
   ...providerRoutes,
   ...providerDemoRoutes,
@@ -273,6 +300,7 @@ export default defineApp([
       layout(PublicLayout, [
         route("/setup", Setup),
         route("/auth/cli", AuthCli),
+        route("/contact", Contact),
       ]),
       layout(DocsLayout, [
         route("/docs", DocsPage),

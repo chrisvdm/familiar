@@ -17,6 +17,9 @@ const Navigation = () => (
           <a className="landing-nav-link" href="/setup">
             Setup
           </a>
+          <a className="landing-nav-link" href="/contact">
+            Contact
+          </a>
         </div>
       </nav>
 )

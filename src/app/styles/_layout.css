@@ -66,6 +66,10 @@ body {
     padding: var(--l-space) var(--xl-space);
 }
 
+.padding-top--xl {
+    padding-top: var(--l-space);
+}
+
 /* MARGIN */
 .margin-top--xl {
     margin-top: var(--xl-space);

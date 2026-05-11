@@ -24,8 +24,8 @@ const Hero = () => {
               arguments, automatically).
             </p>
 
-            <div>
-                <span className="section-kicker margin-top--xl">Get started!</span>
+            <div className="margin-top--xl">
+                <span className="section-kicker">Get started</span>
                 <Code>{`npx familiar-cli init`}</Code>
                 <span>Or via API:</span>
                 <Code>{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts`}</Code>

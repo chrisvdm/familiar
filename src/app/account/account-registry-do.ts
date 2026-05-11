@@ -297,4 +297,13 @@ export class AccountRegistryDurableObject extends DurableObject {
 
     return { value: user };
   }
+
+  async storeContactSubmission(input: {
+    submission: import("./account.types").FamiliarContactSubmission;
+  }) {
+    const state = await this.loadState();
+    state.contactSubmissions[input.submission.id] = input.submission;
+    await this.saveState(state);
+    return { value: input.submission };
+  }
 }

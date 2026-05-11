@@ -8,6 +8,7 @@ export const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
   cliSessions: {},
   users: {},
   emailIndex: {},
+  contactSubmissions: {},
 });
 
 const normalizeAccountRecord = (
@@ -86,5 +87,9 @@ export const normalizeAccountRegistryState = (
   emailIndex:
     state?.emailIndex && typeof state.emailIndex === "object"
       ? state.emailIndex
+      : {},
+  contactSubmissions:
+    state?.contactSubmissions && typeof state.contactSubmissions === "object"
+      ? state.contactSubmissions
       : {},
 });

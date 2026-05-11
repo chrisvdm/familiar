@@ -43,6 +43,14 @@ export type FamiliarUser = {
   createdAt: string;
 };
 
+export type FamiliarContactSubmission = {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+};
+
 export type FamiliarAccountRegistryState = {
   accounts: Record<string, FamiliarAccount>;
   integrations: Record<string, FamiliarIntegrationConfig>;
@@ -51,6 +59,7 @@ export type FamiliarAccountRegistryState = {
   cliSessions: Record<string, FamiliarCliSession>;
   users: Record<string, FamiliarUser>;
   emailIndex: Record<string, string>;
+  contactSubmissions: Record<string, FamiliarContactSubmission>;
 };
 
 export type FamiliarTokenAuth = {

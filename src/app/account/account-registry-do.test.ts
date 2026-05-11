@@ -62,5 +62,6 @@ test("normalizeAccountRegistryState backfills integrations for legacy state", ()
     cliSessions: {},
     users: {},
     emailIndex: {},
+    contactSubmissions: {},
   });
 });

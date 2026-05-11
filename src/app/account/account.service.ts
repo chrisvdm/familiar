@@ -386,6 +386,34 @@ export const authenticateUser = async ({
   return { value: result.value } as const;
 };
 
+export const storeContactSubmission = async ({
+  name,
+  email,
+  message,
+}: {
+  name: string;
+  email: string;
+  message: string;
+}) => {
+  const submission = {
+    id: `msg_${randomHex(24)}`,
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    message: message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  const result = await getAccountRegistryStub().storeContactSubmission({
+    submission,
+  });
+
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+
+  return result.value;
+};
+
 export const getIntegrationStatus = async ({
   integrationId,
 }: {

@@ -1,6 +1,7 @@
 .grid {
     /* display: flex; */
-    border: solid 1px var(--accent)
+    border: solid 1px var(--accent);
+    border-radius: 2px;
 }
 
 .grid__row {

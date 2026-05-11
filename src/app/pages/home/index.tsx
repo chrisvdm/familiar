@@ -19,10 +19,10 @@ const FIXES = [
     "One JSON schema, familiar handles the rest",
   ],
 
-  [
-    "ChatGPT answers, but can't act",
-    "Ask, route, execute, remember — in one thread",
-  ]
+  // [
+  //   "ChatGPT answers, but can't act",
+  //   "Ask, route, execute, remember — in one thread",
+  // ]
   ,
 ];
 
@@ -34,11 +34,11 @@ const PRICING = [
   ],
   [
     "Per action",
-    "$0.10",
+    "$0.0005",
   ],
   [
     "Custom integration",
-    "$500–2,000",
+    "Talk to us",
   ],
 ];
 
@@ -64,7 +64,7 @@ export const Home = () => (
               <p className="step-body">
                 What they do, what they need, in familiar.tools.json or via CLI.
               </p>
-              <Code>{ `[
+              <Code>{`[
   {
     "tool_name": "todoList",
     "description": "Add an item to a todolist",
@@ -73,12 +73,11 @@ export const Home = () => (
       "properties": {
         "item": { "type": "string" },
       },
-      "required": ["item",]
+      "required": ["item"]
     },
     "status": "active"
   }
-]`}
-              </Code>
+]`}</Code>
 
             </div>
           </article>
@@ -86,6 +85,7 @@ export const Home = () => (
             <div>
               <h3 className="step-title">02. You expose an endpoint</h3>
               <p className="step-body">One URL where your code runs</p>
+              <Code>{`familiar set-url <url>`}</Code>
             </div>
           </article>
           <article className="step-item">
@@ -95,13 +95,15 @@ export const Home = () => (
                 Receives text, picks the tool, calls your code, stores what
                 happened, replies where you are
               </p>
+              <img className="margin-top--xl" src='img02.svg' alt="diagram explaining familiar flow"/>
+             <img src='img03.svg'/>
             </div>
           </article>
         </div>
-        <p className="section-closing">
+        {/* <p className="section-closing">
           Your code. Your logic. familiar adds the conversation layer you don't
           want to build again.
-        </p>
+        </p> */}
       </Section>
 
       <Section id="who-its-for" title="Who it's for">

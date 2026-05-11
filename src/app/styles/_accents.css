@@ -9,3 +9,7 @@
 .border--thick {
     border: solid 2px var(--accent);
 }
+
+.border-top {
+    border-top: solid 1px var(--accent);
+}
