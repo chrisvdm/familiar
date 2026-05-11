@@ -116,21 +116,52 @@ Returns:
 - `callbacks.recent_activity` — whether async callbacks have been received
 - `delivery.recent_failures` — delivery failures in the last 24h
 
-### Check account usage
+## Step 3: Set your executor base URL
+
+familiar needs a URL it can call when tools run. You have two options:
+
+### Option A: Use `familiar portal` (local development)
+
+Start a Cloudflare tunnel from your local machine:
 
 ```shell
-curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/account/usage \
-  -H "Authorization: Bearer fam_your_token"
+familiar portal --port 8787
 ```
 
-Returns:
+This creates a public URL, registers it with familiar automatically, and keeps it alive. Press `Ctrl-C` to stop — it clears the URL automatically.
 
-- `plan` — `"free"` or `"paid"`
-- `action_count` — total actions used
-- `free_actions_used` — free tier actions consumed
-- `free_actions_remaining` — `null` if paid, number if free
+Requires [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation).
 
-## Step 3: Sync Allowed Tools
+### Option B: Set a deployed URL
+
+If your executor is already deployed (e.g., on Vercel, Railway, or your own server), set the URL directly:
+
+**CLI:**
+
+```shell
+familiar set-url https://my-app.vercel.app
+```
+
+**cURL:**
+
+```shell
+curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+  -H "Authorization: Bearer fam_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"base_url": "https://my-app.vercel.app"}'
+```
+
+**SDK:**
+
+```typescript
+await familiar.integration.update({
+  baseUrl: "https://my-app.vercel.app",
+});
+```
+
+To clear the URL later, send `{"base_url": null}` or run `familiar set-url ""`.
+
+## Step 4: Sync Allowed Tools
 
 Tell familiar which tools the current setup should use.
 
@@ -198,7 +229,7 @@ Current MVP shortcut:
 - you can also send `tools` directly on `POST /api/v1/input`
 - that is useful while setup/admin flows are still evolving
 
-## Step 4: Send Conversation Input
+## Step 5: Send Conversation Input
 
 Send a normal message into familiar.
 
@@ -268,7 +299,7 @@ data: {"event":"done","thread_id":"thread_abc","messages":[...],"action":"direct
 
 Tool calls and clarifications are not streamed — they emit a single `decision` event followed by `done`.
 
-## Step 5: Simulate input (dry run)
+## Step 6: Simulate input (dry run)
 
 Test what familiar would do without persisting messages, executing tools, or burning quota:
 
@@ -325,7 +356,7 @@ What simulate does **not** do:
 
 Use this to test new tools, debug routing, or preview behavior before going live.
 
-## Step 6: Expose `/tools/execute`
+## Step 7: Expose `/tools/execute`
 
 If familiar decides that a tool should run, it will call:
 
@@ -357,7 +388,7 @@ Important:
 - shortcut-forced tool mode may also include `context.raw_input_text`
 - async executors may receive `context.executor_result_webhook_url` and can call it later when work finishes
 
-### Step 7: Send an async result back to familiar
+### Step 8: Send an async result back to familiar
 
 If your executor launches work and returns `accepted` or `in_progress`, keep the first response short and user-facing, for example:
 

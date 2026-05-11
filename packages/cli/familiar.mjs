@@ -21,6 +21,7 @@ Usage:
   familiar account show [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
   familiar set-key <key> [--host <url>] [--token <token>]
+  familiar set-url <url> [--host <url>] [--token <token>]
   familiar tools sync [--file <path>] [--host <url>] [--token <token>]
   familiar portal --port <port> [--host <url>] [--token <token>]
   familiar --help
@@ -33,6 +34,8 @@ Commands:
   account show    Show the account for the current API token.
   whoami          Alias for account show.
   set-key         Set the OpenRouter AI provider key for the current project integration.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  set-url         Set the executor base URL familiar will call when tools run.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   tools sync      Sync tools from a JSON file (default: familiar.tools.json).
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
@@ -355,6 +358,28 @@ const setKey = async ({ host, token, key }) => {
   print(`AI provider key set.`);
 };
 
+const setUrl = async ({ host, token, url: baseUrl }) => {
+  if (!baseUrl?.trim()) {
+    throw new Error("Usage: familiar set-url <your-executor-url>");
+  }
+
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Add FAMILIAR_TOKEN to .dev.vars or run `familiar init`.",
+    );
+  }
+
+  await patchJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/integration`,
+    body: { base_url: baseUrl.trim() },
+    token: resolvedToken,
+  });
+
+  print(`Executor URL set: ${baseUrl.trim()}`);
+};
+
 const syncTools = async ({ host, token, file }) => {
   const resolvedToken = await resolveToken(token);
 
@@ -519,6 +544,11 @@ const main = async () => {
 
   if (positionals[0] === "set-key") {
     await setKey({ host, token, key: positionals[1] });
+    return;
+  }
+
+  if (positionals[0] === "set-url") {
+    await setUrl({ host, token, url: positionals[1] });
     return;
   }
 

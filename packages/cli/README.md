@@ -118,6 +118,20 @@ Skips the browser and stores the token directly. Use this if you already have a 
 
 Set the OpenRouter AI provider key for the current project integration. Reads `FAMILIAR_TOKEN` from `.dev.vars` in the current directory.
 
+### `familiar set-url <url>`
+
+Set the executor base URL that familiar will call when tools run. Use this when your executor is already deployed (e.g., on Vercel, Railway, or your own server) instead of using `familiar portal`.
+
+```shell
+familiar set-url https://my-app.vercel.app
+```
+
+To clear the URL later:
+
+```shell
+familiar set-url ""
+```
+
 ### `familiar tools sync [--file <path>]`
 
 Sync tools from a JSON file. Defaults to `familiar.tools.json` in the current directory. Use `--file` to point to a different path.
