@@ -10,6 +10,7 @@ export type Tool = {
   inputSchema: Record<string, unknown>;
   inputMode?: "processed" | "raw";
   status?: "active" | "inactive";
+  baseUrl?: string;
 };
 
 export type Message = {

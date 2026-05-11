@@ -648,6 +648,7 @@ const serializeTool = (tool: Tool) => ({
   input_schema: tool.inputSchema,
   ...(tool.inputMode ? { input_mode: tool.inputMode } : {}),
   ...(tool.status ? { status: tool.status } : {}),
+  ...(tool.baseUrl ? { base_url: tool.baseUrl } : {}),
 });
 
 const deserializeIntegration = (raw: Record<string, unknown>): Integration => ({

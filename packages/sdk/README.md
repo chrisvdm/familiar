@@ -65,9 +65,28 @@ await familiar.tools.sync({
         required: ["row_id", "values"],
       },
     },
+    {
+      toolName: "calendar.schedule",
+      description: "Schedule a meeting",
+      baseUrl: "https://calendar.example.com",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          startTime: { type: "string" },
+        },
+        required: ["title", "startTime"],
+      },
+    },
   ],
 });
 ```
+
+Per-tool URL override:
+
+- add `baseUrl` to any tool to route its execution to a different URL
+- useful when tools live on different services or sub-domains
+- if omitted, the integration's default base URL is used
 
 ## Error handling
 
