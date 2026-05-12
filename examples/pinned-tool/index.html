@@ -305,6 +305,9 @@
     </main>
 
     <script nonce="__NONCE__">
+      const escapeHtml = (str) =>
+        String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
       const form = document.getElementById("playground-form");
       const submitButton = document.getElementById("submitButton");
       const tokenEl = document.getElementById("token");
@@ -337,12 +340,12 @@
 
         const userBubble = document.createElement("div");
         userBubble.className = "bubble user";
-        userBubble.innerHTML = `<span class="label">User</span>${user}`;
+        userBubble.innerHTML = `<span class="label">User</span>${escapeHtml(user)}`;
         chatLogEl.appendChild(userBubble);
 
         const assistantBubble = document.createElement("div");
         assistantBubble.className = "bubble assistant";
-        assistantBubble.innerHTML = `<span class="label">Assistant</span>${assistant || ""}`;
+        assistantBubble.innerHTML = `<span class="label">Assistant</span>${escapeHtml(assistant || "")}`;
         chatLogEl.appendChild(assistantBubble);
       };
 
@@ -360,7 +363,7 @@
         entries.forEach((entry) => {
           const row = document.createElement("div");
           row.className = "entry";
-          row.innerHTML = `<strong>${entry.text}</strong><div>${entry.created_at}</div>`;
+          row.innerHTML = `<strong>${escapeHtml(entry.text)}</strong><div>${escapeHtml(entry.created_at)}</div>`;
           element.appendChild(row);
         });
       };

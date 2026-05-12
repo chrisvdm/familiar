@@ -509,6 +509,9 @@
     </main>
 
     <script nonce="__NONCE__">
+      const escapeHtml = (str) =>
+        String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
       const form = document.getElementById("playground");
       const payloadEl = document.getElementById("payload");
       const resultEl = document.getElementById("result");
@@ -637,13 +640,13 @@
 
         statusCardEl.innerHTML = [
           "<strong>Latest task</strong>",
-          "<div class=\"muted\" style=\"margin-top: 6px;\">Response type: <code>" + action + "</code></div>",
-          "<div class=\"muted\">Execution: <code>" + executionState + "</code></div>",
+          "<div class=\"muted\" style=\"margin-top: 6px;\">Response type: <code>" + escapeHtml(action) + "</code></div>",
+          "<div class=\"muted\">Execution: <code>" + escapeHtml(executionState) + "</code></div>",
           reasoning
-            ? "<div class=\"muted\" style=\"margin-top: 8px;\">Reasoning: " + reasoning.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>"
+            ? "<div class=\"muted\" style=\"margin-top: 8px;\">Reasoning: " + escapeHtml(reasoning) + "</div>"
             : "",
           assistantReply
-            ? "<div class=\"muted\" style=\"margin-top: 8px;\">Assistant reply: " + assistantReply.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>"
+            ? "<div class=\"muted\" style=\"margin-top: 8px;\">Assistant reply: " + escapeHtml(assistantReply) + "</div>"
             : ""
         ].join("");
       };

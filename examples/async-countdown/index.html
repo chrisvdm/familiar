@@ -291,6 +291,9 @@
     </main>
 
     <script nonce="__NONCE__">
+      const escapeHtml = (str) =>
+        String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
       const form = document.getElementById("playground-form");
       const submitButton = document.getElementById("submitButton");
       const tokenEl = document.getElementById("token");
@@ -334,7 +337,7 @@
         messages.forEach((message) => {
           const bubble = document.createElement("div");
           bubble.className = `bubble ${message.role === "user" ? "user" : "assistant"}`;
-          bubble.innerHTML = `<span class="label">${message.role === "user" ? "User" : "Assistant"}</span>${message.content}`;
+          bubble.innerHTML = `<span class="label">${message.role === "user" ? "User" : "Assistant"}</span>${escapeHtml(message.content)}`;
           chatLogEl.appendChild(bubble);
         });
       };
@@ -355,10 +358,10 @@
         item.className = "countdown";
         item.innerHTML = `
           <strong>${latestCountdown.status === "completed" ? "Completed" : "Running"} 10 second countdown</strong>
-          <div>Execution: ${latestCountdown.execution_id || "pending"}</div>
-          <div>Started: ${latestCountdown.started_at}</div>
-          <div>Completes: ${latestCountdown.completes_at}</div>
-          <div>Message: ${latestCountdown.completion_message}</div>
+          <div>Execution: ${escapeHtml(latestCountdown.execution_id || "pending")}</div>
+          <div>Started: ${escapeHtml(latestCountdown.started_at)}</div>
+          <div>Completes: ${escapeHtml(latestCountdown.completes_at)}</div>
+          <div>Message: ${escapeHtml(latestCountdown.completion_message)}</div>
         `;
         countdownsEl.appendChild(item);
       };
