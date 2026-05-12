@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   authenticateProviderRequestWithConfigs,
   normalizeProviderConfigMap,
+  validateExecutorUrl,
 } from "./provider.auth-core.ts";
 
 test("normalizeProviderConfigMap accepts string token shorthand", () => {
@@ -151,4 +152,46 @@ test("authenticateProviderRequestWithConfigs resolves provider from a unique tok
       token: "dev-token",
     },
   });
+});
+
+test("validateExecutorUrl accepts valid public URLs", () => {
+  assert.equal(validateExecutorUrl("https://example.com"), "https://example.com");
+  assert.equal(validateExecutorUrl("https://example.com/root/"), "https://example.com/root");
+  assert.equal(validateExecutorUrl("http://api.example.com:8080/path"), "http://api.example.com:8080/path");
+});
+
+test("validateExecutorUrl rejects invalid protocols", () => {
+  assert.throws(() => validateExecutorUrl("ftp://example.com"), /must use http or https/);
+  assert.throws(() => validateExecutorUrl("file:///etc/passwd"), /must use http or https/);
+});
+
+test("validateExecutorUrl rejects query and hash", () => {
+  assert.throws(() => validateExecutorUrl("https://example.com?foo=bar"), /must not include query or hash/);
+  assert.throws(() => validateExecutorUrl("https://example.com#frag"), /must not include query or hash/);
+});
+
+test("validateExecutorUrl rejects localhost", () => {
+  assert.throws(() => validateExecutorUrl("http://localhost:8787"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://localhost"), /private or local/);
+});
+
+test("validateExecutorUrl rejects private IPv4 ranges", () => {
+  assert.throws(() => validateExecutorUrl("http://127.0.0.1"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://10.0.0.1"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://172.16.0.1"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://172.31.255.255"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://192.168.1.1"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://169.254.169.254"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://0.0.0.0"), /private or local/);
+});
+
+test("validateExecutorUrl rejects private IPv6 addresses", () => {
+  assert.throws(() => validateExecutorUrl("http://[::1]"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://[fc00::1]"), /private or local/);
+  assert.throws(() => validateExecutorUrl("http://[fe80::1]"), /private or local/);
+});
+
+test("validateExecutorUrl allows public IPs", () => {
+  assert.equal(validateExecutorUrl("http://8.8.8.8"), "http://8.8.8.8");
+  assert.equal(validateExecutorUrl("http://1.1.1.1:8080"), "http://1.1.1.1:8080");
 });

@@ -31,11 +31,37 @@ type ProviderAuditLogger = (event: {
   detail?: string;
 }) => void;
 
-const normalizeBaseUrl = (rawBaseUrl: string) => {
-  const trimmed = rawBaseUrl.trim();
+const isPrivateIPv4 = (hostname: string): boolean => {
+  const parts = hostname.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) {
+    return false;
+  }
+  const [a, b, , ] = parts;
+  return (
+    a === 0 ||
+    a === 127 ||
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254)
+  );
+};
+
+const isPrivateIPv6 = (hostname: string): boolean => {
+  const lower = hostname.toLowerCase().replace(/^\[/, "").replace(/\]$/, "");
+  return lower === "::1" || lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80:");
+};
+
+const isPrivateHostname = (hostname: string): boolean => {
+  const lower = hostname.toLowerCase();
+  return lower === "localhost" || isPrivateIPv4(lower) || isPrivateIPv6(lower);
+};
+
+export const validateExecutorUrl = (rawUrl: string, label = "URL"): string => {
+  const trimmed = rawUrl.trim();
 
   if (!trimmed) {
-    throw new Error("Provider baseUrl must not be empty.");
+    throw new Error(`${label} must not be empty.`);
   }
 
   let parsed: URL;
@@ -43,23 +69,26 @@ const normalizeBaseUrl = (rawBaseUrl: string) => {
   try {
     parsed = new URL(trimmed);
   } catch {
-    throw new Error(`Provider baseUrl is not a valid URL: ${trimmed}`);
+    throw new Error(`${label} is not a valid URL: ${trimmed}`);
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(
-      `Provider baseUrl must use http or https: ${trimmed}`,
-    );
+    throw new Error(`${label} must use http or https: ${trimmed}`);
   }
 
   if (parsed.search || parsed.hash) {
-    throw new Error(
-      `Provider baseUrl must not include query or hash: ${trimmed}`,
-    );
+    throw new Error(`${label} must not include query or hash: ${trimmed}`);
+  }
+
+  if (isPrivateHostname(parsed.hostname)) {
+    throw new Error(`${label} must not resolve to a private or local address: ${trimmed}`);
   }
 
   return parsed.toString().replace(/\/$/, "");
 };
+
+const normalizeBaseUrl = (rawBaseUrl: string) =>
+  validateExecutorUrl(rawBaseUrl, "Provider baseUrl");
 
 export const normalizeProviderConfigMap = (
   rawConfig: string | undefined | null,

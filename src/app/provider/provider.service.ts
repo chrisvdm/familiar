@@ -44,6 +44,7 @@ import type {
   ProviderUserContext,
 } from "./provider.types";
 import { updateIntegrationToolUrls } from "../account/account.service";
+import { validateExecutorUrl } from "./provider.auth-core";
 import { logProviderAudit } from "./provider.audit";
 import {
   executeProviderToolRequest,
@@ -1700,11 +1701,16 @@ export const syncProviderTools = async (
   await saveProviderUserContext(nextContext);
 
   if (accountId) {
-    const toolUrls = Object.fromEntries(
-      input.tools
-        .filter((t) => typeof t.base_url === "string" && t.base_url.trim())
-        .map((t) => [t.tool_name, t.base_url!.trim()]),
-    );
+    const toolUrls: Record<string, string> = {};
+
+    for (const tool of input.tools) {
+      if (typeof tool.base_url === "string" && tool.base_url.trim()) {
+        toolUrls[tool.tool_name] = validateExecutorUrl(
+          tool.base_url,
+          `Tool URL for ${tool.tool_name}`,
+        );
+      }
+    }
 
     if (Object.keys(toolUrls).length > 0) {
       await updateIntegrationToolUrls({

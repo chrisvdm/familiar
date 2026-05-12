@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 
+import { validateExecutorUrl } from "../provider/provider.auth-core";
 import { loadProviderUserContext } from "../provider/provider.storage";
 import type {
   FamiliarAccount,
@@ -97,33 +98,8 @@ const createAccountId = () => `acct_${randomHex(24)}`;
 
 const createSetupId = () => `setup_${randomHex(24)}`;
 
-export const normalizeIntegrationBaseUrl = (rawBaseUrl: string) => {
-  const trimmed = rawBaseUrl.trim();
-
-  if (!trimmed) {
-    throw new Error("Executor base URL must not be empty.");
-  }
-
-  let parsed: URL;
-
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    throw new Error(`Executor base URL is not a valid URL: ${trimmed}`);
-  }
-
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(`Executor base URL must use http or https: ${trimmed}`);
-  }
-
-  if (parsed.search || parsed.hash) {
-    throw new Error(
-      `Executor base URL must not include query or hash: ${trimmed}`,
-    );
-  }
-
-  return parsed.toString().replace(/\/$/, "");
-};
+export const normalizeIntegrationBaseUrl = (rawBaseUrl: string) =>
+  validateExecutorUrl(rawBaseUrl, "Executor base URL");
 
 const createTokenRecord = async ({
   accountId,
