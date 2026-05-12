@@ -977,6 +977,9 @@ export const providerDemoRoutes = [
     });
   }),
   route("/sandbox/demo-executor/debug", async ({ request }) => {
+    if (!import.meta.env.VITE_IS_DEV_SERVER) {
+      return Response.json({ error: "Not available in production." }, { status: 403 });
+    }
     const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
     const context = await loadProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
 
@@ -987,6 +990,9 @@ export const providerDemoRoutes = [
     });
   }),
   route("/sandbox/async-countdown/debug", async ({ request }) => {
+    if (!import.meta.env.VITE_IS_DEV_SERVER) {
+      return Response.json({ error: "Not available in production." }, { status: 403 });
+    }
     const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
     const context = await loadProviderUserContext({ providerId: COUNTDOWN_EXECUTOR_ID, userId });
 
@@ -997,6 +1003,9 @@ export const providerDemoRoutes = [
     });
   }),
   route("/sandbox/pinned-tool/debug", async ({ request }) => {
+    if (!import.meta.env.VITE_IS_DEV_SERVER) {
+      return Response.json({ error: "Not available in production." }, { status: 403 });
+    }
     const userId = new URL(request.url).searchParams.get("user_id") ?? DEMO_USER_ID;
     const context = await loadProviderUserContext({ providerId: PINNED_TOOL_EXECUTOR_ID, userId });
 
@@ -1007,6 +1016,9 @@ export const providerDemoRoutes = [
     });
   }),
   route("/sandbox/demo-executor/reset", async ({ request }) => {
+    if (!import.meta.env.VITE_IS_DEV_SERVER) {
+      return Response.json({ error: "Not available in production." }, { status: 403 });
+    }
     if (request.method !== "POST") {
       return Response.json({ error: "Method not allowed." }, { status: 405 });
     }
@@ -1016,6 +1028,9 @@ export const providerDemoRoutes = [
     return Response.json({ ok: true, reset: true, integration_id: DEMO_EXECUTOR_ID, user_id: userId });
   }),
   route("/sandbox/async-countdown/reset", async ({ request }) => {
+    if (!import.meta.env.VITE_IS_DEV_SERVER) {
+      return Response.json({ error: "Not available in production." }, { status: 403 });
+    }
     if (request.method !== "POST") {
       return Response.json({ error: "Method not allowed." }, { status: 405 });
     }
@@ -1025,6 +1040,9 @@ export const providerDemoRoutes = [
     return Response.json({ ok: true, reset: true, integration_id: COUNTDOWN_EXECUTOR_ID, user_id: userId });
   }),
   route("/sandbox/pinned-tool/reset", async ({ request }) => {
+    if (!import.meta.env.VITE_IS_DEV_SERVER) {
+      return Response.json({ error: "Not available in production." }, { status: 403 });
+    }
     if (request.method !== "POST") {
       return Response.json({ error: "Method not allowed." }, { status: 405 });
     }
