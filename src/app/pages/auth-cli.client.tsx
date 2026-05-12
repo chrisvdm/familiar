@@ -38,11 +38,11 @@ const readStoredToken = (): StoredToken | null => {
   return null;
 };
 
-const completeSession = async (sessionId: string, token: string) => {
+const completeSession = async (sessionId: string, token: string, completionSecret: string) => {
   const response = await fetch(`/api/v1/auth/cli/sessions/${sessionId}/complete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, completion_secret: completionSecret }),
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as {
@@ -58,8 +58,13 @@ export const AuthCliClient = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session");
+    const secret = params.get("secret");
     if (!sessionId) {
       setState({ phase: "error", message: "Missing session parameter." });
+      return;
+    }
+    if (!secret) {
+      setState({ phase: "error", message: "Missing session secret. Please upgrade your CLI." });
       return;
     }
 
@@ -72,11 +77,12 @@ export const AuthCliClient = () => {
   }, []);
 
   const sessionId = () => new URLSearchParams(window.location.search).get("session") ?? "";
+  const completionSecret = () => new URLSearchParams(window.location.search).get("secret") ?? "";
 
   const handleUseExisting = async (token: StoredToken) => {
     setState({ phase: "pending" });
     try {
-      await completeSession(sessionId(), token.value);
+      await completeSession(sessionId(), token.value, completionSecret());
       setState({ phase: "done" });
     } catch (err) {
       setState({ phase: "error", message: err instanceof Error ? err.message : "Something went wrong." });
@@ -109,7 +115,7 @@ export const AuthCliClient = () => {
         }),
       );
 
-      await completeSession(sessionId(), tokenValue);
+      await completeSession(sessionId(), tokenValue, completionSecret());
       setState({ phase: "done" });
     } catch (err) {
       setState({ phase: "error", message: err instanceof Error ? err.message : "Something went wrong." });

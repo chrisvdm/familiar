@@ -32,6 +32,7 @@ export type FamiliarApiToken = {
 export type FamiliarCliSession = {
   sessionId: string;
   tokenValue?: string;
+  completionSecret: string;
   expiresAt: string;
 };
 

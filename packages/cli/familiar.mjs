@@ -469,8 +469,9 @@ const login = async ({ host, token }) => {
     body: {},
   });
   const sessionId = sessionPayload.session_id;
+  const completionSecret = sessionPayload.completion_secret;
 
-  const browserUrl = `${baseHost}/auth/cli?session=${sessionId}`;
+  const browserUrl = `${baseHost}/auth/cli?session=${sessionId}&secret=${completionSecret}`;
   print(`Opening browser: ${browserUrl}`);
   await openBrowser(browserUrl);
   print(`Waiting for login… (Ctrl-C to cancel)`);

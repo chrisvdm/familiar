@@ -37,6 +37,7 @@ type AccountRegistryStub = {
   completeCliSession: (input: {
     sessionId: string;
     tokenValue: string;
+    completionSecret: string;
   }) => Promise<{ value: "ok" } | { error: string }>;
   pollCliSession: (input: {
     sessionId: string;
@@ -233,12 +234,12 @@ export const createCliSession = async () => {
   return result.value;
 };
 
-export const completeCliSession = async (sessionId: string, rawToken: string) => {
+export const completeCliSession = async (sessionId: string, rawToken: string, completionSecret: string) => {
   const auth = await authenticateAccountToken(rawToken);
   if (!auth) {
     return { error: "Token not found." } as const;
   }
-  return getAccountRegistryStub().completeCliSession({ sessionId, tokenValue: rawToken });
+  return getAccountRegistryStub().completeCliSession({ sessionId, tokenValue: rawToken, completionSecret });
 };
 
 export const pollCliSession = async (sessionId: string) => {

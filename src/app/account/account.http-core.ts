@@ -75,10 +75,11 @@ type AccountEndpointDeps = {
     createdAt: string;
     updatedAt: string;
   }>;
-  createCliSession: () => Promise<{ sessionId: string; expiresAt: string }>;
+  createCliSession: () => Promise<{ sessionId: string; completionSecret: string; expiresAt: string }>;
   completeCliSession: (
     sessionId: string,
     rawToken: string,
+    completionSecret: string,
   ) => Promise<{ value: "ok" } | { error: string }>;
   pollCliSession: (sessionId: string) => Promise<
     | { state: "pending" }
@@ -398,7 +399,7 @@ export const createHandleCreateCliSessionEndpoint = (deps: AccountEndpointDeps) 
     return deps.jsonResponse({
       requestId,
       status: 201,
-      body: { session_id: session.sessionId },
+      body: { session_id: session.sessionId, completion_secret: session.completionSecret },
     });
   };
 };
@@ -527,8 +528,9 @@ export const createHandleCompleteCliSessionEndpoint = (deps: AccountEndpointDeps
     }
 
     let token: string;
+    let completionSecret: string;
     try {
-      const body = await deps.readJson<{ token?: unknown }>(request);
+      const body = await deps.readJson<{ token?: unknown; completion_secret?: unknown }>(request);
       if (!body.token || typeof body.token !== "string") {
         return deps.jsonError({
           requestId,
@@ -537,7 +539,16 @@ export const createHandleCompleteCliSessionEndpoint = (deps: AccountEndpointDeps
           message: "Missing token.",
         });
       }
+      if (!body.completion_secret || typeof body.completion_secret !== "string") {
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: "Missing completion secret.",
+        });
+      }
       token = body.token;
+      completionSecret = body.completion_secret;
     } catch {
       return deps.jsonError({
         requestId,
@@ -547,7 +558,7 @@ export const createHandleCompleteCliSessionEndpoint = (deps: AccountEndpointDeps
       });
     }
 
-    const result = await deps.completeCliSession(params.session_id, token);
+    const result = await deps.completeCliSession(params.session_id, token, completionSecret);
 
     if ("error" in result) {
       return deps.jsonError({

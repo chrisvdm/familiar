@@ -13,6 +13,17 @@ import {
   normalizeAccountRegistryState,
 } from "./account-registry-state";
 
+const toHex = (bytes: Uint8Array) =>
+  Array.from(bytes)
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+
+const randomHex = (length: number) =>
+  toHex(crypto.getRandomValues(new Uint8Array(Math.ceil(length / 2)))).slice(
+    0,
+    length,
+  );
+
 const ACCOUNT_REGISTRY_KEY = "account-registry";
 
 export class AccountRegistryDurableObject extends DurableObject {
@@ -125,13 +136,14 @@ export class AccountRegistryDurableObject extends DurableObject {
       }
     }
 
-    const session: FamiliarCliSession = { sessionId: input.sessionId, expiresAt };
+    const completionSecret = `secret_${randomHex(32)}`;
+    const session: FamiliarCliSession = { sessionId: input.sessionId, completionSecret, expiresAt };
     state.cliSessions[input.sessionId] = session;
     await this.saveState(state);
     return { value: session };
   }
 
-  async completeCliSession(input: { sessionId: string; tokenValue: string }) {
+  async completeCliSession(input: { sessionId: string; tokenValue: string; completionSecret: string }) {
     const state = await this.loadState();
     const session = state.cliSessions[input.sessionId];
 
@@ -141,6 +153,10 @@ export class AccountRegistryDurableObject extends DurableObject {
 
     if (new Date(session.expiresAt) < new Date()) {
       return { error: "Session expired." };
+    }
+
+    if (session.completionSecret !== input.completionSecret) {
+      return { error: "Invalid session secret." };
     }
 
     // token validity is verified by the service layer before calling here
