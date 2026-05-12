@@ -64,6 +64,11 @@ type AccountRegistryStub = {
   storeContactSubmission: (input: {
     submission: Record<string, unknown>;
   }) => Promise<{ value: Record<string, unknown> } | { error: string }>;
+  checkRateLimit: (input: {
+    key: string;
+    maxRequests: number;
+    windowMs: number;
+  }) => Promise<{ allowed: boolean; retryAfterSeconds?: number }>;
 };
 
 const accountEnv = env as typeof env & {
@@ -388,6 +393,32 @@ export const authenticateUser = async ({
   }
 
   return { value: result.value } as const;
+};
+
+export const checkRateLimitByIp = async ({
+  request,
+  action,
+  maxRequests,
+  windowMs,
+}: {
+  request: Request;
+  action: string;
+  maxRequests: number;
+  windowMs: number;
+}) => {
+  const ip =
+    request.headers.get("CF-Connecting-IP") ??
+    request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ??
+    "unknown";
+
+  const key = `${action}:${ip}`;
+  const result = await getAccountRegistryStub().checkRateLimit({
+    key,
+    maxRequests,
+    windowMs,
+  });
+
+  return result;
 };
 
 export const storeContactSubmission = async ({

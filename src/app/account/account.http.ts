@@ -2,6 +2,7 @@ import { getRequestId, jsonError, jsonResponse, readJson } from "../provider/pro
 
 import {
   authenticateAccountToken,
+  checkRateLimitByIp,
   completeCliSession,
   createAccountWithInitialToken,
   createCliSession,
@@ -36,6 +37,7 @@ const sharedDeps = {
   pollCliSession,
   getAccountUsage,
   getIntegrationStatus,
+  checkRateLimitByIp,
 };
 
 export const handleCreateAccountEndpoint =

@@ -99,6 +99,12 @@ type AccountEndpointDeps = {
     toolCount: number;
     threadCount: number;
   }>;
+  checkRateLimitByIp: (input: {
+    request: Request;
+    action: string;
+    maxRequests: number;
+    windowMs: number;
+  }) => Promise<{ allowed: boolean; retryAfterSeconds?: number }>;
 };
 
 const getBearerToken = (request: Request) => {
@@ -122,6 +128,23 @@ export const createHandleCreateAccountEndpoint = (deps: AccountEndpointDeps) => 
         status: 405,
         code: "method_not_allowed",
         message: "Method not allowed.",
+      });
+    }
+
+    const rateLimit = await deps.checkRateLimitByIp({
+      request,
+      action: "create_account",
+      maxRequests: 5,
+      windowMs: 60 * 60 * 1_000,
+    });
+
+    if (!rateLimit.allowed) {
+      return deps.jsonError({
+        requestId,
+        status: 429,
+        code: "rate_limited",
+        message: "Too many account creation attempts. Try again later.",
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
       });
     }
 

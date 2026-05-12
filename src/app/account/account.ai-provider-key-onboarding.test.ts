@@ -72,6 +72,7 @@ const sharedDeps = {
   pollCliSession: async () => ({ state: "pending" as const }),
   getAccountUsage: async () => ({ actionCount: 0, freeActionsUsed: 0, freeActionsRemaining: 10, plan: "free" as const }),
   getIntegrationStatus: async () => ({ toolCount: 0, threadCount: 0 }),
+  checkRateLimitByIp: async () => ({ allowed: true }),
 };
 
 const integrationRequest = (method: "GET" | "PATCH", body?: unknown) =>

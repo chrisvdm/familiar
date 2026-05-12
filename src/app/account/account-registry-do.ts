@@ -327,4 +327,36 @@ export class AccountRegistryDurableObject extends DurableObject {
     await this.saveState(state);
     return { value: input.submission };
   }
+
+  async checkRateLimit(input: {
+    key: string;
+    maxRequests: number;
+    windowMs: number;
+  }) {
+    const state = await this.loadState();
+    const now = Date.now();
+    const cutoff = now - input.windowMs;
+
+    const timestamps = (state.rateLimits[input.key] ?? []).filter((ts) => {
+      const parsed = Date.parse(ts);
+      return Number.isFinite(parsed) && parsed >= cutoff;
+    });
+
+    if (timestamps.length >= input.maxRequests) {
+      const oldestTimestamp = Date.parse(timestamps[0] ?? "");
+      const retryAfterMs = Number.isFinite(oldestTimestamp)
+        ? Math.max(input.windowMs - (now - oldestTimestamp), 1_000)
+        : input.windowMs;
+
+      return {
+        allowed: false as const,
+        retryAfterSeconds: Math.ceil(retryAfterMs / 1_000),
+      };
+    }
+
+    state.rateLimits[input.key] = [...timestamps, new Date(now).toISOString()];
+    await this.saveState(state);
+
+    return { allowed: true as const };
+  }
 }

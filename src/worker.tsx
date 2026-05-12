@@ -31,6 +31,7 @@ import {
 } from "@/app/session/session";
 import { jsonResponse, jsonError } from "@/app/provider/provider.http";
 import {
+  checkRateLimitByIp,
   createAccountWithInitialToken,
   registerAccountUser,
   authenticateUser,
@@ -144,6 +145,20 @@ export default defineApp([
       return new Response("Method not allowed", { status: 405 });
     }
 
+    const loginRateLimit = await checkRateLimitByIp({
+      request,
+      action: "login",
+      maxRequests: 10,
+      windowMs: 15 * 60 * 1_000,
+    });
+
+    if (!loginRateLimit.allowed) {
+      return new Response("Too many login attempts. Try again later.", {
+        status: 429,
+        headers: { "Retry-After": String(loginRateLimit.retryAfterSeconds ?? 60) },
+      });
+    }
+
     try {
       const formData = await request.formData();
       const token = (formData.get("token")?.toString() ?? "").trim();
@@ -189,6 +204,20 @@ export default defineApp([
   route("/setup/create", async ({ request, response }) => {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
+    }
+
+    const createRateLimit = await checkRateLimitByIp({
+      request,
+      action: "create_account",
+      maxRequests: 5,
+      windowMs: 60 * 60 * 1_000,
+    });
+
+    if (!createRateLimit.allowed) {
+      return new Response("Too many account creation attempts. Try again later.", {
+        status: 429,
+        headers: { "Retry-After": String(createRateLimit.retryAfterSeconds ?? 3600) },
+      });
     }
 
     try {
@@ -265,6 +294,20 @@ export default defineApp([
   route("/contact/submit", async ({ request }) => {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
+    }
+
+    const contactRateLimit = await checkRateLimitByIp({
+      request,
+      action: "contact_submit",
+      maxRequests: 3,
+      windowMs: 60 * 60 * 1_000,
+    });
+
+    if (!contactRateLimit.allowed) {
+      return new Response("Too many contact submissions. Try again later.", {
+        status: 429,
+        headers: { "Retry-After": String(contactRateLimit.retryAfterSeconds ?? 3600) },
+      });
     }
 
     try {

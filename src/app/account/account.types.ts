@@ -62,6 +62,7 @@ export type FamiliarAccountRegistryState = {
   users: Record<string, FamiliarUser>;
   emailIndex: Record<string, string>;
   contactSubmissions: Record<string, FamiliarContactSubmission>;
+  rateLimits: Record<string, string[]>;
 };
 
 export type FamiliarTokenAuth = {
