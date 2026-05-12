@@ -31,6 +31,10 @@ const withBuiltInProviders = ({
   providerConfigs: Record<string, ProviderConfig>;
   request: Request;
 }) => {
+  if (!import.meta.env.VITE_IS_DEV_SERVER) {
+    return providerConfigs;
+  }
+
   const origin = new URL(request.url).origin;
 
   return {

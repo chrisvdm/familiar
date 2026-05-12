@@ -296,7 +296,7 @@ export const hashPassword = async (password: string): Promise<string> => {
     {
       name: "PBKDF2",
       salt: salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength),
-      iterations: 100_000,
+      iterations: 600_000,
       hash: "SHA-256",
     },
     keyMaterial,
@@ -421,6 +421,9 @@ export const checkRateLimitByIp = async ({
   return result;
 };
 
+const escapeHtml = (str: string) =>
+  str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 export const storeContactSubmission = async ({
   name,
   email,
@@ -432,9 +435,9 @@ export const storeContactSubmission = async ({
 }) => {
   const submission = {
     id: `msg_${randomHex(24)}`,
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    message: message.trim(),
+    name: escapeHtml(name.trim()),
+    email: escapeHtml(email.trim().toLowerCase()),
+    message: escapeHtml(message.trim()),
     createdAt: new Date().toISOString(),
   };
 

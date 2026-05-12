@@ -7,7 +7,7 @@ import { Document } from "@/app/document";
 import { StaticDocument } from "@/app/static-document";
 import { DocsLayout } from "@/app/layouts/docs-layout";
 import { PublicLayout } from "@/app/layouts/public-layout";
-import { setCommonHeaders } from "@/app/headers";
+import { setCommonHeaders, setCorsHeaders } from "@/app/headers";
 import { Debug } from "@/app/pages/debug";
 import { DocsPage } from "@/app/pages/docs";
 import { DocsAiPage } from "@/app/pages/docs-ai";
@@ -45,6 +45,7 @@ export type AppContext = {
 
 export default defineApp([
   setCommonHeaders(),
+  setCorsHeaders(),
   async ({ request, response, ctx }) => {
     const pathname = new URL(request.url).pathname;
 
@@ -335,7 +336,7 @@ export default defineApp([
   ...providerDemoRoutes,
   ...providerMockRoutes,
   render(
-    StaticDocument,
+    Document,
     [
       route("/", Home),
       route("/temp-home", Home),
@@ -352,9 +353,6 @@ export default defineApp([
         route("/docs/:slug", DocsPage),
       ]),
     ],
-    {
-      rscPayload: false,
-    },
   ),
   render(Document, [
     route("/debug", Debug),

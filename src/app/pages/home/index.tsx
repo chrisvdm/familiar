@@ -36,7 +36,7 @@ const PRICING = [
   ],
   [
     "Per action",
-    "$0.0005",
+    "$0.005",
   ],
   [
     "Custom integration",
@@ -147,27 +147,6 @@ export const Home = () => (
       </Section>
 
       <Footer />
-
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            (() => {
-              const root = document.documentElement;
-              const hero = document.getElementById("hero");
-              if (!hero) return;
-
-              const update = () => {
-                const threshold = Math.max(80, hero.offsetTop + 24);
-                root.classList.toggle("landing-nav-scrolled", window.scrollY > threshold);
-              };
-
-              update();
-              window.addEventListener("scroll", update, { passive: true });
-              window.addEventListener("resize", update);
-            })();
-          `,
-        }}
-      />
     </div>
   </main>
 );

@@ -1,5 +1,21 @@
 import { RouteMiddleware } from "rwsdk/router";
 
+export const setCorsHeaders = (): RouteMiddleware => ({ request, response }) => {
+  const origin = request.headers.get("Origin") ?? "*";
+  const isApiRoute = new URL(request.url).pathname.startsWith("/api/v1/");
+
+  if (isApiRoute) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key, X-Request-Id");
+    response.headers.set("Access-Control-Max-Age", "86400");
+  }
+
+  if (request.method === "OPTIONS" && isApiRoute) {
+    return new Response(null, { status: 204, headers: response.headers });
+  }
+};
+
 export const setCommonHeaders =
   (): RouteMiddleware =>
   ({ response, rw: { nonce } }) => {
@@ -26,6 +42,6 @@ export const setCommonHeaders =
     // Defines trusted sources for content loading and script execution:
     response.headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'unsafe-eval' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'self'; frame-src 'self' https://challenges.cloudflare.com; object-src 'none';`,
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'self'; frame-src 'self' https://challenges.cloudflare.com; object-src 'none';`,
     );
   };
