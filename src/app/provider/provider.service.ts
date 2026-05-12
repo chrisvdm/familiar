@@ -71,6 +71,10 @@ import {
   splitTodoItemsFromText,
   TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS,
   TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
+  MAX_MESSAGES_PER_THREAD,
+  MAX_THREADS_PER_USER,
+  MAX_TOOLS_PER_SYNC,
+  validateInputText,
   validateToolInputMode,
   validateToolSchema,
 } from "./provider.logic";
@@ -504,6 +508,12 @@ const createThreadForContext = async ({
   isPrivate?: boolean;
   channel: ProviderChannelInput;
 }) => {
+  if (context.threads.length >= MAX_THREADS_PER_USER) {
+    throw new Error(
+      `Thread limit reached (${MAX_THREADS_PER_USER}). Delete old threads to create new ones.`,
+    );
+  }
+
   const threadId = crypto.randomUUID();
   const nextState = createInitialChatState();
 
@@ -1531,6 +1541,13 @@ const appendMessagesToThread = async ({
   pendingToolConfirmation?: PendingToolConfirmation | null;
 }) => {
   const currentState = await loadChatSession(threadId);
+
+  if (currentState.messages.length + messages.length > MAX_MESSAGES_PER_THREAD) {
+    throw new Error(
+      `Message limit reached (${MAX_MESSAGES_PER_THREAD}) for this thread. Start a new thread to continue.`,
+    );
+  }
+
   const nextState = {
     ...currentState,
     messages: [...currentState.messages, ...messages],
@@ -1686,6 +1703,12 @@ export const syncProviderTools = async (
   requestId?: string,
   accountId?: string,
 ) => {
+  if (input.tools.length > MAX_TOOLS_PER_SYNC) {
+    throw new Error(
+      `Too many tools in sync request. Maximum is ${MAX_TOOLS_PER_SYNC}.`,
+    );
+  }
+
   const context = await loadOrCreateProviderUserContext({
     providerId: input.integration_id,
     userId: input.user_id,
@@ -2052,11 +2075,7 @@ export const handleProviderConversationInput = async ({
     providerId: input.integration_id,
     userId: input.user_id,
   });
-  const content = input.input.text.trim();
-
-  if (!content) {
-    throw new Error("Input text is required.");
-  }
+  const content = validateInputText(input.input.text);
 
   context = enforceConversationRateLimit({ context });
   if (input.tools) {
@@ -2538,11 +2557,7 @@ export const handleStreamConversationInput = async ({
     providerId: input.integration_id,
     userId: input.user_id,
   });
-  const content = input.input.text.trim();
-
-  if (!content) {
-    throw new Error("Input text is required.");
-  }
+  const content = validateInputText(input.input.text);
 
   context = enforceConversationRateLimit({ context });
   if (input.tools) {
@@ -3096,11 +3111,7 @@ export const simulateConversationInput = async ({
     providerId: input.integration_id,
     userId: input.user_id,
   });
-  const content = input.input.text.trim();
-
-  if (!content) {
-    throw new Error("Input text is required.");
-  }
+  const content = validateInputText(input.input.text);
 
   const threadId = await resolveThreadId({
     context,

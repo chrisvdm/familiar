@@ -15,6 +15,10 @@ export const TOOLS_SYNC_RATE_LIMIT_WINDOW_MS = 60_000;
 export const TOOLS_SYNC_RATE_LIMIT_MAX_REQUESTS = 10;
 export const TOOL_CONFIRMATION_MIN_CONFIDENCE = 0.6;
 export const TOOL_CONFIRMATION_MAX_CONFIDENCE = 0.75;
+export const MAX_INPUT_TEXT_BYTES = 500 * 1024; // 500KB
+export const MAX_THREADS_PER_USER = 500;
+export const MAX_MESSAGES_PER_THREAD = 5_000;
+export const MAX_TOOLS_PER_SYNC = 200;
 
 export const clampDecisionConfidence = (
   value: unknown,
@@ -615,6 +619,20 @@ export const selectProviderGlobalMemory = ({
   }
 
   return createEmptyGlobalMemory();
+};
+
+export const validateInputText = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error("Input text is required.");
+  }
+  const byteLength = new TextEncoder().encode(trimmed).length;
+  if (byteLength > MAX_INPUT_TEXT_BYTES) {
+    throw new Error(
+      `Input text exceeds maximum size of ${MAX_INPUT_TEXT_BYTES} bytes (${(MAX_INPUT_TEXT_BYTES / 1024).toFixed(0)}KB).`,
+    );
+  }
+  return trimmed;
 };
 
 export const applyConversationRateLimit = ({
