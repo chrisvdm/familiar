@@ -5,7 +5,7 @@ import { ChatSessionDurableObject } from "@/app/chat/chat-session-do";
 import { AccountRegistryDurableObject } from "@/app/account/account-registry-do";
 import { Document } from "@/app/document";
 import { StaticDocument } from "@/app/static-document";
-import { DocsLayout } from "@/app/layouts/docs-layout";
+import { DocsLayout } from "@/app/layouts/DocsLayout/";
 import { PublicLayout } from "@/app/layouts/public-layout";
 import { setCommonHeaders, setCorsHeaders } from "@/app/headers";
 import { Debug } from "@/app/pages/debug";

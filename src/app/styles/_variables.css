@@ -3,8 +3,11 @@
     --primary: #21322F;
     --secondary:#E2F5F1;
     --background: #ffffff;
+    --trans-bg:#ffffffc0;
 
     --accent: #818e8b;
+    --action: #d0a3d0;
+    --action-intense: #8a2be2;
 
     /* ALIASES — shared across all pages */
     --ink: var(--primary);

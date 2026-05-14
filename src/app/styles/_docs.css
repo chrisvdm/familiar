@@ -1,0 +1,60 @@
+.docs-sidebar {
+    width: 20%;
+    height: 100vh;
+    overflow-y: scroll;
+    font-size: 16px;
+}
+
+.docs-nav,
+.docs-page-sections,
+.docs-child-nav {
+    list-style: none;
+    padding: 0;
+}
+
+
+.docs-child-nav {
+    padding-left: var(--m-space);
+    border-left: solid var(--accent) 1px;
+    margin-top: var(--m-space);
+    box-sizing: border-box;
+}
+
+.docs-page-sections {
+    position: fixed;
+    right: var(--m-space);
+    top: 0;
+    overflow-y: scroll;
+    width: 15%;
+    padding: 0 var(--m-space);
+    box-sizing: border-box;
+    background: var(--trans-bg);
+    border: solid var(--accent) 1px;
+    border-radius: 4px;
+    font-size: 90%;
+}
+
+.docs-nav-link-active {
+    color: var(--accent) !important;
+}
+
+.docs-subnav-link,
+.docs-nav-link {
+    box-sizing: border-box;
+    text-decoration: none;
+    border-radius: 2px;
+}
+
+.docs-nav-item,
+.docs-subnav-item {
+    margin-top: var(--m-space);
+}
+
+.docs-main {
+    height:100vh;
+    width: 65%;
+    overflow-y: scroll;
+    padding-left: 72px;
+    /* font-family: Hack; */
+    font-size: 14px;
+}

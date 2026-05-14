@@ -76,6 +76,7 @@ export type ProviderConfig = {
   baseUrl?: string;
   aiApiKey?: string;
   toolUrls?: Record<string, string>;
+  webhookSecret?: string;
 };
 
 export type ProviderChannelInput = {

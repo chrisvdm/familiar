@@ -14,6 +14,7 @@ export type FamiliarIntegrationConfig = {
   baseUrl: string | null;
   aiApiKey: string | null;
   toolUrls: Record<string, string>;
+  webhookSecret: string;
   createdAt: string;
   updatedAt: string;
 };

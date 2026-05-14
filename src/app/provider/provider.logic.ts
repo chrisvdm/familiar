@@ -710,3 +710,160 @@ export const determineMockExecutionState = ({
 
   return "completed";
 };
+
+
+export type JsonSchemaValidationError = {
+  path: string;
+  message: string;
+};
+
+const validateJsonSchemaType = (
+  value: unknown,
+  expectedType: string,
+): boolean => {
+  switch (expectedType) {
+    case "string":
+      return typeof value === "string";
+    case "number":
+      return typeof value === "number" && Number.isFinite(value);
+    case "integer":
+      return typeof value === "number" && Number.isInteger(value);
+    case "boolean":
+      return typeof value === "boolean";
+    case "array":
+      return Array.isArray(value);
+    case "object":
+      return value !== null && typeof value === "object" && !Array.isArray(value);
+    case "null":
+      return value === null;
+    default:
+      return true;
+  }
+};
+
+const validateJsonSchemaValue = (
+  value: unknown,
+  schema: unknown,
+  path: string,
+  errors: JsonSchemaValidationError[],
+): void => {
+  if (!schema || typeof schema !== "object") {
+    return;
+  }
+
+  const s = schema as Record<string, unknown>;
+
+  if (Array.isArray(s.type)) {
+    const matched = (s.type as string[]).some((t) => validateJsonSchemaType(value, t));
+    if (!matched) {
+      errors.push({ path, message: `Expected one of types ${JSON.stringify(s.type)}, got ${JSON.stringify(value)}` });
+      return;
+    }
+  } else if (typeof s.type === "string") {
+    if (!validateJsonSchemaType(value, s.type)) {
+      errors.push({ path, message: `Expected type ${s.type}, got ${JSON.stringify(value)}` });
+      return;
+    }
+  }
+
+  if (s.enum !== undefined) {
+    const enumValues = s.enum as unknown[];
+    if (!enumValues.includes(value)) {
+      errors.push({ path, message: `Expected one of ${JSON.stringify(enumValues)}, got ${JSON.stringify(value)}` });
+    }
+  }
+
+  if (typeof value === "string") {
+    if (typeof s.minLength === "number" && value.length < s.minLength) {
+      errors.push({ path, message: `String length ${value.length} is less than minimum ${s.minLength}` });
+    }
+    if (typeof s.maxLength === "number" && value.length > s.maxLength) {
+      errors.push({ path, message: `String length ${value.length} exceeds maximum ${s.maxLength}` });
+    }
+    if (typeof s.pattern === "string") {
+      const regex = new RegExp(s.pattern);
+      if (!regex.test(value)) {
+        errors.push({ path, message: `String does not match pattern ${s.pattern}` });
+      }
+    }
+  }
+
+  if (typeof value === "number") {
+    if (typeof s.minimum === "number" && value < s.minimum) {
+      errors.push({ path, message: `Value ${value} is less than minimum ${s.minimum}` });
+    }
+    if (typeof s.maximum === "number" && value > s.maximum) {
+      errors.push({ path, message: `Value ${value} exceeds maximum ${s.maximum}` });
+    }
+  }
+
+  if (Array.isArray(value) && s.items !== undefined) {
+    const itemsSchema = s.items as Record<string, unknown>;
+    for (let i = 0; i < value.length; i++) {
+      validateJsonSchemaValue(value[i], itemsSchema, `${path}[${i}]`, errors);
+    }
+  }
+
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    const properties = s.properties as Record<string, unknown> | undefined;
+    const required = s.required as string[] | undefined;
+    const additionalProperties = s.additionalProperties;
+
+    if (required) {
+      for (const key of required) {
+        if (!(key in obj)) {
+          errors.push({ path, message: `Missing required property "${key}"` });
+        }
+      }
+    }
+
+    if (properties) {
+      for (const [key, propSchema] of Object.entries(properties)) {
+        if (key in obj) {
+          validateJsonSchemaValue(obj[key], propSchema, `${path}.${key}`, errors);
+        }
+      }
+    }
+
+    if (additionalProperties === false) {
+      const allowedKeys = new Set(properties ? Object.keys(properties) : []);
+      for (const key of Object.keys(obj)) {
+        if (!allowedKeys.has(key)) {
+          errors.push({ path, message: `Additional property "${key}" is not allowed` });
+        }
+      }
+    } else if (additionalProperties !== undefined && typeof additionalProperties === "object") {
+      const allowedKeys = new Set(properties ? Object.keys(properties) : []);
+      for (const key of Object.keys(obj)) {
+        if (!allowedKeys.has(key)) {
+          validateJsonSchemaValue(obj[key], additionalProperties, `${path}.${key}`, errors);
+        }
+      }
+    }
+  }
+};
+
+export const validateJsonSchema = (
+  value: unknown,
+  schema: unknown,
+): JsonSchemaValidationError[] => {
+  const errors: JsonSchemaValidationError[] = [];
+  validateJsonSchemaValue(value, schema, "", errors);
+  return errors;
+};
+
+export const validateToolArguments = (
+  toolName: string,
+  args: Record<string, unknown>,
+  inputSchema: Record<string, unknown> | undefined,
+): void => {
+  if (!inputSchema) {
+    return;
+  }
+  const errors = validateJsonSchema(args, inputSchema);
+  if (errors.length > 0) {
+    const messages = errors.map((e) => `${e.path || "root"}: ${e.message}`).join("; ");
+    throw new Error(`Tool "${toolName}" arguments validation failed: ${messages}`);
+  }
+};

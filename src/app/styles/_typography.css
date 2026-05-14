@@ -16,13 +16,23 @@ body {
     font-size: 75%;
 }
 
-.section-kicker {
+.section-kicker,
+h2 {
   margin: 0;
   color: var(--accent);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+h2 {
+    margin-top: var(--xl-space);
+}
+
+h3 {
+    margin-top: var(--xl-space);
+    margin-bottom: var(--s-space);
 }
 
 .section-title {
@@ -40,6 +50,11 @@ code {
     padding: 0 var(--xs-space);
     color: var(--secondary);
     border-radius: 2px;
+}
+
+pre code {
+    background-color: transparent;
+    padding: 0;
 }
 
 a,

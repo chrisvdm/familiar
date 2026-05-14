@@ -27,7 +27,7 @@ body {
 }
 
 .width--3 {
-    flex-grow: 0.3;
+    width: calc(33% - var(--m-space));
 }
 
 /* FLEX */
@@ -81,4 +81,8 @@ body {
 /* MARGIN */
 .margin-top--xl {
     margin-top: var(--xl-space);
+}
+
+.margin--small {
+    margin: var(--s-space) 0;
 }

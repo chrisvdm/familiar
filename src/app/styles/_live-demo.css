@@ -1,0 +1,29 @@
+.live-demo {
+    height: 400px;
+    font-size: 12px;
+}
+
+.accordian__item {
+    margin-top: var(--s-space);
+}
+
+.accordian__item,
+.accordian__item code {
+    transition: all 0.25s ease-in-out;
+}
+
+.accordian__item:hover,
+.accordian__item code:hover {
+    cursor: pointer;
+    color: var(--action) !important;
+} 
+
+.accordian__item__content {
+    margin-top: var(--xs-space);
+    /* color: var(--action); */
+}
+
+.accordian__item.accordian__item--active,
+.accordian__item.accordian__item--active code {
+    color: var(--action-intense);
+}

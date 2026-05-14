@@ -95,6 +95,7 @@ export class AccountRegistryDurableObject extends DurableObject {
           baseUrl: input.baseUrl,
           aiApiKey: input.aiApiKey,
           toolUrls: input.toolUrls ?? {},
+          webhookSecret: `whsec_${randomHex(32)}`,
           createdAt: now,
           updatedAt: now,
         };
@@ -212,6 +213,7 @@ export class AccountRegistryDurableObject extends DurableObject {
       baseUrl: null,
       aiApiKey: null,
       toolUrls: {},
+      webhookSecret: `whsec_${randomHex(32)}`,
       createdAt: account.createdAt,
       updatedAt: account.createdAt,
     };

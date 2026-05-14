@@ -107,6 +107,48 @@ const resolveExecutorPayloadTemplate = (
   return value;
 };
 
+const encoder = new TextEncoder();
+
+const toHex = (bytes: Uint8Array) =>
+  Array.from(bytes)
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+
+export const computeWebhookSignature = async (
+  webhookSecret: string,
+  executionId: string,
+  threadId: string,
+) => {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(webhookSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${executionId}:${threadId}`),
+  );
+  return toHex(new Uint8Array(signature));
+};
+
+export const verifyWebhookSignature = async (
+  webhookSecret: string,
+  executionId: string,
+  threadId: string,
+  signature: string,
+) => {
+  const expected = await computeWebhookSignature(webhookSecret, executionId, threadId);
+  if (signature.length !== expected.length) return false;
+  let result = 0;
+  for (let i = 0; i < signature.length; i++) {
+    result |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return result === 0;
+};
+
 export const buildExecutorToolUrl = (baseUrl: string) =>
   `${baseUrl.replace(/\/$/, "")}/tools/execute`;
 
@@ -217,11 +259,17 @@ export const executeProviderToolRequest = async ({
   const controller = new AbortController();
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
   const requestIdValue = requestId ?? crypto.randomUUID();
+
+  const webhookSignature = providerConfig.webhookSecret
+    ? await computeWebhookSignature(providerConfig.webhookSecret, executionId, threadId)
+    : undefined;
+
   const requestContext = {
     request_id: requestIdValue,
     thread_id: threadId,
     channel,
     executor_result_webhook_url: resultWebhookUrl ?? undefined,
+    executor_result_webhook_signature: webhookSignature,
     raw_input_text: rawInputText ?? undefined,
     shortcut_mode: shortcutMode || undefined,
   };

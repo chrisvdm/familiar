@@ -1,3 +1,5 @@
+import styles from "./styles/index.css?url";
+
 export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
@@ -10,7 +12,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
         name="description"
         content="Your scripts, but you can text them. familiar adds reach, memory, and routing to your existing tools."
       />
-      <link rel="icon" href="/familiar-mark.svg" type="image/svg+xml" />
+      <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link
@@ -18,6 +20,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
         rel="stylesheet"
       />
       <link rel="modulepreload" href="/src/client.tsx" />
+      <link rel="stylesheet" href={styles} />
     </head>
     <body>
       {children}

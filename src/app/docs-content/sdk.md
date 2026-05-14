@@ -160,11 +160,15 @@ Common error codes:
 
 ## API reference
 
-### `Familiar.createAccount({ host? })`
+### Create a new account 
+
+`Familiar.createAccount({ host? })`
 
 Static method. Creates a new account. No token required. Returns `{ account, token }`. The token value is shown once — store it immediately.
 
-### `new Familiar({ token, host? })`
+### Create a new client instance 
+
+`new Familiar({ token, host? })`
 
 Create a client instance. `host` defaults to the hosted *familiar* instance. Override it for local development:
 
@@ -175,7 +179,8 @@ const familiar = new Familiar({
 });
 ```
 
-### `familiar.input({ text, channel, userId?, threadId?, integrationId?, tools? })`
+### Send a conversation input
+`familiar.input({ text, channel, userId?, threadId?, integrationId?, tools? })`
 
 Send a conversation turn. Returns `InputResult`.
 
@@ -188,15 +193,18 @@ Send a conversation turn. Returns `InputResult`.
 | `integrationId` | `string` | no |
 | `tools` | `Tool[]` | no |
 
-### `familiar.tools.sync({ tools })`
+### Sync tools
+`familiar.tools.sync({ tools })`
 
 Sync the tool set for the current token-backed integration. Returns `{ syncedTools, status }`.
 
-### `familiar.integration.get()`
+### Get current integration config 
+`familiar.integration.get()`
 
 Get the current integration configuration. Returns `Integration`.
 
-### `familiar.integration.update({ aiApiKey?, baseUrl? })`
+### Update the AI provider key or base URL
+`familiar.integration.update({ aiApiKey?, baseUrl? })`
 
 Update the AI provider key or executor base URL. Pass `null` to clear a value. Returns `Integration`.
 

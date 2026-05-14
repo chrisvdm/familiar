@@ -151,6 +151,7 @@ export const createAccountWithInitialToken = async ({
     baseUrl: null,
     aiApiKey: null,
     toolUrls: {},
+    webhookSecret: `whsec_${randomHex(32)}`,
     createdAt: account.createdAt,
     updatedAt: account.createdAt,
   };

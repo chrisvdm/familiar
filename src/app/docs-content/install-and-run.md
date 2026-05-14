@@ -2,7 +2,7 @@
 
 This is the normal hosted setup path for using *familiar*.
 
-## Step 1: Create your account
+## 1. Create your account
 
 Use one of these paths.
 
@@ -34,7 +34,7 @@ https://familiar.chrsvdmrw.workers.dev/setup
 
 That page creates an account and shows your first API token once.
 
-## Step 2: Choose your integration path
+## 2. Choose your integration path
 
 Once you have a token, pick the path that fits how you work.
 
@@ -62,7 +62,7 @@ The SDK is a typed JavaScript and TypeScript client with zero runtime dependenci
 
 Call the HTTP API directly from any HTTP client. See [Quickstart](/docs/quickstart) for a step-by-step walkthrough and [API Reference](/docs/api-reference) for the full endpoint surface.
 
-## Step 3: Read the next docs
+## 3. Read the next docs
 
 - [CLI](/docs/cli) — full CLI command reference
 - [SDK](/docs/sdk) — full SDK reference

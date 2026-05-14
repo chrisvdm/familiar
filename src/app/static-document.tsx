@@ -14,9 +14,13 @@ export const StaticDocument: React.FC<{ children: React.ReactNode }> = ({
       />
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel='stylesheet' href='//cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack.css'></link>
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link rel="stylesheet" href={styles} />
     </head>
-    <body>{children}</body>
+    <body>
+      {children}
+      <script>import("/src/client.tsx")</script>
+    </body>
   </html>
-);
+)

@@ -7,6 +7,7 @@ import {
   resolveProviderIdFromInput,
   resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
+import { verifyWebhookSignature } from "./provider.execution.ts";
 
 type NormalizedProviderExecutorResultInput = ProviderExecutorResultInput & {
   integration_id: string;
@@ -20,6 +21,7 @@ type AuthResult =
       providerConfig: {
         token: string;
         baseUrl?: string;
+        webhookSecret?: string;
       };
       accountId?: string;
     }
@@ -134,6 +136,36 @@ export const createHandleExecutorResultEndpoint = (
           code: auth.error.code,
           message: auth.error.message,
         });
+      }
+
+      const webhookSignature = request.headers.get("X-Webhook-Signature");
+      if (auth.providerConfig.webhookSecret) {
+        const executionId = input.result?.execution_id;
+        if (webhookSignature && typeof executionId === "string") {
+          const valid = await verifyWebhookSignature(
+            auth.providerConfig.webhookSecret,
+            executionId,
+            input.thread_id ?? "",
+            webhookSignature,
+          );
+          if (!valid) {
+            return deps.jsonError({
+              requestId,
+              status: 401,
+              code: "invalid_signature",
+              message: "Invalid webhook signature.",
+            });
+          }
+        } else if (webhookSignature) {
+          return deps.jsonError({
+            requestId,
+            status: 401,
+            code: "invalid_signature",
+            message: "Invalid webhook signature.",
+          });
+        } else {
+          console.warn("Webhook callback received without X-Webhook-Signature header.");
+        }
       }
 
       const providerId = resolveProviderIdFromInput({

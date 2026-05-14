@@ -168,6 +168,9 @@ export const authenticateProviderRequest = ({
         ...(Object.keys(accountAuth.integration.toolUrls ?? {}).length > 0
           ? { toolUrls: accountAuth.integration.toolUrls }
           : {}),
+        ...(accountAuth.integration.webhookSecret
+          ? { webhookSecret: accountAuth.integration.webhookSecret }
+          : {}),
       },
       accountId: accountAuth.account.id,
     };
