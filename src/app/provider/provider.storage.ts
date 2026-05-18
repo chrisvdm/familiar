@@ -54,6 +54,7 @@ export const createProviderUserContext = ({
     },
     idempotency: {},
     auditLog: [],
+    pendingExecutions: {},
     lastSynthesis: null,
     nextSynthesis: null,
     createdAt: now,
@@ -164,4 +165,73 @@ export const deleteProviderUserContext = async ({
   userId: string;
 }) => {
   await getProviderUserStub({ providerId, userId }).deleteContext();
+};
+
+
+export const recordPendingExecution = async ({
+  providerId,
+  userId,
+  executionId,
+  threadId,
+  toolName,
+}: {
+  providerId: string;
+  userId: string;
+  executionId: string;
+  threadId: string;
+  toolName: string;
+}) => {
+  const context = await loadOrCreateProviderUserContext({ providerId, userId });
+  const pendingExecutions = { ...context.pendingExecutions };
+  pendingExecutions[executionId] = {
+    executionId,
+    threadId,
+    toolName,
+    createdAt: new Date().toISOString(),
+  };
+  // Clean up old executions (keep last 50)
+  const entries = Object.values(pendingExecutions);
+  if (entries.length > 50) {
+    const sorted = entries.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+    for (const old of sorted.slice(0, entries.length - 50)) {
+      delete pendingExecutions[old.executionId];
+    }
+  }
+  await saveProviderUserContext({
+    ...context,
+    pendingExecutions,
+  });
+};
+
+export const resolvePendingExecution = async ({
+  providerId,
+  userId,
+  executionId,
+}: {
+  providerId: string;
+  userId: string;
+  executionId: string;
+}) => {
+  const context = await loadOrCreateProviderUserContext({ providerId, userId });
+  return context.pendingExecutions[executionId] ?? null;
+};
+
+export const clearPendingExecution = async ({
+  providerId,
+  userId,
+  executionId,
+}: {
+  providerId: string;
+  userId: string;
+  executionId: string;
+}) => {
+  const context = await loadOrCreateProviderUserContext({ providerId, userId });
+  const pendingExecutions = { ...context.pendingExecutions };
+  delete pendingExecutions[executionId];
+  await saveProviderUserContext({
+    ...context,
+    pendingExecutions,
+  });
 };

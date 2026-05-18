@@ -172,14 +172,26 @@ export const createHandleExecutorResultEndpoint = (
         explicitProviderId: input.integration_id,
         authenticatedProviderId: auth.providerId,
       });
+      const userId = resolveUserIdFromInput({
+        explicitUserId: input.user_id,
+        authenticatedAccountId: auth.accountId,
+      });
+
+      // If thread_id is missing, resolve it from the pending execution record
+      let threadId = input.thread_id;
+      if (!threadId && input.result?.execution_id) {
+        const context = await deps.loadOrCreateProviderUserContext({ providerId, userId });
+        const pending = context.pendingExecutions[input.result.execution_id];
+        if (pending) {
+          threadId = pending.threadId;
+        }
+      }
+
       const normalizedInput = {
         ...input,
         integration_id: providerId,
-        user_id: resolveUserIdFromInput({
-          explicitUserId: input.user_id,
-          authenticatedAccountId: auth.accountId,
-        }),
-        thread_id: requireNonEmptyString(input.thread_id, "thread_id"),
+        user_id: userId,
+        thread_id: requireNonEmptyString(threadId, "thread_id"),
       } satisfies NormalizedProviderExecutorResultInput;
 
       const idempotencyKey =

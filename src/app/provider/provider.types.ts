@@ -33,6 +33,13 @@ export type ChannelIdentity = {
   updatedAt: string;
 };
 
+export type PendingExecution = {
+  executionId: string;
+  threadId: string;
+  toolName: string;
+  createdAt: string;
+};
+
 export type ProviderUserContext = {
   providerId: string;
   userId: string;
@@ -56,6 +63,7 @@ export type ProviderUserContext = {
     metadata?: Record<string, unknown>;
     at: string;
   }>;
+  pendingExecutions: Record<string, PendingExecution>;
   idempotency: Record<
     string,
     {
@@ -114,7 +122,7 @@ export type ProviderConversationInput = {
 export type ProviderExecutorResultInput = {
   integration_id?: string;
   user_id?: string;
-  thread_id: string;
+  thread_id?: string;
   channel?: ProviderChannelInput;
   result: {
     execution_id?: string;

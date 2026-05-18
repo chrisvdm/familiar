@@ -85,6 +85,8 @@ import {
 import {
   loadOrCreateProviderUserContext,
   saveProviderUserContext,
+  recordPendingExecution,
+  clearPendingExecution,
 } from "./provider.storage";
 
 type NormalizedProviderConversationInput = ProviderConversationInput & {
@@ -1483,7 +1485,7 @@ const executeProviderTool = async ({
     ? `${new URL(requestUrl).origin}/api/v1/webhooks/executor`
     : null;
 
-  return executeProviderToolRequest({
+  const result = await executeProviderToolRequest({
     providerConfig,
     providerId,
     userId,
@@ -1497,6 +1499,17 @@ const executeProviderTool = async ({
     shortcutMode,
     executorPayloadTemplate,
   });
+
+  // Record the pending execution so the executor callback only needs execution_id
+  await recordPendingExecution({
+    providerId,
+    userId,
+    executionId: result.executionId,
+    threadId,
+    toolName,
+  });
+
+  return result;
 };
 
 const updateChannelState = ({
@@ -3540,6 +3553,17 @@ export const handleProviderExecutorResult = async ({
       channelDelivery,
     },
   });
+
+  // Clear the pending execution record
+  if (input.result.execution_id) {
+    clearPendingExecution({
+      providerId: input.integration_id,
+      userId: input.user_id,
+      executionId: input.result.execution_id,
+    }).catch(() => {
+      // best-effort cleanup
+    });
+  }
 
   return {
     integration_id: input.integration_id,
