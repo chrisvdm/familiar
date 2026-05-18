@@ -30,11 +30,13 @@ export type FamiliarApiToken = {
   revokedAt: string | null;
 };
 
-export type FamiliarCliSession = {
-  sessionId: string;
-  tokenValue?: string;
-  completionSecret: string;
+export type FamiliarBrowserLoginSession = {
+  code: string;
+  tokenValue: string;
+  accountId: string;
+  createdAt: string;
   expiresAt: string;
+  usedAt?: string;
 };
 
 export type FamiliarUser = {
@@ -59,7 +61,7 @@ export type FamiliarAccountRegistryState = {
   integrations: Record<string, FamiliarIntegrationConfig>;
   tokens: Record<string, FamiliarApiToken>;
   tokenIndex: Record<string, string>;
-  cliSessions: Record<string, FamiliarCliSession>;
+  browserLoginSessions: Record<string, FamiliarBrowserLoginSession>;
   users: Record<string, FamiliarUser>;
   emailIndex: Record<string, string>;
   contactSubmissions: Record<string, FamiliarContactSubmission>;

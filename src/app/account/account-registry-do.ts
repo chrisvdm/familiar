@@ -4,7 +4,7 @@ import type {
   FamiliarAccount,
   FamiliarAccountRegistryState,
   FamiliarApiToken,
-  FamiliarCliSession,
+  FamiliarBrowserLoginSession,
   FamiliarIntegrationConfig,
   FamiliarTokenAuth,
 } from "./account.types";
@@ -125,64 +125,60 @@ export class AccountRegistryDurableObject extends DurableObject {
     };
   }
 
-  async createCliSession(input: { sessionId: string }) {
+  async createBrowserLoginSession(input: {
+    tokenValue: string;
+    accountId: string;
+  }) {
     const state = await this.loadState();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
 
     // prune expired sessions lazily
-    for (const [id, session] of Object.entries(state.cliSessions)) {
-      if (new Date(session.expiresAt) < now) {
-        delete state.cliSessions[id];
+    for (const [code, session] of Object.entries(state.browserLoginSessions)) {
+      if (new Date(session.expiresAt) < now || session.usedAt) {
+        delete state.browserLoginSessions[code];
       }
     }
 
-    const completionSecret = `secret_${randomHex(32)}`;
-    const session: FamiliarCliSession = { sessionId: input.sessionId, completionSecret, expiresAt };
-    state.cliSessions[input.sessionId] = session;
+    const code = randomHex(32);
+    const session: FamiliarBrowserLoginSession = {
+      code,
+      tokenValue: input.tokenValue,
+      accountId: input.accountId,
+      createdAt: now.toISOString(),
+      expiresAt,
+    };
+    state.browserLoginSessions[code] = session;
     await this.saveState(state);
-    return { value: session };
+    return { value: { code, expiresAt } };
   }
 
-  async completeCliSession(input: { sessionId: string; tokenValue: string; completionSecret: string }) {
+  async consumeBrowserLoginSession(input: { code: string }) {
     const state = await this.loadState();
-    const session = state.cliSessions[input.sessionId];
+    const session = state.browserLoginSessions[input.code];
 
     if (!session) {
       return { error: "Session not found." };
+    }
+
+    if (session.usedAt) {
+      return { error: "Session already used." };
     }
 
     if (new Date(session.expiresAt) < new Date()) {
       return { error: "Session expired." };
     }
 
-    if (session.completionSecret !== input.completionSecret) {
-      return { error: "Invalid session secret." };
-    }
-
-    // token validity is verified by the service layer before calling here
-    state.cliSessions[input.sessionId] = { ...session, tokenValue: input.tokenValue };
+    session.usedAt = new Date().toISOString();
+    state.browserLoginSessions[input.code] = session;
     await this.saveState(state);
-    return { value: "ok" as const };
-  }
 
-  async pollCliSession(input: { sessionId: string }) {
-    const state = await this.loadState();
-    const session = state.cliSessions[input.sessionId];
-
-    if (!session) {
-      return { state: "expired" as const };
-    }
-
-    if (new Date(session.expiresAt) < new Date()) {
-      return { state: "expired" as const };
-    }
-
-    if (session.tokenValue) {
-      return { state: "completed" as const, tokenValue: session.tokenValue };
-    }
-
-    return { state: "pending" as const };
+    return {
+      value: {
+        tokenValue: session.tokenValue,
+        accountId: session.accountId,
+      },
+    };
   }
 
   async authenticateToken(input: { tokenHash: string }) {

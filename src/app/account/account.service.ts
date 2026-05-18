@@ -5,7 +5,6 @@ import { loadProviderUserContext } from "../provider/provider.storage";
 import type {
   FamiliarAccount,
   FamiliarApiToken,
-  FamiliarCliSession,
   FamiliarIntegrationConfig,
   FamiliarTokenAuth,
   FamiliarUser,
@@ -31,20 +30,15 @@ type AccountRegistryStub = {
   authenticateToken: (input: {
     tokenHash: string;
   }) => Promise<{ value: FamiliarTokenAuth } | { error: string }>;
-  createCliSession: (input: {
-    sessionId: string;
-  }) => Promise<{ value: FamiliarCliSession }>;
-  completeCliSession: (input: {
-    sessionId: string;
+  createBrowserLoginSession: (input: {
     tokenValue: string;
-    completionSecret: string;
-  }) => Promise<{ value: "ok" } | { error: string }>;
-  pollCliSession: (input: {
-    sessionId: string;
+    accountId: string;
+  }) => Promise<{ value: { code: string; expiresAt: string } }>;
+  consumeBrowserLoginSession: (input: {
+    code: string;
   }) => Promise<
-    | { state: "pending" }
-    | { state: "completed"; tokenValue: string }
-    | { state: "expired" }
+    | { value: { tokenValue: string; accountId: string } }
+    | { error: string }
   >;
   incrementActionCount: (input: {
     accountId: string;
@@ -234,22 +228,24 @@ export const updateIntegrationToolUrls = async ({
   return result.value;
 };
 
-export const createCliSession = async () => {
-  const sessionId = `cli_${randomHex(32)}`;
-  const result = await getAccountRegistryStub().createCliSession({ sessionId });
+export const createBrowserLoginSession = async (token: string) => {
+  const auth = await authenticateAccountToken(token);
+  if (!auth) {
+    throw new Error("Invalid API token.");
+  }
+  const result = await getAccountRegistryStub().createBrowserLoginSession({
+    tokenValue: token,
+    accountId: auth.account.id,
+  });
   return result.value;
 };
 
-export const completeCliSession = async (sessionId: string, rawToken: string, completionSecret: string) => {
-  const auth = await authenticateAccountToken(rawToken);
-  if (!auth) {
-    return { error: "Token not found." } as const;
+export const consumeBrowserLoginSession = async (code: string) => {
+  const result = await getAccountRegistryStub().consumeBrowserLoginSession({ code });
+  if ("error" in result) {
+    return null;
   }
-  return getAccountRegistryStub().completeCliSession({ sessionId, tokenValue: rawToken, completionSecret });
-};
-
-export const pollCliSession = async (sessionId: string) => {
-  return getAccountRegistryStub().pollCliSession({ sessionId });
+  return result.value;
 };
 
 export const incrementAccountActionCount = async (accountId: string) => {

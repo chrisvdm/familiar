@@ -2,13 +2,11 @@ import { route } from "rwsdk/router";
 
 import {
   handleAccountUsageEndpoint,
-  handleCompleteCliSessionEndpoint,
   handleCreateAccountEndpoint,
-  handleCreateCliSessionEndpoint,
+  handleCreateBrowserSessionEndpoint,
   handleCurrentIntegrationEndpoint,
   handleGetAccountEndpoint,
   handleIntegrationStatusEndpoint,
-  handlePollCliSessionEndpoint,
 } from "./account.http";
 
 export const accountRoutes = [
@@ -17,10 +15,5 @@ export const accountRoutes = [
   route("/api/v1/account/usage", handleAccountUsageEndpoint),
   route("/api/v1/integration", handleCurrentIntegrationEndpoint),
   route("/api/v1/integration/status", handleIntegrationStatusEndpoint),
-  route("/api/v1/auth/cli/sessions", handleCreateCliSessionEndpoint),
-  route("/api/v1/auth/cli/sessions/:session_id", handlePollCliSessionEndpoint),
-  route(
-    "/api/v1/auth/cli/sessions/:session_id/complete",
-    handleCompleteCliSessionEndpoint,
-  ),
+  route("/api/v1/auth/browser-sessions", handleCreateBrowserSessionEndpoint),
 ];

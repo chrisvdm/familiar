@@ -75,17 +75,7 @@ type AccountEndpointDeps = {
     createdAt: string;
     updatedAt: string;
   }>;
-  createCliSession: () => Promise<{ sessionId: string; completionSecret: string; expiresAt: string }>;
-  completeCliSession: (
-    sessionId: string,
-    rawToken: string,
-    completionSecret: string,
-  ) => Promise<{ value: "ok" } | { error: string }>;
-  pollCliSession: (sessionId: string) => Promise<
-    | { state: "pending" }
-    | { state: "completed"; tokenValue: string }
-    | { state: "expired" }
-  >;
+  createBrowserLoginSession: (token: string) => Promise<{ code: string; expiresAt: string }>;
   getAccountUsage: (accountId: string) => Promise<{
     actionCount: number;
     freeActionsUsed: number;
@@ -405,7 +395,7 @@ export const createHandleCurrentIntegrationEndpoint = (
   };
 };
 
-export const createHandleCreateCliSessionEndpoint = (deps: AccountEndpointDeps) => {
+export const createHandleCreateBrowserSessionEndpoint = (deps: AccountEndpointDeps) => {
   return async ({ request }: { request: Request }) => {
     const requestId = deps.getRequestId(request);
 
@@ -418,44 +408,31 @@ export const createHandleCreateCliSessionEndpoint = (deps: AccountEndpointDeps) 
       });
     }
 
-    const session = await deps.createCliSession();
-    return deps.jsonResponse({
-      requestId,
-      status: 201,
-      body: { session_id: session.sessionId, completion_secret: session.completionSecret },
-    });
-  };
-};
+    const token = getBearerToken(request);
 
-export const createHandlePollCliSessionEndpoint = (deps: AccountEndpointDeps) => {
-  return async ({
-    request,
-    params,
-  }: {
-    request: Request;
-    params: Record<string, string>;
-  }) => {
-    const requestId = deps.getRequestId(request);
-
-    if (request.method !== "GET") {
+    if (!token) {
       return deps.jsonError({
         requestId,
-        status: 405,
-        code: "method_not_allowed",
-        message: "Method not allowed.",
+        status: 401,
+        code: "unauthenticated",
+        message: "Missing bearer token.",
       });
     }
 
-    const result = await deps.pollCliSession(params.session_id);
-
-    if (result.state === "completed") {
+    try {
+      const session = await deps.createBrowserLoginSession(token);
       return deps.jsonResponse({
         requestId,
-        body: { state: "completed", token: result.tokenValue },
+        body: { code: session.code, expires_at: session.expiresAt },
+      });
+    } catch (error) {
+      return deps.jsonError({
+        requestId,
+        status: 403,
+        code: "forbidden",
+        message: error instanceof Error ? error.message : "Invalid API token.",
       });
     }
-
-    return deps.jsonResponse({ requestId, body: { state: result.state } });
   };
 };
 
@@ -531,67 +508,4 @@ export const createHandleIntegrationStatusEndpoint = (
   };
 };
 
-export const createHandleCompleteCliSessionEndpoint = (deps: AccountEndpointDeps) => {
-  return async ({
-    request,
-    params,
-  }: {
-    request: Request;
-    params: Record<string, string>;
-  }) => {
-    const requestId = deps.getRequestId(request);
 
-    if (request.method !== "POST") {
-      return deps.jsonError({
-        requestId,
-        status: 405,
-        code: "method_not_allowed",
-        message: "Method not allowed.",
-      });
-    }
-
-    let token: string;
-    let completionSecret: string;
-    try {
-      const body = await deps.readJson<{ token?: unknown; completion_secret?: unknown }>(request);
-      if (!body.token || typeof body.token !== "string") {
-        return deps.jsonError({
-          requestId,
-          status: 400,
-          code: "invalid_request",
-          message: "Missing token.",
-        });
-      }
-      if (!body.completion_secret || typeof body.completion_secret !== "string") {
-        return deps.jsonError({
-          requestId,
-          status: 400,
-          code: "invalid_request",
-          message: "Missing completion secret.",
-        });
-      }
-      token = body.token;
-      completionSecret = body.completion_secret;
-    } catch {
-      return deps.jsonError({
-        requestId,
-        status: 400,
-        code: "invalid_request",
-        message: "Invalid request body.",
-      });
-    }
-
-    const result = await deps.completeCliSession(params.session_id, token, completionSecret);
-
-    if ("error" in result) {
-      return deps.jsonError({
-        requestId,
-        status: 400,
-        code: "invalid_request",
-        message: result.error,
-      });
-    }
-
-    return deps.jsonResponse({ requestId, body: { ok: true } });
-  };
-};

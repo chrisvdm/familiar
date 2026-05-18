@@ -77,7 +77,7 @@ test("normalizeAccountRegistryState backfills integrations for legacy state", ()
     tokenIndex: {
       hash_123: "tok_123",
     },
-    cliSessions: {},
+    browserLoginSessions: {},
     users: {},
     emailIndex: {},
     contactSubmissions: {},

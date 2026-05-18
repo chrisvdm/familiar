@@ -15,9 +15,8 @@ const printError = (message) => process.stderr.write(`${message}\n`);
 const helpText = `familiar
 
 Usage:
-  familiar init [--host <url>]
-  familiar login [--token <token>] [--host <url>]
-  familiar account create [--host <url>]
+  familiar init [--token <token>] [--host <url>]
+  familiar login [--host <url>]
   familiar account show [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
   familiar set-key <key> [--host <url>] [--token <token>]
@@ -27,10 +26,10 @@ Usage:
   familiar --help
 
 Commands:
-  init            Create an account, issue the first API token, and store it locally.
-  login           Connect an existing account to the CLI via a browser-assisted flow.
-                  Pass --token to import a token directly without opening a browser.
-  account create  Create an account and issue the first API token.
+  init            Create an account and store the token locally.
+                  Pass --token to import an existing token instead.
+  login           Open the familiar dashboard in your browser.
+                  Uses the token stored by init.
   account show    Show the account for the current API token.
   whoami          Alias for account show.
   set-key         Set the OpenRouter AI provider key for the current project integration.
@@ -303,28 +302,45 @@ const runPortal = async ({ host, token, port }) => {
   startTunnel();
 };
 
-const createAccount = async ({ host, shouldPersist }) => {
+const init = async ({ host, token }) => {
+  if (token?.trim()) {
+    if (!token.trim().startsWith("fam_")) {
+      throw new Error(
+        "Token format not recognised. Expected a token starting with fam_",
+      );
+    }
+
+    const payload = await getJson({
+      url: `${host.replace(/\/$/, "")}/api/v1/account`,
+      token: token.trim(),
+    });
+
+    await saveConfig({
+      host,
+      token: token.trim(),
+      account_id: payload.account.id,
+      created_at: new Date().toISOString(),
+    });
+
+    print(`Token saved for account ${payload.account.id}.`);
+    return;
+  }
+
   const payload = await postJson({
     url: `${host.replace(/\/$/, "")}/api/v1/accounts`,
     body: {},
   });
 
-  if (shouldPersist) {
-    await saveConfig({
-      host,
-      token: payload.token.value,
-      account_id: payload.account.id,
-      created_at: new Date().toISOString(),
-    });
-  }
+  await saveConfig({
+    host,
+    token: payload.token.value,
+    account_id: payload.account.id,
+    created_at: new Date().toISOString(),
+  });
 
   print(`Account ID: ${payload.account.id}`);
   print(`API Token: ${payload.token.value}`);
-
-  if (shouldPersist) {
-    print(`Stored token at: ${CONFIG_PATH}`);
-  }
-
+  print(`Stored token at: ${CONFIG_PATH}`);
   print(``);
   print(`Next steps:`);
   print(`  1. Add your token to .dev.vars in your project:`);
@@ -446,66 +462,27 @@ const openBrowser = async (url) => {
   spawn(cmd, args, { stdio: "ignore", detached: true }).unref();
 };
 
-const login = async ({ host, token }) => {
-  if (token?.trim()) {
-    if (!token.trim().startsWith("fam_")) {
-      throw new Error(
-        "Token format not recognised. Expected a token starting with fam_",
-      );
-    }
-    await saveConfig({
-      host,
-      token: token.trim(),
-      created_at: new Date().toISOString(),
-    });
-    print("Token saved.");
-    return;
+const login = async ({ host }) => {
+  const config = await loadConfig();
+  const token = config?.token?.trim();
+
+  if (!token) {
+    throw new Error(
+      "No token found. Run `familiar init` to create an account or `familiar init --token <token>` to import one.",
+    );
   }
 
   const baseHost = host.replace(/\/$/, "");
 
   const sessionPayload = await postJson({
-    url: `${baseHost}/api/v1/auth/cli/sessions`,
+    url: `${baseHost}/api/v1/auth/browser-sessions`,
     body: {},
+    token,
   });
-  const sessionId = sessionPayload.session_id;
-  const completionSecret = sessionPayload.completion_secret;
 
-  const browserUrl = `${baseHost}/auth/cli?session=${sessionId}&secret=${completionSecret}`;
-  print(`Opening browser: ${browserUrl}`);
+  const browserUrl = `${baseHost}/auth/browser?code=${sessionPayload.code}`;
+  print(`Opening dashboard…`);
   await openBrowser(browserUrl);
-  print(`Waiting for login… (Ctrl-C to cancel)`);
-
-  const pollUrl = `${baseHost}/api/v1/auth/cli/sessions/${sessionId}`;
-  const maxAttempts = 150;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    let result;
-    try {
-      const response = await fetch(pollUrl);
-      result = await response.json();
-    } catch {
-      continue;
-    }
-
-    if (result.state === "completed") {
-      await saveConfig({
-        host,
-        token: result.token,
-        created_at: new Date().toISOString(),
-      });
-      print("Logged in.");
-      return;
-    }
-
-    if (result.state === "expired") {
-      throw new Error("Login expired. Run `familiar login` to try again.");
-    }
-  }
-
-  throw new Error("Login timed out. Run `familiar login` to try again.");
 };
 
 const main = async () => {
@@ -519,17 +496,12 @@ const main = async () => {
   const command = positionals.join(" ");
 
   if (command === "init") {
-    await createAccount({ host, shouldPersist: true });
+    await init({ host, token });
     return;
   }
 
   if (command === "login") {
-    await login({ host, token });
-    return;
-  }
-
-  if (command === "account create") {
-    await createAccount({ host, shouldPersist: false });
+    await login({ host });
     return;
   }
 

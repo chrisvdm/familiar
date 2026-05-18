@@ -29,6 +29,7 @@ const makeIntegration = (overrides: Partial<{
   aiApiKey: string | null;
   baseUrl: string | null;
   toolUrls: Record<string, string>;
+  webhookSecret: string;
 }> = {}) => ({
   id: "setup_123",
   accountId: "acct_123",
@@ -36,6 +37,7 @@ const makeIntegration = (overrides: Partial<{
   baseUrl: null,
   aiApiKey: null,
   toolUrls: {},
+  webhookSecret: "whsec_test",
   createdAt: "2026-03-25T10:00:00.000Z",
   updatedAt: "2026-03-25T10:00:00.000Z",
   ...overrides,
@@ -67,9 +69,7 @@ const sharedDeps = {
   jsonError,
   normalizeIntegrationBaseUrl: (u: string) => u.trim().replace(/\/$/, ""),
   createAccountWithInitialToken: async () => { throw new Error("should not create account"); },
-  createCliSession: async () => ({ sessionId: "cli_123", completionSecret: "secret_abc123", expiresAt: "2026-03-25T11:00:00.000Z" }),
-  completeCliSession: async () => ({ value: "ok" as const }),
-  pollCliSession: async () => ({ state: "pending" as const }),
+  createBrowserLoginSession: async () => ({ code: "browser_abc123", expiresAt: "2026-03-25T11:00:00.000Z" }),
   getAccountUsage: async () => ({ actionCount: 0, freeActionsUsed: 0, freeActionsRemaining: 10, plan: "free" as const }),
   getIntegrationStatus: async () => ({ toolCount: 0, threadCount: 0 }),
   checkRateLimitByIp: async () => ({ allowed: true }),
@@ -349,6 +349,7 @@ test("normalizeAccountRegistryState backfills aiApiKey null on integration recor
         baseUrl: null,
         aiApiKey: null,
         toolUrls: {},
+        webhookSecret: "whsec_legacy",
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

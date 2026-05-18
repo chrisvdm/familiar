@@ -3,24 +3,20 @@ import { getRequestId, jsonError, jsonResponse, readJson } from "../provider/pro
 import {
   authenticateAccountToken,
   checkRateLimitByIp,
-  completeCliSession,
   createAccountWithInitialToken,
-  createCliSession,
+  createBrowserLoginSession,
   getAccountUsage,
   getIntegrationStatus,
   normalizeIntegrationBaseUrl,
-  pollCliSession,
   updateAccountIntegrationBaseUrl,
 } from "./account.service";
 import {
   createHandleAccountUsageEndpoint,
-  createHandleCompleteCliSessionEndpoint,
   createHandleCreateAccountEndpoint,
-  createHandleCreateCliSessionEndpoint,
+  createHandleCreateBrowserSessionEndpoint,
   createHandleCurrentIntegrationEndpoint,
   createHandleGetAccountEndpoint,
   createHandleIntegrationStatusEndpoint,
-  createHandlePollCliSessionEndpoint,
 } from "./account.http-core";
 
 const sharedDeps = {
@@ -32,9 +28,7 @@ const sharedDeps = {
   createAccountWithInitialToken,
   normalizeIntegrationBaseUrl,
   updateAccountIntegrationBaseUrl,
-  createCliSession,
-  completeCliSession,
-  pollCliSession,
+  createBrowserLoginSession,
   getAccountUsage,
   getIntegrationStatus,
   checkRateLimitByIp,
@@ -52,14 +46,8 @@ export const handleAccountUsageEndpoint =
 export const handleCurrentIntegrationEndpoint =
   createHandleCurrentIntegrationEndpoint(sharedDeps);
 
-export const handleCreateCliSessionEndpoint =
-  createHandleCreateCliSessionEndpoint(sharedDeps);
-
-export const handlePollCliSessionEndpoint =
-  createHandlePollCliSessionEndpoint(sharedDeps);
+export const handleCreateBrowserSessionEndpoint =
+  createHandleCreateBrowserSessionEndpoint(sharedDeps);
 
 export const handleIntegrationStatusEndpoint =
   createHandleIntegrationStatusEndpoint(sharedDeps);
-
-export const handleCompleteCliSessionEndpoint =
-  createHandleCompleteCliSessionEndpoint(sharedDeps);

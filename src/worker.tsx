@@ -13,7 +13,7 @@ import { DocsPage } from "@/app/pages/docs";
 import { DocsAiPage } from "@/app/pages/docs-ai";
 import { Home } from "@/app/pages/home/index";
 import { Dashboard } from "@/app/pages/dashboard/index";
-import { AuthCli } from "@/app/pages/auth-cli";
+
 import { Setup } from "@/app/pages/setup";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
 import { SandboxProvider } from "@/app/pages/sandbox-provider";
@@ -36,6 +36,7 @@ import {
   registerAccountUser,
   authenticateUser,
   storeContactSubmission,
+  consumeBrowserLoginSession,
 } from "@/app/account/account.service";
 import { Contact } from "@/app/pages/contact";
 
@@ -343,7 +344,37 @@ export default defineApp([
       route("/dashboard", Dashboard),
       layout(PublicLayout, [
         route("/setup", Setup),
-        route("/auth/cli", AuthCli),
+        route("/auth/browser", async ({ request, response }) => {
+        const url = new URL(request.url);
+        const code = url.searchParams.get("code")?.trim();
+
+        if (!code) {
+          return new Response("Login code is required.", { status: 400 });
+        }
+
+        const sessionResult = await consumeBrowserLoginSession(code);
+
+        if (!sessionResult) {
+          return new Response("Login link expired or invalid.", { status: 400 });
+        }
+
+        let session = await browserSessionStore.load(request);
+
+        if (session) {
+          session = normalizeBrowserSession(session);
+          session.apiToken = sessionResult.tokenValue;
+        } else {
+          session = createBrowserSession(crypto.randomUUID());
+          session.apiToken = sessionResult.tokenValue;
+        }
+
+        await browserSessionStore.save(response.headers, session, { maxAge: true });
+
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/dashboard" },
+        });
+      }),
         route("/contact", Contact),
       ]),
       layout(DocsLayout, [

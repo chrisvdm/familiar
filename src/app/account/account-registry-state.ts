@@ -5,7 +5,7 @@ export const createInitialRegistryState = (): FamiliarAccountRegistryState => ({
   integrations: {},
   tokens: {},
   tokenIndex: {},
-  cliSessions: {},
+  browserLoginSessions: {},
   users: {},
   emailIndex: {},
   contactSubmissions: {},
@@ -35,6 +35,7 @@ const normalizeIntegrationRecord = (
     record.toolUrls && typeof record.toolUrls === "object"
       ? (record.toolUrls as Record<string, string>)
       : {},
+  webhookSecret: (record.webhookSecret as string) || "",
   createdAt: record.createdAt as string,
   updatedAt: record.updatedAt as string,
 });
@@ -76,9 +77,9 @@ export const normalizeAccountRegistryState = (
     state?.tokenIndex && typeof state.tokenIndex === "object"
       ? state.tokenIndex
       : {},
-  cliSessions:
-    state?.cliSessions && typeof state.cliSessions === "object"
-      ? state.cliSessions
+  browserLoginSessions:
+    state?.browserLoginSessions && typeof state.browserLoginSessions === "object"
+      ? state.browserLoginSessions
       : {},
   users:
     state?.users && typeof state.users === "object"
