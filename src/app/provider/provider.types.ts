@@ -91,6 +91,8 @@ export type ProviderConversationInput = {
   input: {
     kind: "text";
     text: string;
+    append?: boolean;
+    final?: boolean;
   };
   model?: string;
   timezone?: string;

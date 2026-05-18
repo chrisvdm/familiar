@@ -218,9 +218,13 @@ export const providerRoutes = [
     }
 
     try {
+      const url = new URL(request.url);
       const result = await listProviderThreads({
         providerId: auth.providerId,
         userId: params.userId,
+        limit: parseInt(url.searchParams.get("limit") ?? "50", 10),
+        cursor: url.searchParams.get("cursor") ?? undefined,
+        includeArchived: url.searchParams.get("include_archived") === "true",
       });
       return jsonResponse({
         requestId,
@@ -266,9 +270,13 @@ export const providerRoutes = [
       }
 
       try {
+        const url = new URL(request.url);
         const result = await listProviderThreads({
           providerId: params.integrationId,
           userId: params.userId,
+          limit: parseInt(url.searchParams.get("limit") ?? "50", 10),
+          cursor: url.searchParams.get("cursor") ?? undefined,
+          includeArchived: url.searchParams.get("include_archived") === "true",
         });
         return jsonResponse({
           requestId,

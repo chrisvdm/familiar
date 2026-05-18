@@ -371,3 +371,47 @@ test("tools sync endpoint can derive user_id from authenticated account on token
   assert.equal(response.status, 200);
   assert.equal(seenUserId, "acct_123");
 });
+
+
+test("tools sync endpoint returns warning when soft limit exceeded", async () => {
+  const endpoint = createHandleToolsSyncEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: okAuth,
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    syncProviderTools: async (_input, requestId) => ({
+      integration_id: "provider_a",
+      user_id: "user_123",
+      synced_tools: 250,
+      status: "ok",
+      warning: "Tool count (250) exceeds recommended soft limit of 200. Consider splitting across multiple integrations for better performance.",
+    }),
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const response = await endpoint({
+    request: createRequest({
+      body: {
+        ...createInput(),
+        tools: Array.from({ length: 250 }, (_, i) => ({
+          tool_name: `tool_${i}`,
+          description: `Tool ${i}`,
+          input_schema: { type: "object" },
+        })),
+      },
+    }),
+    params: {
+      integrationId: "provider_a",
+      userId: "user_123",
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.ok(body.warning);
+  assert.match(body.warning, /exceeds recommended soft limit/);
+});

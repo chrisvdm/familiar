@@ -421,3 +421,81 @@ test("conversation endpoint can derive user_id from authenticated account", asyn
   assert.equal(response.status, 200);
   assert.equal(seenUserId, "acct_123");
 });
+
+
+test("conversation endpoint handles chunked input append mode", async () => {
+  const endpoint = createHandleConversationInputEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    handleProviderConversationInput: async ({ input }) => ({
+      thread_id: "thread_abc",
+      appended: true,
+      total_bytes: 100,
+    }),
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const response = await endpoint({
+    request: createConversationRequest({
+      body: {
+        ...createInput(),
+        input: { kind: "text", text: "chunk 1", append: true },
+        thread_id: "thread_abc",
+      },
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.appended, true);
+  assert.equal(body.thread_id, "thread_abc");
+});
+
+test("conversation endpoint handles chunked input final chunk", async () => {
+  const endpoint = createHandleConversationInputEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () => createTestContext(),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    handleProviderConversationInput: async ({ input }) => ({
+      thread_id: "thread_abc",
+      action: "direct_reply",
+      content: "Done",
+    }),
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const response = await endpoint({
+    request: createConversationRequest({
+      body: {
+        ...createInput(),
+        input: { kind: "text", text: "final chunk", append: true, final: true },
+        thread_id: "thread_abc",
+      },
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.action, "direct_reply");
+});

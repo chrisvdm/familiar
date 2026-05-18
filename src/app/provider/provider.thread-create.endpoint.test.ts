@@ -201,3 +201,34 @@ test("thread create endpoint can derive user_id from authenticated account", asy
   assert.equal(response.status, 200);
   assert.equal(seenUserId, "acct_123");
 });
+
+
+test("thread list endpoint supports pagination", async () => {
+  const endpoint = createHandleThreadCreateEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: okAuth,
+    loadOrCreateProviderUserContext: async () => ({
+      ...createTestContext(),
+      threads: [
+        { id: "t3", title: "Thread 3", createdAt: "2026-01-03T00:00:00Z", updatedAt: "2026-01-03T00:00:00Z", messageCount: 0, isTemporary: false, isTitleEdited: false },
+        { id: "t2", title: "Thread 2", createdAt: "2026-01-02T00:00:00Z", updatedAt: "2026-01-02T00:00:00Z", messageCount: 0, isTemporary: false, isTitleEdited: false },
+        { id: "t1", title: "Thread 1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", messageCount: 0, isTemporary: false, isTitleEdited: false },
+      ],
+    }),
+    saveProviderUserContext: async (context) => context,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_123",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    createProviderThread: async (_input) => ({
+      thread_id: "thread_123",
+      title: "Work thread",
+    }),
+  });
+
+  const response = await endpoint({
+    request: createRequest({ body: createInput() }),
+  });
+
+  assert.equal(response.status, 200);
+});

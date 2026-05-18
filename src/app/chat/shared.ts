@@ -89,6 +89,7 @@ export type ChatThreadSummary = {
   messageCount: number;
   isTemporary: boolean;
   isTitleEdited: boolean;
+  archivedAt?: string;
 };
 
 export const MAX_CONTEXT_MESSAGES = 6;

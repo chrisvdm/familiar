@@ -22,6 +22,7 @@ import {
   sanitizeRawToolInput,
   selectProviderGlobalMemory,
   splitTodoItemsFromText,
+  validateInputText,
   validateToolInputMode,
 } from "./provider.logic.ts";
 
@@ -946,4 +947,23 @@ test("validateToolArguments passes on valid arguments", () => {
       properties: { count: { type: "integer" } },
     }),
   );
+});
+
+
+test("validateInputText accepts custom max bytes for chunks", () => {
+  const smallText = "a".repeat(100);
+  assert.equal(validateInputText(smallText, 200), smallText);
+});
+
+test("validateInputText rejects chunk exceeding custom max bytes", () => {
+  const largeText = "a".repeat(300);
+  assert.throws(
+    () => validateInputText(largeText, 200),
+    /exceeds maximum size of 200 bytes/,
+  );
+});
+
+test("validateInputText uses default 500KB when maxBytes not specified", () => {
+  const text = "a".repeat(1000);
+  assert.equal(validateInputText(text), text);
 });

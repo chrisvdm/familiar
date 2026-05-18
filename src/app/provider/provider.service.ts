@@ -73,7 +73,10 @@ import {
   TOOLS_SYNC_RATE_LIMIT_WINDOW_MS,
   MAX_MESSAGES_PER_THREAD,
   MAX_THREADS_PER_USER,
+  SOFT_THREADS_LIMIT,
   MAX_TOOLS_PER_SYNC,
+  SOFT_TOOLS_LIMIT,
+  MAX_CHUNK_BYTES,
   validateInputText,
   validateToolInputMode,
   validateToolSchema,
@@ -500,6 +503,25 @@ const resolveThreadId = async ({
   return null;
 };
 
+const autoArchiveOldestThreads = (
+  threads: ChatThreadSummary[],
+  targetCount: number,
+): ChatThreadSummary[] => {
+  const activeThreads = threads.filter((t) => !t.archivedAt);
+  if (activeThreads.length <= targetCount) return threads;
+
+  const toArchiveCount = activeThreads.length - targetCount;
+  const sortedByAge = [...activeThreads].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  const archiveIds = new Set(sortedByAge.slice(0, toArchiveCount).map((t) => t.id));
+  const now = new Date().toISOString();
+
+  return threads.map((t) =>
+    archiveIds.has(t.id) ? { ...t, archivedAt: now } : t,
+  );
+};
+
 const createThreadForContext = async ({
   context,
   isPrivate = false,
@@ -523,10 +545,15 @@ const createThreadForContext = async ({
   const nextThread = createThreadSummary(threadId, nextState.messages.length, {
     isTemporary: isPrivate,
   });
+
+  // Auto-archive oldest threads when approaching hard limit
+  let nextThreads = sortThreadsByRecency([nextThread, ...context.threads]);
+  nextThreads = autoArchiveOldestThreads(nextThreads, SOFT_THREADS_LIMIT);
+
   const channelKey = buildChannelKey(channel);
   const nextContext: ProviderUserContext = {
     ...context,
-    threads: sortThreadsByRecency([nextThread, ...context.threads]),
+    threads: nextThreads,
     channels: {
       ...context.channels,
       [channelKey]: {
@@ -1567,6 +1594,45 @@ const appendMessagesToThread = async ({
   return nextState;
 };
 
+const appendChunkToThreadMessage = async ({
+  threadId,
+  text,
+}: {
+  threadId: string;
+  text: string;
+}) => {
+  const currentState = await loadChatSession(threadId);
+  const lastMessage = currentState.messages.at(-1);
+
+  if (lastMessage && lastMessage.role === "user") {
+    const newContent = `${lastMessage.content}\n${text}`;
+    const totalBytes = new TextEncoder().encode(newContent).length;
+    if (totalBytes > MAX_INPUT_TEXT_BYTES) {
+      throw new Error(
+        `Total message size exceeds maximum of ${MAX_INPUT_TEXT_BYTES} bytes (${(MAX_INPUT_TEXT_BYTES / 1024).toFixed(0)}KB).`,
+      );
+    }
+    const nextMessages = currentState.messages.slice(0, -1);
+    nextMessages.push({
+      ...lastMessage,
+      content: newContent,
+    });
+    const nextState = {
+      ...currentState,
+      messages: nextMessages,
+    };
+    await saveChatSession(threadId, nextState);
+    return { appended: true, totalBytes };
+  }
+
+  // If last message is not from user, create a new user message
+  const nextState = await appendMessagesToThread({
+    threadId,
+    messages: [createUserMessage(text)],
+  });
+  return { appended: true, totalBytes: new TextEncoder().encode(text).length };
+};
+
 const refreshProviderMemories = async ({
   threadId,
   state,
@@ -1710,7 +1776,7 @@ export const syncProviderTools = async (
 ) => {
   if (input.tools.length > MAX_TOOLS_PER_SYNC) {
     throw new Error(
-      `Too many tools in sync request. Maximum is ${MAX_TOOLS_PER_SYNC}.`,
+      `Too many tools in sync request. Absolute maximum is ${MAX_TOOLS_PER_SYNC}. Consider splitting across multiple integrations.`,
     );
   }
 
@@ -1749,6 +1815,11 @@ export const syncProviderTools = async (
     }
   }
 
+  const softLimitWarning =
+    input.tools.length > SOFT_TOOLS_LIMIT
+      ? `Tool count (${input.tools.length}) exceeds recommended soft limit of ${SOFT_TOOLS_LIMIT}. Consider splitting across multiple integrations for better performance.`
+      : undefined;
+
   logProviderAudit({
     event: "provider.tools.synced",
     requestId,
@@ -1765,25 +1836,55 @@ export const syncProviderTools = async (
     user_id: input.user_id,
     synced_tools: nextContext.allowedTools.length,
     status: "ok",
+    ...(softLimitWarning ? { warning: softLimitWarning } : {}),
   };
 };
 
 export const listProviderThreads = async ({
   providerId,
   userId,
+  limit = 50,
+  cursor,
+  includeArchived = false,
 }: {
   providerId: string;
   userId: string;
+  limit?: number;
+  cursor?: string;
+  includeArchived?: boolean;
 }) => {
   const context = await loadOrCreateProviderUserContext({ providerId, userId });
+  let threads = sortThreadsByRecency(context.threads);
+
+  if (!includeArchived) {
+    threads = threads.filter((t) => !t.archivedAt);
+  }
+
+  const effectiveLimit = Math.min(Math.max(limit, 1), 100);
+  let startIndex = 0;
+
+  if (cursor) {
+    const cursorIndex = threads.findIndex((t) => t.id === cursor);
+    if (cursorIndex !== -1) {
+      startIndex = cursorIndex + 1;
+    }
+  }
+
+  const paginatedThreads = threads.slice(startIndex, startIndex + effectiveLimit);
+  const nextCursor =
+    startIndex + effectiveLimit < threads.length
+      ? paginatedThreads.at(-1)?.id
+      : undefined;
 
   return {
-    threads: sortThreadsByRecency(context.threads).map((thread) => ({
+    threads: paginatedThreads.map((thread) => ({
       thread_id: thread.id,
       title: thread.title,
       is_private: thread.isTemporary,
       updated_at: thread.updatedAt,
+      archived_at: thread.archivedAt ?? null,
     })),
+    next_cursor: nextCursor ?? null,
   };
 };
 
@@ -2129,6 +2230,20 @@ export const handleProviderConversationInput = async ({
 
     threadId = created.threadId;
     currentContext = created.context;
+  }
+
+  // Handle chunked input: append to last user message instead of creating a new turn
+  if (input.input.append) {
+    const chunkText = validateInputText(input.input.text, MAX_CHUNK_BYTES);
+    const appendResult = await appendChunkToThreadMessage({ threadId, text: chunkText });
+
+    if (!input.input.final) {
+      return {
+        thread_id: threadId,
+        appended: true,
+        total_bytes: appendResult.totalBytes,
+      };
+    }
   }
 
   const thread = currentContext.threads.find((entry) => entry.id === threadId);
@@ -2612,6 +2727,26 @@ export const handleStreamConversationInput = async ({
 
     threadId = created.threadId;
     currentContext = created.context;
+  }
+
+  // Handle chunked input: append to last user message instead of creating a new turn
+  if (input.input.append) {
+    const chunkText = validateInputText(input.input.text, MAX_CHUNK_BYTES);
+    const appendResult = await appendChunkToThreadMessage({ threadId, text: chunkText });
+
+    if (!input.input.final) {
+      return {
+        thread_id: threadId,
+        appended: true,
+        total_bytes: appendResult.totalBytes,
+        stream: new ReadableStream({
+          start(controller) {
+            controller.enqueue(`data: ${JSON.stringify({ appended: true, thread_id: threadId, total_bytes: appendResult.totalBytes })}\n\n`);
+            controller.close();
+          },
+        }),
+      };
+    }
   }
 
   const thread = currentContext.threads.find((entry) => entry.id === threadId);
@@ -3126,7 +3261,7 @@ export const simulateConversationInput = async ({
   });
   const content = validateInputText(input.input.text);
 
-  const threadId = await resolveThreadId({
+  let threadId = await resolveThreadId({
     context,
     providedThreadId: input.thread_id,
     channel: input.channel,
@@ -3135,6 +3270,20 @@ export const simulateConversationInput = async ({
 
   if (!threadId) {
     throw new Error("No thread found or created for simulation.");
+  }
+
+  // Handle chunked input: append to last user message instead of creating a new turn
+  if (input.input.append) {
+    const chunkText = validateInputText(input.input.text, MAX_CHUNK_BYTES);
+    const appendResult = await appendChunkToThreadMessage({ threadId, text: chunkText });
+
+    if (!input.input.final) {
+      return {
+        thread_id: threadId,
+        appended: true,
+        total_bytes: appendResult.totalBytes,
+      };
+    }
   }
 
   const thread = context.threads.find((entry) => entry.id === threadId);

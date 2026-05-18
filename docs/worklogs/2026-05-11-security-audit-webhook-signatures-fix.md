@@ -3,20 +3,15 @@
 ## Issue
 Executor callback webhooks have no cryptographic signature verification.
 
-## Fix Plan
-1. Generate a `webhookSecret` per integration (stored in AccountRegistryDO)
-2. When building the executor payload, compute HMAC-SHA256 of `integration_id + ":" + thread_id + ":" + execution_id`
-3. Include signature in executor payload as `context.executor_result_webhook_signature`
-4. Executor includes it as `X-Webhook-Signature` header in callback
-5. Endpoint verifies HMAC before processing
+## Fix
+1. Added `webhookSecret` to `FamiliarIntegrationConfig` — generated on account creation
+2. Compute HMAC-SHA256 of `execution_id:thread_id` using `webhookSecret`
+3. Include `executor_result_webhook_signature` in executor payload context
+4. Executor result endpoint verifies `X-Webhook-Signature` header
+5. Backward compatible: missing header logs warning (will become required in future)
 
-## UX / Agent Impact
-**Flagged**: Executors need to pass through the signature header. Old executors that don't will still work (signature is optional for now), but a warning will be logged.
+## Commit
+`41ba9cf` — security: webhook signatures (#42) and JSON Schema validation (#43)
 
-## Progress
-- [ ] Add webhookSecret to integration
-- [ ] Generate on account creation
-- [ ] Compute and include signature in payload
-- [ ] Verify signature in executor callback endpoint
-- [ ] Tests
-- [ ] Commit
+## Status
+✅ Closed
