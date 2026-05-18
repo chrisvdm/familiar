@@ -22,7 +22,11 @@ familiar init
 
 This stores the token globally and prints your next steps.
 
-You can also create an account through the web at `/setup` if you prefer a browser.
+You can also import an existing token:
+
+```shell
+familiar init --token fam_your_token
+```
 
 ### 2. Add your token to the project
 
@@ -96,23 +100,13 @@ This calls `POST /api/v1/accounts` and saves the returned token to `~/.familiar/
 
 ### `familiar login`
 
-Connect an existing account to the CLI. Two modes:
-
-**Browser-assisted (default):**
+Open the familiar dashboard in your browser, already logged in.
 
 ```shell
 familiar login
 ```
 
-Creates a CLI session, opens a browser to `/auth/cli`, and waits for you to log in or create an account. Once the browser completes the flow, the CLI receives the token and stores it locally.
-
-**Direct token import:**
-
-```shell
-familiar login --token fam_your_token
-```
-
-Skips the browser and stores the token directly. Use this if you already have a token from the web dashboard or another source.
+Reads the token from `~/.familiar/config.json`, creates a one-time browser login code, and opens the dashboard.
 
 ### `familiar set-key <key>`
 
@@ -152,9 +146,9 @@ Token sources (checked in order):
 
 1. `--token <token>` flag (explicit override)
 2. `FAMILIAR_TOKEN` in `.dev.vars` (project-level)
-3. `~/.familiar/config.json` (global, set by `familiar init` or `familiar login`)
+3. `~/.familiar/config.json` (global, set by `familiar init`)
 
-Web dashboard users can find their full API token on the dashboard and import it with `familiar login --token <token>`.
+Web dashboard users can find their full API token on the dashboard and import it with `familiar init --token <token>`.
 
 ## Options
 

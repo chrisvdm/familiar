@@ -28,13 +28,13 @@ familiar init
 
 Creates an account, issues the first API token, and stores it in `~/.familiar/config.json`.
 
-If you already have an account (from the web setup or another machine), connect it instead:
+If you already have an account (from the web setup or another machine), import the token:
 
 ```shell
-familiar login
+familiar init --token fam_your_token
 ```
 
-Opens a browser window where you can connect your existing account to the CLI. The token is transferred automatically — no copy-paste needed. See [`familiar login`](#familiar-login) below for details.
+Validates the token and stores it locally.
 
 ### 2. Add the token to your project
 
@@ -113,22 +113,14 @@ familiar init --host http://localhost:5173
 
 ### `familiar login`
 
-Connect an existing *familiar* account to the CLI via a browser-assisted flow.
+Open the *familiar* dashboard in your browser, already logged in with the token from your CLI config.
 
 ```shell
 familiar login
 familiar login --host http://localhost:5173
 ```
 
-Opens a browser to `/auth/cli`. If you previously used the web setup page, the browser detects your existing token and offers to connect it in one click. If not, it creates a new account and connects it. Either way, the token is stored at `~/.familiar/config.json` — no copy-paste required.
-
-To import a token directly without opening a browser:
-
-```shell
-familiar login --token fam_your_token
-```
-
-This validates the format and saves the token immediately.
+Reads the token from `~/.familiar/config.json`, creates a one-time browser login code, and opens the dashboard. No polling, no copy-paste.
 
 ### `familiar set-key <key>`
 
@@ -172,13 +164,7 @@ familiar account show
 familiar whoami
 ```
 
-### `familiar account create`
 
-Create an account and print the token without storing it.
-
-```shell
-familiar account create
-```
 
 ## Options
 
