@@ -794,3 +794,156 @@ test("required tool argument detection treats non-empty arrays as present", () =
   assert.equal(hasMeaningfulToolArgumentValue(["buy milk"]), true);
   assert.equal(hasMeaningfulToolArgumentValue([]), false);
 });
+
+
+import {
+  validateJsonSchema,
+  validateToolArguments,
+} from "./provider.logic.ts";
+
+test("validateJsonSchema accepts valid string", () => {
+  const errors = validateJsonSchema("hello", { type: "string" });
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects number for string type", () => {
+  const errors = validateJsonSchema(42, { type: "string" });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /Expected type string/);
+});
+
+test("validateJsonSchema validates object properties", () => {
+  const errors = validateJsonSchema(
+    { name: "Alice", age: 30 },
+    {
+      type: "object",
+      required: ["name"],
+      properties: {
+        name: { type: "string" },
+        age: { type: "integer" },
+      },
+    },
+  );
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema reports missing required field", () => {
+  const errors = validateJsonSchema(
+    { age: 30 },
+    {
+      type: "object",
+      required: ["name"],
+      properties: {
+        name: { type: "string" },
+        age: { type: "integer" },
+      },
+    },
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /Missing required property "name"/);
+});
+
+test("validateJsonSchema validates array items", () => {
+  const errors = validateJsonSchema(
+    ["a", "b", "c"],
+    { type: "array", items: { type: "string" } },
+  );
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects invalid array item type", () => {
+  const errors = validateJsonSchema(
+    ["a", 42, "c"],
+    { type: "array", items: { type: "string" } },
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].path, /\[1\]/);
+});
+
+test("validateJsonSchema validates enum", () => {
+  const errors = validateJsonSchema("active", { type: "string", enum: ["active", "disabled"] });
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects invalid enum value", () => {
+  const errors = validateJsonSchema("pending", { type: "string", enum: ["active", "disabled"] });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /Expected one of/);
+});
+
+test("validateJsonSchema validates string pattern", () => {
+  const errors = validateJsonSchema("hello123", { type: "string", pattern: "^[a-z0-9]+$" });
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects string not matching pattern", () => {
+  const errors = validateJsonSchema("HELLO", { type: "string", pattern: "^[a-z]+$" });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /does not match pattern/);
+});
+
+test("validateJsonSchema validates minimum and maximum", () => {
+  const errors = validateJsonSchema(50, { type: "number", minimum: 0, maximum: 100 });
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects number below minimum", () => {
+  const errors = validateJsonSchema(-5, { type: "number", minimum: 0 });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /less than minimum/);
+});
+
+test("validateJsonSchema validates minLength and maxLength", () => {
+  const errors = validateJsonSchema("abc", { type: "string", minLength: 2, maxLength: 5 });
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects string exceeding maxLength", () => {
+  const errors = validateJsonSchema("abcdef", { type: "string", maxLength: 5 });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /exceeds maximum/);
+});
+
+test("validateJsonSchema validates integer type", () => {
+  const errors = validateJsonSchema(42, { type: "integer" });
+  assert.equal(errors.length, 0);
+});
+
+test("validateJsonSchema rejects float for integer type", () => {
+  const errors = validateJsonSchema(3.14, { type: "integer" });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /Expected type integer/);
+});
+
+test("validateJsonSchema rejects additionalProperties when false", () => {
+  const errors = validateJsonSchema(
+    { name: "Alice", extra: "value" },
+    {
+      type: "object",
+      properties: { name: { type: "string" } },
+      additionalProperties: false,
+    },
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /Additional property "extra" is not allowed/);
+});
+
+test("validateToolArguments throws on validation failure", () => {
+  assert.throws(
+    () =>
+      validateToolArguments("test.tool", { count: "not a number" }, {
+        type: "object",
+        properties: { count: { type: "integer" } },
+      }),
+    /validation failed/,
+  );
+});
+
+test("validateToolArguments passes on valid arguments", () => {
+  assert.doesNotThrow(() =>
+    validateToolArguments("test.tool", { count: 42 }, {
+      type: "object",
+      properties: { count: { type: "integer" } },
+    }),
+  );
+});

@@ -77,6 +77,7 @@ import {
   validateInputText,
   validateToolInputMode,
   validateToolSchema,
+  validateToolArguments,
 } from "./provider.logic";
 import {
   loadOrCreateProviderUserContext,
@@ -1433,6 +1434,7 @@ const executeProviderTool = async ({
   rawInputText,
   shortcutMode,
   requestId,
+  inputSchema,
 }: {
   providerConfig: ProviderConfig;
   providerId: string;
@@ -1445,7 +1447,10 @@ const executeProviderTool = async ({
   rawInputText?: string;
   shortcutMode?: boolean;
   requestId?: string;
+  inputSchema?: Record<string, unknown>;
 }) => {
+  validateToolArguments(toolName, args, inputSchema);
+
   const requestUrl = requestInfo?.request?.url;
   const resultWebhookUrl = requestUrl
     ? `${new URL(requestUrl).origin}/api/v1/webhooks/executor`
@@ -2203,6 +2208,7 @@ export const handleProviderConversationInput = async ({
           }),
           shortcutMode: true,
           requestId,
+          inputSchema: entry.tool.inputSchema,
         });
 
         executionMessages.push(execution.message);
@@ -2254,6 +2260,7 @@ export const handleProviderConversationInput = async ({
           channel: input.channel,
           rawInputText: currentState.pendingToolConfirmation.rawInputText,
           requestId,
+          inputSchema: pendingTool?.inputSchema,
         });
 
         assistantContent = execution.message;
@@ -2333,6 +2340,7 @@ export const handleProviderConversationInput = async ({
           channel: input.channel,
           rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
           requestId,
+          inputSchema: pendingTool?.inputSchema,
         });
 
         assistantContent = execution.message;
@@ -2439,6 +2447,7 @@ export const handleProviderConversationInput = async ({
           channel: input.channel,
           rawInputText: normalizedInput.rawInputText,
           requestId,
+          inputSchema: tool?.inputSchema,
         });
 
         assistantContent = execution.message;
@@ -2690,6 +2699,7 @@ export const handleStreamConversationInput = async ({
           }),
           shortcutMode: true,
           requestId,
+          inputSchema: entry.tool.inputSchema,
         });
 
         executionMessages.push(execution.message);
@@ -2741,6 +2751,7 @@ export const handleStreamConversationInput = async ({
           channel: input.channel,
           rawInputText: currentState.pendingToolConfirmation.rawInputText,
           requestId,
+          inputSchema: pendingTool?.inputSchema,
         });
 
         preComputedContent = execution.message;
@@ -2820,6 +2831,7 @@ export const handleStreamConversationInput = async ({
           channel: input.channel,
           rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
           requestId,
+          inputSchema: pendingTool?.inputSchema,
         });
 
         preComputedContent = execution.message;
@@ -2984,6 +2996,7 @@ export const handleStreamConversationInput = async ({
               channel: input.channel,
               rawInputText: normalizedInput.rawInputText,
               requestId,
+              inputSchema: tool?.inputSchema,
             });
 
             assistantContent = execution.message;

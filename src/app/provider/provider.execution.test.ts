@@ -340,3 +340,57 @@ test("sendProviderChannelMessage posts a text message payload", async () => {
   assert.match(capturedBody, /"tool_name":"todos.add"/);
   assert.match(capturedBody, /"execution_id":"exec_123"/);
 });
+
+
+test("executeProviderToolRequest includes webhook signature when webhookSecret is present", async () => {
+  let capturedBody = "";
+
+  await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example",
+      webhookSecret: "whsec_test_secret_123",
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    fetchImpl: async (input, init) => {
+      capturedBody = String(init?.body);
+      return {
+        ok: true,
+        json: async () => ({ ok: true, state: "completed" }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.match(capturedBody, /"executor_result_webhook_signature":"[a-f0-9]+"/);
+});
+
+test("executeProviderToolRequest omits webhook signature when webhookSecret is absent", async () => {
+  let capturedBody = "";
+
+  await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example",
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    fetchImpl: async (input, init) => {
+      capturedBody = String(init?.body);
+      return {
+        ok: true,
+        json: async () => ({ ok: true, state: "completed" }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.doesNotMatch(capturedBody, /"executor_result_webhook_signature"/);
+});
