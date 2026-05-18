@@ -27,8 +27,8 @@ const Hero = () => {
             <div className="margin-top--xl">
                 <span className="section-kicker">Get started</span>
                 <Code>{`npx familiar-cli init`}</Code>
-                <span>Or via API:</span>
-                <Code>{`curl -X POST https://familiar.monster/api/v1/accounts`}</Code>
+                <span>Open your dashboard:</span>
+                <Code>{`familiar login`}</Code>
             </div>
             </div>
             
