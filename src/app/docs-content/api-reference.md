@@ -487,6 +487,28 @@ Use this when:
 - the executor accepted work first
 - the final result only becomes available later
 
+### Minimal callback
+
+The executor only needs to send `result.execution_id`. *familiar* resolves `thread_id`, `integration_id`, and `user_id` from the pending execution record:
+
+```shell
+curl -X POST https://familiar.monster/api/v1/webhooks/executor \
+  -H "Authorization: Bearer dev-token" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: exec_123" \
+  -d '{
+    "result": {
+      "execution_id": "exec_123",
+      "state": "completed",
+      "content": "Your import finished successfully."
+    }
+  }'
+```
+
+### Full callback (backward compatible)
+
+Executors can still send the full context explicitly. When `thread_id` is present, it is used directly and the pending execution lookup is skipped:
+
 ```shell
 curl -X POST https://familiar.monster/api/v1/webhooks/executor \
   -H "Authorization: Bearer dev-token" \

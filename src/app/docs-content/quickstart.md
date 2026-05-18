@@ -204,7 +204,7 @@ Return either:
 
 ## 8. Send the final async result back
 
-If the executor returned `accepted`, send the final result later:
+If the executor returned `accepted`, send the final result later. The only required field is `execution_id`:
 
 ```shell
 curl -X POST https://familiar.monster/api/v1/webhooks/executor \
@@ -212,7 +212,6 @@ curl -X POST https://familiar.monster/api/v1/webhooks/executor \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: exec_123" \
   -d '{
-    "thread_id": "thread_abc",
     "result": {
       "execution_id": "exec_123",
       "state": "completed",
@@ -220,6 +219,8 @@ curl -X POST https://familiar.monster/api/v1/webhooks/executor \
     }
   }'
 ```
+
+*familiar* resolves `thread_id` and the rest of the context from the pending execution record. The executor does not need to store them.
 
 ## What to open next
 

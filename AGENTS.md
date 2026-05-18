@@ -221,6 +221,13 @@ npx wrangler deploy
 - Assets binding: `ASSETS`
 - AI binding: `AI`
 
+## Agent Rules
+
+1. **Explain every change.** Whenever you make changes to code, explain to the user:
+   - What was changed (which files, functions, data structures).
+   - Why it was changed (the problem it solves or the feature it enables).
+   - How the logic flow in the app changed — trace the request or data flow before and after.
+
 ## Security Considerations
 
 - **Auth**: Provider API requests require `Authorization: Bearer <token>`. Tokens are hashed before storage in the AccountRegistry DO.

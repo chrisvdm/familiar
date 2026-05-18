@@ -30,11 +30,10 @@ The callback tells *familiar*:
 
 ## Minimum payload
 
-The callback payload can stay small:
+The only thing the executor must send back is the `execution_id`:
 
 ```json
 {
-  "thread_id": "thread_abc",
   "result": {
     "execution_id": "exec_123",
     "state": "completed",
@@ -43,7 +42,9 @@ The callback payload can stay small:
 }
 ```
 
-### Example callback
+*familiar* resolves `thread_id`, `integration_id`, and `user_id` internally from the pending execution record. The executor does not need to track or store them.
+
+### Example callback (minimal)
 
 ```shell
 curl -X POST https://familiar.monster/api/v1/webhooks/executor \
@@ -51,13 +52,29 @@ curl -X POST https://familiar.monster/api/v1/webhooks/executor \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: exec_123" \
   -d '{
-    "thread_id": "thread_abc",
     "result": {
       "execution_id": "exec_123",
       "state": "completed",
       "content": "Your import finished successfully."
     }
   }'
+```
+
+### Full payload (backward compatible)
+
+Older executors can still send the full context explicitly:
+
+```json
+{
+  "integration_id": "integration_a",
+  "user_id": "user_123",
+  "thread_id": "thread_abc",
+  "result": {
+    "execution_id": "exec_123",
+    "state": "completed",
+    "content": "Your import finished successfully."
+  }
+}
 ```
 
 ## Idempotency
