@@ -6,6 +6,7 @@ import {
   getBrowserSessionIdFromRequest,
   type BrowserSession,
 } from "../session/session";
+import { authenticateAccountToken } from "../account/account.service";
 
 type PageContext = {
   session?: BrowserSession;
@@ -29,6 +30,22 @@ export const loadBrowserChannelState = async ({
   channelType: "web" | "sandbox_messenger";
 }) => {
   const session = requireSession(ctx.session);
+
+  // If user is authenticated, use their account identity for cross-device continuity
+  if (session.apiToken) {
+    const auth = await authenticateAccountToken(session.apiToken);
+    if (auth) {
+      return getProviderHydratedState({
+        providerId: auth.account.defaultSetupId,
+        userId: "default",
+        channel: {
+          type: channelType,
+          id: auth.account.id,
+        },
+      });
+    }
+  }
+
   const browserUserId =
     getBrowserSessionIdFromRequest(request) || session.activeThreadId;
 

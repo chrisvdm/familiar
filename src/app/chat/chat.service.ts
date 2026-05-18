@@ -34,6 +34,7 @@ import {
   saveProviderUserContext,
 } from "../provider/provider.storage";
 import type { ProviderChannelInput, ProviderUserContext } from "../provider/provider.types";
+import { authenticateAccountToken } from "../account/account.service";
 
 type WebThreadState = {
   activeThreadId: string;
@@ -68,8 +69,24 @@ const getWebChannelType = () => {
   return referer.includes("/sandbox/messenger") ? "sandbox_messenger" : "web";
 };
 
-const getWebIdentity = () => {
+const getWebIdentity = async () => {
   const browserSession = requireBrowserSession();
+
+  // If user is authenticated, use their account identity for cross-device continuity
+  if (browserSession.apiToken) {
+    const auth = await authenticateAccountToken(browserSession.apiToken);
+    if (auth) {
+      return {
+        providerId: auth.account.defaultSetupId,
+        userId: "default",
+        channel: {
+          type: getWebChannelType(),
+          id: auth.account.id,
+        } satisfies ProviderChannelInput,
+        isAuthenticated: true,
+      };
+    }
+  }
 
   return {
     providerId: WEB_PROVIDER_ID,
@@ -82,6 +99,7 @@ const getWebIdentity = () => {
         getBrowserSessionIdFromRequest(requestInfo.request) ||
         browserSession.activeThreadId,
     } satisfies ProviderChannelInput,
+    isAuthenticated: false,
   };
 };
 
@@ -95,10 +113,34 @@ const getRequestTimeZone = () =>
 
 const ensureWebProviderContext = async () => {
   const browserSession = requireBrowserSession();
-  const { providerId, userId, channel } = getWebIdentity();
+  const { providerId, userId, channel, isAuthenticated } = await getWebIdentity();
   let context = await loadOrCreateProviderUserContext({ providerId, userId });
 
-  if (context.threads.length === 0 && browserSession.threads.length > 0) {
+  // Migrate browser session data to account context on first authenticated load
+  if (
+    isAuthenticated &&
+    context.threads.length === 0 &&
+    browserSession.threads.length > 0
+  ) {
+    context = await saveProviderUserContext({
+      ...context,
+      selectedModel: browserSession.selectedModel,
+      globalMemory: browserSession.globalMemory,
+      threads: browserSession.threads,
+      channels: {
+        ...context.channels,
+        [getChannelKey(channel)]: {
+          type: channel.type,
+          id: channel.id,
+          lastActiveThreadId: browserSession.activeThreadId,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
+
+  // For guests, also sync browser session threads to provider context if needed
+  if (!isAuthenticated && context.threads.length === 0 && browserSession.threads.length > 0) {
     context = await saveProviderUserContext({
       ...context,
       selectedModel: browserSession.selectedModel,
@@ -130,7 +172,7 @@ const syncWebState = async ({
 }: {
   activeThreadId: string;
 }): Promise<WebThreadState> => {
-  const { providerId, userId } = getWebIdentity();
+  const { providerId, userId } = await getWebIdentity();
   const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
   const threadSession = await loadChatSession(activeThreadId);
   const nextBrowserSession: BrowserSession = {
@@ -337,7 +379,7 @@ const appendCommandHistory = async ({
   commandText: string;
   assistantReply?: string;
 }) => {
-  const { providerId, userId } = getWebIdentity();
+  const { providerId, userId } = await getWebIdentity();
   const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
   const targetThread = providerContext.threads.find((thread) => thread.id === threadId);
 
@@ -517,7 +559,7 @@ export const handleConversationInput = serverQuery(
 
 export const setChatModel = serverQuery(
   async (model: string) => {
-    const { providerId, userId } = getWebIdentity();
+    const { providerId, userId } = await getWebIdentity();
     const browserSession = requireBrowserSession();
     const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });
     const selectedModel = model.trim() || providerContext.selectedModel || DEFAULT_MODEL;
@@ -535,7 +577,7 @@ export const setChatModel = serverQuery(
 export const resetChatSession = serverQuery(
   async () => {
     const browserSession = requireBrowserSession();
-    const { providerId, userId } = getWebIdentity();
+    const { providerId, userId } = await getWebIdentity();
     const activeThreadId = browserSession.activeThreadId;
     const nextState = createInitialChatState();
     const providerContext = await loadOrCreateProviderUserContext({ providerId, userId });

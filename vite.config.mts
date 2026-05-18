@@ -9,4 +9,12 @@ export default defineConfig({
     }),
     redwood(),
   ],
+  optimizeDeps: {
+    exclude: ["node:process", "@cloudflare/unenv-preset"],
+  },
+  ssr: {
+    optimizeDeps: {
+      exclude: ["node:process", "@cloudflare/unenv-preset"],
+    },
+  },
 });
