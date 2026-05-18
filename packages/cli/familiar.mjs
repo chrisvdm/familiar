@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const DEFAULT_BASE_URL =
-  process.env.FAMILIAR_BASE_URL?.trim() || "https://familiar.chrsvdmrw.workers.dev";
+  process.env.FAMILIAR_BASE_URL?.trim() || "https://familiar.monster";
 const CONFIG_DIR = path.join(os.homedir(), ".familiar");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 

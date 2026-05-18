@@ -42,7 +42,7 @@ export type {
   InputStreamEvent,
 } from "./types.js";
 
-const DEFAULT_HOST = "https://familiar.chrsvdmrw.workers.dev";
+const DEFAULT_HOST = "https://familiar.monster";
 
 export class Familiar {
   private token: string;

@@ -17,7 +17,7 @@ That creates an account, issues the first API token, and stores it locally.
 ### Through the API
 
 ```sh
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
+curl -X POST https://familiar.monster/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -29,7 +29,7 @@ That returns your first API token.
 Open:
 
 ```text
-https://familiar.chrsvdmrw.workers.dev/setup
+https://familiar.monster/setup
 ```
 
 That page creates an account and shows your first API token once.

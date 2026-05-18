@@ -141,7 +141,7 @@ For async work, return `state: "accepted"` and call back later:
 
 ```typescript
 // In your executor
-await fetch("https://familiar.chrsvdmrw.workers.dev/api/v1/webhooks/executor", {
+await fetch("https://familiar.monster/api/v1/webhooks/executor", {
   method: "POST",
   headers: { Authorization: `Bearer ${token}` },
   body: JSON.stringify({

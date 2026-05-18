@@ -28,7 +28,7 @@ const Hero = () => {
                 <span className="section-kicker">Get started</span>
                 <Code>{`npx familiar-cli init`}</Code>
                 <span>Or via API:</span>
-                <Code>{`curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts`}</Code>
+                <Code>{`curl -X POST https://familiar.monster/api/v1/accounts`}</Code>
             </div>
             </div>
             

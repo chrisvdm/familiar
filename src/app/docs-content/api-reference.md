@@ -136,7 +136,7 @@ Update the AI provider key and/or executor base URL for the current token-backed
 **Set the AI provider key** — required before *familiar* will process messages:
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -151,7 +151,7 @@ To clear a stored key, set `ai_api_key` to `null`. Omitting the field leaves the
 **Set the executor base URL:**
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -282,7 +282,7 @@ Use this when:
 - a tool schema changes
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
+curl -X POST https://familiar.monster/api/v1/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -488,7 +488,7 @@ Use this when:
 - the final result only becomes available later
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
+curl -X POST https://familiar.monster/api/v1/webhooks/executor \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: exec_123" \

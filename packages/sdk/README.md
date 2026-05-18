@@ -2,7 +2,7 @@
 
 > **Early development.** This is an MVP release. Expect breaking changes.
 
-JavaScript and TypeScript client for [familiar](https://familiar.chrsvdmrw.workers.dev) — a hosted tool router with memory.
+JavaScript and TypeScript client for [familiar](https://familiar.monster) — a hosted tool router with memory.
 
 ## Install
 
@@ -117,7 +117,7 @@ Common error codes:
 
 ### `new Familiar({ token, host? })`
 
-Create a client. `host` defaults to `https://familiar.chrsvdmrw.workers.dev`.
+Create a client. `host` defaults to `https://familiar.monster`.
 
 ### `Familiar.createAccount({ host? })`
 

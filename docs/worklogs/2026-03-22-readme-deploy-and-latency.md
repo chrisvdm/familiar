@@ -82,7 +82,7 @@ Clean up Texty's public-facing README, deploy the first live version to Cloudfla
   - `OPENROUTER_API_KEY`
   - `AUTH_SECRET_KEY`
 - First live deploy URL:
-  - `https://texty.chrsvdmrw.workers.dev`
+  - `https://familiar.monster`
 
 ## Latency Improvements
 

@@ -45,7 +45,7 @@ Long term, explicit `integration_id` will matter again once one account can mana
 ### Programmatic (curl, SDK, CLI)
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
+curl -X POST https://familiar.monster/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -77,7 +77,7 @@ After web registration, your API token is visible on the `/dashboard` page.
 familiar makes model calls on behalf of your integration. You must supply an OpenRouter API key so those calls are charged to your account, not the operator's.
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{"ai_api_key": "sk-or-v1-..."}'
@@ -94,7 +94,7 @@ Get an OpenRouter key at https://openrouter.ai/keys.
 Check that everything is configured:
 
 ```shell
-curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/integration/status \
+curl -s https://familiar.monster/api/v1/integration/status \
   -H "Authorization: Bearer fam_your_token"
 ```
 
@@ -103,7 +103,7 @@ This returns your integration config, account plan/usage, and runtime stats (too
 ### Check integration health
 
 ```shell
-curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/integration/health \
+curl -s https://familiar.monster/api/v1/integration/health \
   -H "Authorization: Bearer fam_your_token"
 ```
 
@@ -145,7 +145,7 @@ familiar set-url https://my-app.vercel.app
 **cURL:**
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{"base_url": "https://my-app.vercel.app"}'
@@ -166,7 +166,7 @@ To clear the URL later, send `{"base_url": null}` or run `familiar set-url ""`.
 Tell familiar which tools the current setup should use.
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
+curl -X POST https://familiar.monster/api/v1/tools/sync \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -245,7 +245,7 @@ You can also send the tools array directly — no wrapper object needed. Save yo
 Then sync with:
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
+curl -X POST https://familiar.monster/api/v1/tools/sync \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d @familiar.json
@@ -261,7 +261,7 @@ Current MVP shortcut:
 Send a normal message into familiar.
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input \
+curl -X POST https://familiar.monster/api/v1/input \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -294,7 +294,7 @@ Important input rule:
 For direct replies, you can stream the assistant response as it is generated:
 
 ```shell
-curl -N -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input/stream \
+curl -N -X POST https://familiar.monster/api/v1/input/stream \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
@@ -331,7 +331,7 @@ Tool calls and clarifications are not streamed — they emit a single `decision`
 Test what familiar would do without persisting messages, executing tools, or burning quota:
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input/simulate \
+curl -X POST https://familiar.monster/api/v1/input/simulate \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -437,7 +437,7 @@ familiar will return that execution state in the conversation response and, when
 When the task actually finishes, call familiar back:
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
+curl -X POST https://familiar.monster/api/v1/webhooks/executor \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -510,7 +510,7 @@ Example failure response:
 ### List threads
 
 ```shell
-curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/users/default/threads \
+curl -s https://familiar.monster/api/v1/users/default/threads \
   -H "Authorization: Bearer fam_your_token"
 ```
 
@@ -532,7 +532,7 @@ Returns:
 ### Create a thread
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/threads \
+curl -X POST https://familiar.monster/api/v1/threads \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -544,7 +544,7 @@ curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/threads \
 ### Delete a thread
 
 ```shell
-curl -X DELETE https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc \
+curl -X DELETE https://familiar.monster/api/v1/threads/thread_abc \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json"
 ```
@@ -554,28 +554,28 @@ curl -X DELETE https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc 
 Shared memory (per integration user):
 
 ```shell
-curl -s https://familiar.chrsvdmrw.workers.dev/api/v1/users/default/memory \
+curl -s https://familiar.monster/api/v1/users/default/memory \
   -H "Authorization: Bearer fam_your_token"
 ```
 
 Thread-local memory:
 
 ```shell
-curl -s "https://familiar.chrsvdmrw.workers.dev/api/v1/threads/thread_abc/memory?user_id=default" \
+curl -s "https://familiar.monster/api/v1/threads/thread_abc/memory?user_id=default" \
   -H "Authorization: Bearer fam_your_token"
 ```
 
 ### Query audit events
 
 ```shell
-curl -s "https://familiar.chrsvdmrw.workers.dev/api/v1/audit/events?limit=20" \
+curl -s "https://familiar.monster/api/v1/audit/events?limit=20" \
   -H "Authorization: Bearer fam_your_token"
 ```
 
 Filter by status:
 
 ```shell
-curl -s "https://familiar.chrsvdmrw.workers.dev/api/v1/audit/events?status=error&limit=10" \
+curl -s "https://familiar.monster/api/v1/audit/events?status=error&limit=10" \
   -H "Authorization: Bearer fam_your_token"
 ```
 

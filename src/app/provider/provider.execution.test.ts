@@ -128,7 +128,7 @@ test("executeProviderToolRequest returns normalized success payloads", async () 
       type: "whatsapp",
       id: "user_555",
     },
-    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    resultWebhookUrl: "https://familiar.monster/api/v1/webhooks/executor",
     rawInputText: "buy milk and eggs",
     shortcutMode: true,
     fetchImpl: async (input, init) => {
@@ -156,7 +156,7 @@ test("executeProviderToolRequest returns normalized success payloads", async () 
     "https://executor.example/root/tools/execute",
   );
   assert.match(capturedBody, /"request_id":"req_123"/);
-  assert.match(capturedBody, /"executor_result_webhook_url":"https:\/\/texty.example\/api\/v1\/webhooks\/executor"/);
+  assert.match(capturedBody, /"executor_result_webhook_url":"https:\/\/familiar.monster\/api\/v1\/webhooks\/executor"/);
   assert.match(capturedBody, /"raw_input_text":"buy milk and eggs"/);
   assert.match(capturedBody, /"shortcut_mode":true/);
   assert.equal(result.executionId.length > 0, true);
@@ -200,7 +200,7 @@ test("executeProviderToolRequest supports integration-defined executor payload t
       type: "whatsapp",
       id: "user_555",
     },
-    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    resultWebhookUrl: "https://familiar.monster/api/v1/webhooks/executor",
     rawInputText: "buy milk and eggs",
     shortcutMode: true,
     executorPayloadTemplate: {
@@ -234,7 +234,7 @@ test("executeProviderToolRequest supports integration-defined executor payload t
   assert.match(capturedBody, /"request":"req_123"/);
   assert.match(
     capturedBody,
-    /"callback":"https:\/\/texty.example\/api\/v1\/webhooks\/executor"/,
+    /"callback":"https:\/\/familiar.monster\/api\/v1\/webhooks\/executor"/,
   );
   assert.doesNotMatch(capturedBody, /"tool_name":"spreadsheet.update_row"/);
   assert.doesNotMatch(capturedBody, /"arguments":\{"row_id":"42"\}/);
@@ -356,7 +356,7 @@ test("executeProviderToolRequest includes webhook signature when webhookSecret i
     threadId: "thread_123",
     toolName: "spreadsheet.update_row",
     args: {},
-    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    resultWebhookUrl: "https://familiar.monster/api/v1/webhooks/executor",
     fetchImpl: async (input, init) => {
       capturedBody = String(init?.body);
       return {
@@ -382,7 +382,7 @@ test("executeProviderToolRequest omits webhook signature when webhookSecret is a
     threadId: "thread_123",
     toolName: "spreadsheet.update_row",
     args: {},
-    resultWebhookUrl: "https://texty.example/api/v1/webhooks/executor",
+    resultWebhookUrl: "https://familiar.monster/api/v1/webhooks/executor",
     fetchImpl: async (input, init) => {
       capturedBody = String(init?.body);
       return {

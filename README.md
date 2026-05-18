@@ -11,13 +11,13 @@ The current working setup path is the hosted API.
 Use the hosted product directly:
 
 ```text
-https://familiar.chrsvdmrw.dev
+https://familiar.monster
 ```
 
 Create an account and get the first API token with `curl`:
 
 ```sh
-curl -X POST https://familiar.chrsvdmrw.dev/api/v1/accounts \
+curl -X POST https://familiar.monster/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{}'
 ```

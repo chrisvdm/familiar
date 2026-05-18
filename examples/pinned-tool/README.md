@@ -38,7 +38,7 @@ Then open:
 
 Live demo:
 
-- [https://familiar.chrsvdmrw.dev/sandbox/pinned-tool](https://familiar.chrsvdmrw.dev/sandbox/pinned-tool)
+- [https://familiar.monster/sandbox/pinned-tool](https://familiar.monster/sandbox/pinned-tool)
 
 ## Try These Messages
 

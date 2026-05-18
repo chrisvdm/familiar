@@ -11,7 +11,7 @@ npx familiar-cli init
 Or use the API directly:
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/accounts \
+curl -X POST https://familiar.monster/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -45,7 +45,7 @@ TEXTY_EXECUTOR_CONFIG='{"integration_a":{"token":"dev-token","baseUrl":"http://l
 *familiar* uses [OpenRouter](https://openrouter.ai) for all model calls. Each integration must supply its own key before it can process messages.
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -78,7 +78,7 @@ cloudflared tunnel --url http://localhost:8787
 Then register the generated URL:
 
 ```shell
-curl -X PATCH https://familiar.chrsvdmrw.workers.dev/api/v1/integration \
+curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -96,7 +96,7 @@ Sync the tools for the current token-backed setup.
 The setup already exists behind your token after account creation. This call configures that setup. It does not create a new one.
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/tools/sync \
+curl -X POST https://familiar.monster/api/v1/tools/sync \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -128,7 +128,7 @@ For now, the authenticated token is enough for the single-user happy path.
 Send normalized text into *familiar*.
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/input \
+curl -X POST https://familiar.monster/api/v1/input \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -d '{
@@ -166,7 +166,7 @@ The executor receives structured tool input rather than raw user text.
     "label": "deployment check"
   },
   "context": {
-    "executor_result_webhook_url": "https://familiar.chrsvdmrw.workers.dev/api/v1/webhooks/executor"
+    "executor_result_webhook_url": "https://familiar.monster/api/v1/webhooks/executor"
   }
 }
 ```
@@ -207,7 +207,7 @@ Return either:
 If the executor returned `accepted`, send the final result later:
 
 ```shell
-curl -X POST https://familiar.chrsvdmrw.workers.dev/api/v1/webhooks/executor \
+curl -X POST https://familiar.monster/api/v1/webhooks/executor \
   -H "Authorization: Bearer dev-token" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: exec_123" \

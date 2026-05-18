@@ -40,7 +40,7 @@ Then open:
 
 Live demo:
 
-- [https://familiar.chrsvdmrw.dev/sandbox/async-countdown](https://familiar.chrsvdmrw.dev/sandbox/async-countdown)
+- [https://familiar.monster/sandbox/async-countdown](https://familiar.monster/sandbox/async-countdown)
 
 This example is about async executor callbacks, not pinned tool behavior.
 
