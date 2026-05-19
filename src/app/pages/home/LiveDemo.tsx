@@ -5,15 +5,11 @@ import ReactMarkdown from "react-markdown";
 
 import Section from "@/app/components/Section/Section";
 import Code from "@/app/components/Code/Code";
-import {
-  asyncCountdownTools,
-  minimalExecutorTools,
-} from "@/app/provider/demo-executors/manifests";
+import { minimalExecutorTools } from "@/app/provider/demo-executors/manifests";
 import { useLiveDemo } from "./useLiveDemo";
 
 const LiveDemo = () => {
-  const { messages, todos, countdowns, isLoading, sendMessage, startCountdown, resetDemo } =
-    useLiveDemo();
+  const { messages, todos, isLoading, sendMessage, resetDemo } = useLiveDemo();
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,7 +39,7 @@ const LiveDemo = () => {
   return (
     <Section title="Live Demo" id="live-demo">
       <p>
-        This demo connects up with <code>todoList</code> and <code>countDown</code> tools.
+        This demo connects up with the <code>todoList</code> tool.
       </p>
 
       <div className="live-demo bg--primary flex--column">
@@ -85,7 +81,6 @@ const LiveDemo = () => {
                     <p style={{ margin: 0 }}>{message.content}</p>
                   ) : (
                     <div
-                      className="markdown-body"
                       style={{
                         fontSize: "12px",
                         lineHeight: 1.5,
@@ -166,52 +161,13 @@ const LiveDemo = () => {
               <li
                 className="accordian__item"
                 role="button"
-                onClick={() => handleAccordianClick("countDown")}
-              >
-                <code>countDown</code>
-              </li>
-              {open === "countDown" && (
-                <div className="accordian__item__content padding--small border-radius">
-                  {countdowns.length === 0 ? (
-                    <div>
-                      <p className="text--muted" style={{ margin: 0, fontStyle: "italic" }}>
-                        No countdowns running.
-                      </p>
-                      <button
-                        className="button padding--small"
-                        style={{ marginTop: "0.5rem" }}
-                        onClick={startCountdown}
-                      >
-                        Start 10s countdown
-                      </button>
-                    </div>
-                  ) : (
-                    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                      {countdowns.map((cd) => (
-                        <li key={cd.execution_id} className="padding--small">
-                          <span>
-                            {cd.status === "running" ? "⏱" : "✅"} {" "}
-                            {cd.status === "running"
-                              ? `${cd.seconds_remaining}s…`
-                              : cd.completion_message}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              <li
-                className="accordian__item"
-                role="button"
                 onClick={() => handleAccordianClick("json")}
               >
                 <h4>Tools config json</h4>
               </li>
               {open === "json" && (
                 <div className="accordian__item__content padding--small border-radius">
-                  <Code>{JSON.stringify([...minimalExecutorTools, ...asyncCountdownTools], null, 2)}</Code>
+                  <Code>{JSON.stringify(minimalExecutorTools, null, 2)}</Code>
                 </div>
               )}
             </ul>

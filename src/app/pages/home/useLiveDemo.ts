@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 export type DemoMessage = {
   role: "user" | "assistant";
@@ -13,51 +13,15 @@ export type DemoTodo = {
   created_at: string;
 };
 
-export type DemoCountdown = {
-  execution_id: string;
-  status: "running" | "completed";
-  started_at: string;
-  completes_at: string;
-  completed_at: string | null;
-  seconds_remaining: number;
-  completion_message: string;
-};
-
 const DEMO_TOKEN = "dev-token";
 const DEMO_USER_ID = "demo_user";
-const COUNTDOWN_DURATION = 10;
 
 export const useLiveDemo = () => {
   const [messages, setMessages] = useState<DemoMessage[]>([]);
   const [todos, setTodos] = useState<DemoTodo[]>([]);
-  const [countdowns, setCountdowns] = useState<DemoCountdown[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const tickCountdowns = useCallback(() => {
-    setCountdowns((prev) =>
-      prev.map((cd) => {
-        if (cd.status === "completed") return cd;
-        const nextSeconds = Math.max(0, cd.seconds_remaining - 1);
-        const now = new Date().toISOString();
-        return nextSeconds === 0
-          ? {
-              ...cd,
-              status: "completed" as const,
-              seconds_remaining: 0,
-              completed_at: now,
-            }
-          : { ...cd, seconds_remaining: nextSeconds };
-      }),
-    );
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(tickCountdowns, 1000);
-    return () => clearInterval(interval);
-  }, [tickCountdowns]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -141,49 +105,6 @@ export const useLiveDemo = () => {
     [isLoading, threadId],
   );
 
-  const startCountdown = useCallback(async () => {
-    const executionId = crypto.randomUUID();
-    const now = new Date();
-    const completesAt = new Date(now.getTime() + COUNTDOWN_DURATION * 1000);
-
-    const newCountdown: DemoCountdown = {
-      execution_id: executionId,
-      status: "running",
-      started_at: now.toISOString(),
-      completes_at: completesAt.toISOString(),
-      completed_at: null,
-      seconds_remaining: COUNTDOWN_DURATION,
-      completion_message: "Countdown complete.",
-    };
-
-    setCountdowns((prev) => [...prev, newCountdown]);
-
-    // Best-effort server sync — works in production where waitUntil runs
-    try {
-      const res = await fetch("/sandbox/async-countdown/tools/execute", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${DEMO_TOKEN}`,
-        },
-        body: JSON.stringify({
-          tool_name: "countdown.start",
-          user_id: DEMO_USER_ID,
-          execution_id: executionId,
-          arguments: { duration_seconds: COUNTDOWN_DURATION },
-          context: {
-            executor_result_webhook_url: `${window.location.origin}/sandbox/async-countdown/channels/messages`,
-            channel: { type: "web", id: "async-countdown-playground" },
-          },
-        }),
-      });
-      const text = await res.text();
-      console.log("[LiveDemo] Countdown start response:", res.status, text.slice(0, 200));
-    } catch (err) {
-      console.error("[LiveDemo] Countdown start failed:", err);
-    }
-  }, []);
-
   const resetDemo = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -203,7 +124,6 @@ export const useLiveDemo = () => {
 
     setMessages([]);
     setTodos([]);
-    setCountdowns([]);
     setThreadId(null);
     setIsLoading(false);
   }, []);
@@ -211,11 +131,9 @@ export const useLiveDemo = () => {
   return {
     messages,
     todos,
-    countdowns,
     isLoading,
     error,
     sendMessage,
-    startCountdown,
     resetDemo,
   };
 };
