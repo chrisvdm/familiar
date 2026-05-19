@@ -203,7 +203,7 @@ const LiveDemo = () => {
         </div>
 
         <p className="border-top padding--small">
-          <i>Use @ to shortcut tools</i>
+          <i>Type <code>@todos.add</code> to call a tool directly — e.g. <code>@todos.add buy milk</code></i>
         </p>
       </div>
     </Section>
