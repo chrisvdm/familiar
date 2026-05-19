@@ -25,6 +25,7 @@ export type DemoCountdown = {
 
 const DEMO_TOKEN = "dev-token";
 const DEMO_USER_ID = "demo_user";
+const COUNTDOWN_DURATION = 10;
 
 export const useLiveDemo = () => {
   const [messages, setMessages] = useState<DemoMessage[]>([]);
@@ -35,35 +36,28 @@ export const useLiveDemo = () => {
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchCountdowns = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/sandbox/async-countdown/playground/texty?token=${DEMO_TOKEN}&user_id=${DEMO_USER_ID}`,
-        { method: "GET" },
-      );
-      const text = await response.text();
-      let payload: Record<string, unknown>;
-      try {
-        payload = JSON.parse(text) as Record<string, unknown>;
-      } catch {
-        console.error("[LiveDemo] Countdown poll non-JSON:", response.status, text.slice(0, 200));
-        return;
-      }
-      if (payload.ok && Array.isArray(payload.countdowns)) {
-        setCountdowns(payload.countdowns as DemoCountdown[]);
-      }
-    } catch (err) {
-      console.error("[LiveDemo] Countdown poll error:", err);
-    }
+  const tickCountdowns = useCallback(() => {
+    setCountdowns((prev) =>
+      prev.map((cd) => {
+        if (cd.status === "completed") return cd;
+        const nextSeconds = Math.max(0, cd.seconds_remaining - 1);
+        const now = new Date().toISOString();
+        return nextSeconds === 0
+          ? {
+              ...cd,
+              status: "completed" as const,
+              seconds_remaining: 0,
+              completed_at: now,
+            }
+          : { ...cd, seconds_remaining: nextSeconds };
+      }),
+    );
   }, []);
 
   useEffect(() => {
-    fetchCountdowns();
-    pollRef.current = setInterval(fetchCountdowns, 1000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [fetchCountdowns]);
+    const interval = setInterval(tickCountdowns, 1000);
+    return () => clearInterval(interval);
+  }, [tickCountdowns]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -148,9 +142,25 @@ export const useLiveDemo = () => {
   );
 
   const startCountdown = useCallback(async () => {
+    const executionId = crypto.randomUUID();
+    const now = new Date();
+    const completesAt = new Date(now.getTime() + COUNTDOWN_DURATION * 1000);
+
+    const newCountdown: DemoCountdown = {
+      execution_id: executionId,
+      status: "running",
+      started_at: now.toISOString(),
+      completes_at: completesAt.toISOString(),
+      completed_at: null,
+      seconds_remaining: COUNTDOWN_DURATION,
+      completion_message: "Countdown complete.",
+    };
+
+    setCountdowns((prev) => [...prev, newCountdown]);
+
+    // Best-effort server sync — works in production where waitUntil runs
     try {
-      const executionId = crypto.randomUUID();
-      await fetch("/sandbox/async-countdown/tools/execute", {
+      const res = await fetch("/sandbox/async-countdown/tools/execute", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -160,18 +170,19 @@ export const useLiveDemo = () => {
           tool_name: "countdown.start",
           user_id: DEMO_USER_ID,
           execution_id: executionId,
-          arguments: { duration_seconds: 10 },
+          arguments: { duration_seconds: COUNTDOWN_DURATION },
           context: {
             executor_result_webhook_url: `${window.location.origin}/sandbox/async-countdown/channels/messages`,
             channel: { type: "web", id: "async-countdown-playground" },
           },
         }),
       });
-      await fetchCountdowns();
-    } catch {
-      // best effort
+      const text = await res.text();
+      console.log("[LiveDemo] Countdown start response:", res.status, text.slice(0, 200));
+    } catch (err) {
+      console.error("[LiveDemo] Countdown start failed:", err);
     }
-  }, [fetchCountdowns]);
+  }, []);
 
   const resetDemo = useCallback(async () => {
     setIsLoading(true);
@@ -192,6 +203,7 @@ export const useLiveDemo = () => {
 
     setMessages([]);
     setTodos([]);
+    setCountdowns([]);
     setThreadId(null);
     setIsLoading(false);
   }, []);
