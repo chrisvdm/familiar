@@ -1,6 +1,19 @@
 .live-demo {
     height: 400px;
     font-size: 12px;
+    overflow: hidden;
+}
+
+.live-demo .flex--row {
+    min-height: 0;
+}
+
+.live-demo .chat-history {
+    min-width: 0;
+}
+
+.live-demo .workpanel {
+    flex-shrink: 0;
 }
 
 .accordian__item {

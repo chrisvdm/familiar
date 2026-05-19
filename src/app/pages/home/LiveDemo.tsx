@@ -73,6 +73,7 @@ const LiveDemo = () => {
                     alignSelf:
                       message.role === "user" ? "flex-end" : "flex-start",
                     maxWidth: "80%",
+                    overflowWrap: "break-word",
                   }}
                 >
                   <p style={{ margin: 0 }}>{message.content}</p>
@@ -82,7 +83,7 @@ const LiveDemo = () => {
               {isLoading && (
                 <div
                   className="padding--small border-radius bg--tertiary"
-                  style={{ alignSelf: "flex-start", maxWidth: "80%" }}
+                  style={{ alignSelf: "flex-start", maxWidth: "80%", overflowWrap: "break-word" }}
                 >
                   <p style={{ margin: 0, fontStyle: "italic" }}>Thinking…</p>
                 </div>
