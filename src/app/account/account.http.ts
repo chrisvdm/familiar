@@ -18,6 +18,7 @@ import {
   createHandleGetAccountEndpoint,
   createHandleIntegrationStatusEndpoint,
 } from "./account.http-core";
+import { createHandleGetModelsEndpoint } from "./account.models.http";
 
 const sharedDeps = {
   getRequestId,
@@ -51,3 +52,6 @@ export const handleCreateBrowserSessionEndpoint =
 
 export const handleIntegrationStatusEndpoint =
   createHandleIntegrationStatusEndpoint(sharedDeps);
+
+export const handleGetModelsEndpoint =
+  createHandleGetModelsEndpoint(sharedDeps);

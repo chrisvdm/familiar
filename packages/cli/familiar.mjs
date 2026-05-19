@@ -23,6 +23,7 @@ Usage:
   familiar set-url <url> [--host <url>] [--token <token>]
   familiar tools sync [--file <path>] [--host <url>] [--token <token>]
   familiar portal --port <port> [--host <url>] [--token <token>]
+  familiar models [--host <url>] [--token <token>]
   familiar --help
 
 Commands:
@@ -40,6 +41,7 @@ Commands:
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   portal          Start a local tunnel and keep familiar pointed at it.
                   Requires cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation
+  models          Show which AI models are configured for this familiar deployment.
 
 Options:
   --host <url>    Base URL for the familiar API. Default: ${DEFAULT_BASE_URL}
@@ -485,6 +487,37 @@ const login = async ({ host }) => {
   await openBrowser(browserUrl);
 };
 
+const showModels = async ({ host, token }) => {
+  const resolvedToken = token || (await loadConfig())?.token;
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No token found. Run `familiar init` to create an account or pass `--token`.",
+    );
+  }
+
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/models`,
+    token: resolvedToken,
+  });
+
+  if (!payload.ok) {
+    throw new Error(payload.error?.message || "Unable to fetch model configuration.");
+  }
+
+  print(`Routing mode: ${payload.routing_mode}`);
+  print();
+
+  const models = payload.models;
+  const maxStage = Math.max(...Object.keys(models).map((s) => s.length));
+  const maxModel = Math.max(...Object.values(models).map((m) => m.value.length));
+
+  print(`${"STAGE".padEnd(maxStage)}  ${"MODEL".padEnd(maxModel)}  SOURCE`);
+  for (const [stage, info] of Object.entries(models)) {
+    print(`${stage.padEnd(maxStage)}  ${info.value.padEnd(maxModel)}  ${info.source}`);
+  }
+};
+
 const main = async () => {
   const { help, positionals, host, token, port, file } = parseArgs(process.argv.slice(2));
 
@@ -512,6 +545,11 @@ const main = async () => {
 
   if (command === "portal") {
     await runPortal({ host, token, port });
+    return;
+  }
+
+  if (command === "models") {
+    await showModels({ host, token });
     return;
   }
 

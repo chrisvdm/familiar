@@ -1,4 +1,5 @@
 type CreateAccountResult = {
+
   account: {
     id: string;
     createdAt: string;
