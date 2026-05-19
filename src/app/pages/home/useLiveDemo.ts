@@ -41,12 +41,19 @@ export const useLiveDemo = () => {
         `/sandbox/async-countdown/playground/texty?token=${DEMO_TOKEN}&user_id=${DEMO_USER_ID}`,
         { method: "GET" },
       );
-      const payload = (await response.json()) as Record<string, unknown>;
+      const text = await response.text();
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        console.error("[LiveDemo] Countdown poll non-JSON:", response.status, text.slice(0, 200));
+        return;
+      }
       if (payload.ok && Array.isArray(payload.countdowns)) {
         setCountdowns(payload.countdowns as DemoCountdown[]);
       }
-    } catch {
-      // silently ignore polling errors
+    } catch (err) {
+      console.error("[LiveDemo] Countdown poll error:", err);
     }
   }, []);
 
@@ -68,10 +75,15 @@ export const useLiveDemo = () => {
       const userMessage: DemoMessage = { role: "user", content: text.trim() };
       setMessages((prev) => [...prev, userMessage]);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      let response: Response;
+
       try {
-        const response = await fetch("/sandbox/demo-executor/playground/texty", {
+        response = await fetch("/sandbox/demo-executor/playground/texty", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             token: DEMO_TOKEN,
             text: text.trim(),
@@ -79,8 +91,23 @@ export const useLiveDemo = () => {
             thread_id: threadId,
           }),
         });
+        clearTimeout(timeoutId);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
 
-        const payload = (await response.json()) as Record<string, unknown>;
+      try {
+        const responseText = await response.text();
+        let payload: Record<string, unknown>;
+        try {
+          payload = JSON.parse(responseText) as Record<string, unknown>;
+        } catch {
+          console.error("[LiveDemo] Non-JSON response:", response.status, responseText.slice(0, 500));
+          throw new Error(`Server returned ${response.status} (not JSON). Check console for details.`);
+        }
+
+        console.log("[LiveDemo] Response:", payload);
 
         if (!response.ok || !payload.ok) {
           const errorMessage =
