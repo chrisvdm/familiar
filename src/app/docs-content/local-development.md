@@ -116,18 +116,18 @@ curl -X POST http://localhost:5173/sandbox/demo-executor/reset
 
 Use this when a sandbox has accumulated stale memory from previous test sessions and you want a clean start without restarting the worker.
 
-## Step 5: Run a local example executor
+## Step 5: Run a local executor
 
-For the smallest useful executor:
-
-```sh
-TEXTY_EXECUTOR_TOKEN=dev-token node examples/minimal-executor/server.mjs
-```
-
-That example listens on:
+For testing, use the built-in demo sandbox at:
 
 ```text
-http://localhost:8787
+https://familiar.monster/sandbox/demo-executor
+```
+
+Or create your own executor — it just needs to expose:
+
+```text
+POST /tools/execute
 ```
 
 Then add this to `.dev.vars`:

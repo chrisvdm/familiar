@@ -143,33 +143,17 @@ This is the smallest useful setup path for connecting code to familiar and getti
 4. Send user input to familiar.
 5. Let familiar call the correct tool target when work should happen.
 
-There is a tiny reference example here:
+There are live sandbox demos you can try without setting anything up:
 
-- [`examples/minimal-executor/README.md`](examples/minimal-executor/README.md)
-- [`examples/async-countdown/README.md`](examples/async-countdown/README.md)
-- [`examples/pinned-tool/README.md`](examples/pinned-tool/README.md)
+- [`/sandbox/demo-executor`](https://familiar.monster/sandbox/demo-executor) — basic todo tool
+- [`/sandbox/async-countdown`](https://familiar.monster/sandbox/async-countdown) — async callback demo
+- [`/sandbox/pinned-tool`](https://familiar.monster/sandbox/pinned-tool) — shortcut tool demo (`@tool-name`)
 
-What that example is for:
+What the sandboxes show:
 
-- you can copy that folder into your own project
-- run the tiny example server
-- point familiar at it
-- see a full request go from familiar to your tool target and back
-
-There is also a dedicated async callback example:
-
-- `examples/async-countdown`
-  - starts a fixed 10 second timer
-  - returns `accepted` immediately
-  - sends the final result back through `POST /api/v1/webhooks/executor`
-
-And there is a dedicated shortcut tool example:
-
-- `examples/pinned-tool`
-  - invokes a tool with `@tool-name payload`
-  - applies that shortcut only to the current message
-  - can chain several tool invocations inside one message
-  - does not silently carry the shortcut into later unrelated messages
+- **Demo executor** — a full request from familiar to a tool target and back
+- **Async countdown** — starts a 10 second timer, returns `accepted` immediately, callbacks later via `POST /api/v1/webhooks/executor`
+- **Pinned tool** — invokes a tool with `@tool-name payload`, applies only to the current message, can chain multiple invocations
 
 If you are new to this, think of it like this:
 

@@ -1,15 +1,23 @@
 import { route } from "rwsdk/router";
 import { requestInfo } from "rwsdk/worker";
 
-import asyncCountdownTemplate from "../../../examples/async-countdown/index.html?raw";
-import homePageTemplate from "../../../examples/minimal-executor/index.html?raw";
-import pinnedToolTemplate from "../../../examples/pinned-tool/index.html?raw";
-// @ts-expect-error example-only module imported into hosted demo route
-import { executeToolCall as executeCountdownToolCall, getCountdownsForUser, markCountdownComplete, toolDefinitions as asyncCountdownTools } from "../../../examples/async-countdown/executor.mjs";
-// @ts-expect-error example-only module imported into hosted demo route
-import { executeToolCall as executePinnedToolCall, getToolEntriesForUser, toolDefinitions as pinnedToolTools } from "../../../examples/pinned-tool/executor.mjs";
-// @ts-expect-error example-only module imported into hosted demo route
-import { toolDefinitions as demoTools } from "../../../examples/minimal-executor/executor.mjs";
+import asyncCountdownTemplate from "../pages/sandbox-templates/async-countdown.html?raw";
+import homePageTemplate from "../pages/sandbox-templates/minimal-executor.html?raw";
+import pinnedToolTemplate from "../pages/sandbox-templates/pinned-tool.html?raw";
+import {
+  executeToolCall as executeCountdownToolCall,
+  getCountdownsForUser,
+  markCountdownComplete,
+} from "./demo-executors/async-countdown";
+import {
+  executeToolCall as executePinnedToolCall,
+  getToolEntriesForUser,
+} from "./demo-executors/pinned-tool";
+import {
+  asyncCountdownTools,
+  pinnedToolTools,
+  minimalExecutorTools as demoTools,
+} from "./demo-executors/manifests";
 import {
   handleProviderConversationInput,
   syncProviderTools,
@@ -43,10 +51,7 @@ const pinnedToolDeliveredChannelMessages = new Map<string, Array<Record<string, 
 const buildSyncBody = (userId: string) => ({
   integration_id: DEMO_EXECUTOR_ID,
   user_id: userId,
-  tools: demoTools.map((tool: Record<string, unknown>) => ({
-    ...tool,
-    status: "active" as const,
-  })),
+  tools: demoTools,
 });
 
 const buildInputBody = (userId: string, text: string, threadId?: string | null) => ({
@@ -94,19 +99,13 @@ const renderPinnedToolPage = (origin: string) =>
 const buildCountdownSyncBody = (userId: string) => ({
   integration_id: COUNTDOWN_EXECUTOR_ID,
   user_id: userId,
-  tools: asyncCountdownTools.map((tool: Record<string, unknown>) => ({
-    ...tool,
-    status: "active" as const,
-  })),
+  tools: asyncCountdownTools,
 });
 
 const buildPinnedToolSyncBody = (userId: string) => ({
   integration_id: PINNED_TOOL_EXECUTOR_ID,
   user_id: userId,
-  tools: pinnedToolTools.map((tool: Record<string, unknown>) => ({
-    ...tool,
-    status: "active" as const,
-  })),
+  tools: pinnedToolTools,
 });
 
 const buildCountdownInputBody = (userId: string, text: string, threadId?: string | null) => ({
@@ -475,6 +474,46 @@ export const providerDemoRoutes = [
         : {}),
     });
   }),
+  route("/sandbox/demo-executor/reset", async ({ request }) => {
+    if (request.method !== "POST") {
+      return Response.json(
+        {
+          error: {
+            code: "method_not_allowed",
+            message: "Method not allowed.",
+          },
+        },
+        { status: 405 },
+      );
+    }
+
+    const authorization = request.headers.get("Authorization") || "";
+    const token = authorization.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : "";
+
+    if (!token || token !== DEMO_TOKEN) {
+      return unauthorized();
+    }
+
+    try {
+      const body = (await request.json()) as { user_id?: string } | undefined;
+      const userId = String(body?.user_id || DEMO_USER_ID).trim();
+      await resetProviderUserContext({ providerId: DEMO_EXECUTOR_ID, userId });
+      return Response.json({ ok: true, reset: true });
+    } catch (error) {
+      return Response.json(
+        {
+          ok: false,
+          error: {
+            code: "reset_failed",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        },
+        { status: 502 },
+      );
+    }
+  }),
   route("/sandbox/async-countdown", async ({ request, rw }) => {
     if (request.method !== "GET") {
       return Response.json(
@@ -667,7 +706,7 @@ export const providerDemoRoutes = [
           ).trim()
         : "";
 
-    if (callbackUrl && (result.state === "accepted" || result.state === "in_progress")) {
+    if (callbackUrl && result.state === "accepted") {
       const executionId = String(payload.execution_id || "").trim();
       const userId = String(payload.user_id || DEMO_USER_ID).trim();
       const threadId = String(payload.thread_id || "").trim();

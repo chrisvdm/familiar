@@ -40,10 +40,6 @@ The project is currently an MVP in progress. The core shape is in place but the 
 ├── packages/
 │   ├── sdk/                    # TypeScript SDK for the familiar API (`familiar-sdk`)
 │   └── cli/                    # CLI tool for account management, tool sync, tunnels (`familiar-cli`)
-├── examples/
-│   ├── minimal-executor/       # Smallest useful executor example
-│   ├── async-countdown/        # Async callback / executor webhook example
-│   └── pinned-tool/            # Tool shortcut invocation example (`@tool-name` syntax)
 ├── types/                      # Additional TypeScript declarations (env, vite, rw, css)
 ├── scripts/                    # Utility scripts (memory reset, release deployment)
 ├── public/                     # Static assets (SVG logos, favicons)
@@ -256,12 +252,12 @@ Commands: `init`, `login`, `account create`, `whoami`, `set-key`, `tools sync`, 
 
 Reads config from `~/.familiar/config.json` and `.dev.vars` in the current directory.
 
-## Examples
+## Sandbox Demos
 
-Three working executor examples live under `examples/`:
+Three live demos are hosted at `/sandbox/*`:
 
-- `minimal-executor/` — basic tool sync + todo list demo
-- `async-countdown/` — returns `accepted` immediately, callbacks later via executor webhook
-- `pinned-tool/` — `@tool-name` shortcut syntax for explicit single-message tool invocation
+- `/sandbox/demo-executor` — basic tool sync + todo list demo
+- `/sandbox/async-countdown` — returns `accepted` immediately, callbacks later via executor webhook
+- `/sandbox/pinned-tool` — `@tool-name` shortcut syntax for explicit single-message tool invocation
 
-Each example includes its own `server.mjs`, `executor.mjs`, `familiar.json`, and `index.html`.
+The demo executor logic lives in `src/app/provider/demo-executors/`.
