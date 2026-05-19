@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DemoMessage = {
   role: "user" | "assistant";
@@ -13,15 +13,50 @@ export type DemoTodo = {
   created_at: string;
 };
 
+export type DemoCountdown = {
+  execution_id: string;
+  status: "running" | "completed";
+  started_at: string;
+  completes_at: string;
+  completed_at: string | null;
+  seconds_remaining: number;
+  completion_message: string;
+};
+
 const DEMO_TOKEN = "dev-token";
 const DEMO_USER_ID = "demo_user";
 
 export const useLiveDemo = () => {
   const [messages, setMessages] = useState<DemoMessage[]>([]);
   const [todos, setTodos] = useState<DemoTodo[]>([]);
+  const [countdowns, setCountdowns] = useState<DemoCountdown[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchCountdowns = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/sandbox/async-countdown/playground/texty?token=${DEMO_TOKEN}&user_id=${DEMO_USER_ID}`,
+        { method: "GET" },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (payload.ok && Array.isArray(payload.countdowns)) {
+        setCountdowns(payload.countdowns as DemoCountdown[]);
+      }
+    } catch {
+      // silently ignore polling errors
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCountdowns();
+    pollRef.current = setInterval(fetchCountdowns, 1000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchCountdowns]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -85,6 +120,32 @@ export const useLiveDemo = () => {
     [isLoading, threadId],
   );
 
+  const startCountdown = useCallback(async () => {
+    try {
+      const executionId = crypto.randomUUID();
+      await fetch("/sandbox/async-countdown/tools/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${DEMO_TOKEN}`,
+        },
+        body: JSON.stringify({
+          tool_name: "countdown.start",
+          user_id: DEMO_USER_ID,
+          execution_id: executionId,
+          arguments: { duration_seconds: 10 },
+          context: {
+            executor_result_webhook_url: `${window.location.origin}/sandbox/async-countdown/channels/messages`,
+            channel: { type: "web", id: "async-countdown-playground" },
+          },
+        }),
+      });
+      await fetchCountdowns();
+    } catch {
+      // best effort
+    }
+  }, [fetchCountdowns]);
+
   const resetDemo = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -99,7 +160,7 @@ export const useLiveDemo = () => {
         body: JSON.stringify({ user_id: DEMO_USER_ID }),
       });
     } catch {
-      // best effort — even if reset fails, clear local state
+      // best effort
     }
 
     setMessages([]);
@@ -111,9 +172,11 @@ export const useLiveDemo = () => {
   return {
     messages,
     todos,
+    countdowns,
     isLoading,
     error,
     sendMessage,
+    startCountdown,
     resetDemo,
   };
 };

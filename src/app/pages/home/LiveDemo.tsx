@@ -7,7 +7,8 @@ import Code from "@/app/components/Code/Code";
 import { useLiveDemo } from "./useLiveDemo";
 
 const LiveDemo = () => {
-  const { messages, todos, isLoading, sendMessage, resetDemo } = useLiveDemo();
+  const { messages, todos, countdowns, isLoading, sendMessage, startCountdown, resetDemo } =
+    useLiveDemo();
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,14 +44,15 @@ const LiveDemo = () => {
       <div className="live-demo bg--primary flex--column">
         <div className="flex--row flex--1">
           {/* Chat history */}
-          <div className="chat-history border-right flex--1 padding--small">
+          <div
+            className="chat-history border-right flex--1 padding--small"
+            style={{ minHeight: 0, overflowY: "auto" }}
+          >
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
                 gap: "0.75rem",
-                height: "100%",
-                overflowY: "auto",
               }}
             >
               {messages.length === 0 && (
@@ -129,9 +131,33 @@ const LiveDemo = () => {
               </li>
               {open === "countDown" && (
                 <div className="accordian__item__content padding--small border-radius">
-                  <p className="text--muted" style={{ margin: 0, fontStyle: "italic" }}>
-                    No countdowns running.
-                  </p>
+                  {countdowns.length === 0 ? (
+                    <div>
+                      <p className="text--muted" style={{ margin: 0, fontStyle: "italic" }}>
+                        No countdowns running.
+                      </p>
+                      <button
+                        className="button padding--small"
+                        style={{ marginTop: "0.5rem" }}
+                        onClick={startCountdown}
+                      >
+                        Start 10s countdown
+                      </button>
+                    </div>
+                  ) : (
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                      {countdowns.map((cd) => (
+                        <li key={cd.execution_id} className="padding--small">
+                          <span>
+                            {cd.status === "running" ? "⏱" : "✅"} {" "}
+                            {cd.status === "running"
+                              ? `${cd.seconds_remaining}s…`
+                              : cd.completion_message}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
 
