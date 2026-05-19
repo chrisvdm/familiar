@@ -4,6 +4,10 @@ import { useRef, useEffect, useState } from "react";
 
 import Section from "@/app/components/Section/Section";
 import Code from "@/app/components/Code/Code";
+import {
+  asyncCountdownTools,
+  minimalExecutorTools,
+} from "@/app/provider/demo-executors/manifests";
 import { useLiveDemo } from "./useLiveDemo";
 
 const LiveDemo = () => {
@@ -171,22 +175,7 @@ const LiveDemo = () => {
               </li>
               {open === "json" && (
                 <div className="accordian__item__content padding--small border-radius">
-                  <Code>{`[
-  {
-    "tool_name": "todos.add",
-    "description": "Add items to a todo list",
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "todo_items": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      },
-      "required": ["todo_items"]
-    }
-  }
-]`}</Code>
+                  <Code>{JSON.stringify([...minimalExecutorTools, ...asyncCountdownTools], null, 2)}</Code>
                 </div>
               )}
             </ul>
