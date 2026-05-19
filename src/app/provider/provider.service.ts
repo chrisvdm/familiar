@@ -407,8 +407,10 @@ const buildDirectReplyStream = async function* ({
 }): AsyncGenerator<string, void, unknown> {
   const apiKey = aiApiKey || env.OPENROUTER_API_KEY;
 
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured.");
+  if (!apiKey || apiKey === "your_openrouter_key") {
+    throw new Error(
+      "OPENROUTER_API_KEY is not configured. Add your real key to .dev.vars (copy from .dev.vars.example and replace 'your_openrouter_key').",
+    );
   }
 
   yield* callOpenRouterStream({
@@ -681,8 +683,10 @@ const callOpenRouter = async ({
 }) => {
   const apiKey = aiApiKey || env.OPENROUTER_API_KEY;
 
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured.");
+  if (!apiKey || apiKey === "your_openrouter_key") {
+    throw new Error(
+      "OPENROUTER_API_KEY is not configured. Add your real key to .dev.vars (copy from .dev.vars.example and replace 'your_openrouter_key').",
+    );
   }
 
   const content = await callOpenRouterClient({
