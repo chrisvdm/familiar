@@ -98,7 +98,10 @@ const LiveDemo = () => {
           </div>
 
           {/* Workpanel with accordions */}
-          <div className="workpanel width--3 padding--small">
+          <div
+            className="workpanel width--3 padding--small"
+            style={{ overflowY: "auto", minHeight: 0 }}
+          >
             <ul className="accordian flex--gap padding--small">
               <h4>Tools</h4>
 
