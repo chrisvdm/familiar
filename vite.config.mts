@@ -17,4 +17,11 @@ export default defineConfig({
       exclude: ["node:process", "@cloudflare/unenv-preset"],
     },
   },
+  environments: {
+    worker: {
+      optimizeDeps: {
+        exclude: ["node:process", "@cloudflare/unenv-preset"],
+      },
+    },
+  },
 });
