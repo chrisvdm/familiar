@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 
 import { DEFAULT_MODEL } from "../chat/conversation.runtime";
-import { createEmptyGlobalMemory } from "../chat/shared";
+import { createEmptyGlobalMemory, normalizeGlobalMemory } from "../chat/shared";
 import type { ProviderUserContext } from "./provider.types";
 
 type ProviderUserContextStub = {
@@ -75,7 +75,14 @@ export const loadProviderUserContext = async ({
     return null;
   }
 
-  return result.value as ProviderUserContext;
+  const context = result.value as ProviderUserContext;
+
+  // Normalize globalMemory to handle schema migrations (e.g. missing aspirations field)
+  if (context.globalMemory) {
+    context.globalMemory = normalizeGlobalMemory(context.globalMemory);
+  }
+
+  return context;
 };
 
 export const loadOrCreateProviderUserContext = async ({
