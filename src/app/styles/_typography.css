@@ -10,6 +10,9 @@ body {
     color: var(--secondary);
     padding: var(--s-space);
     border-radius: 2px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .footer {

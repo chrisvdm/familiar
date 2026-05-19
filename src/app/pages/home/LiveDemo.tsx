@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 import Section from "@/app/components/Section/Section";
 import Code from "@/app/components/Code/Code";
@@ -80,7 +81,39 @@ const LiveDemo = () => {
                     overflowWrap: "break-word",
                   }}
                 >
-                  <p style={{ margin: 0 }}>{message.content}</p>
+                  {message.role === "user" ? (
+                    <p style={{ margin: 0 }}>{message.content}</p>
+                  ) : (
+                    <div
+                      className="markdown-body"
+                      style={{
+                        fontSize: "12px",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => (
+                            <p style={{ margin: "0 0 0.5em 0" }}>{children}</p>
+                          ),
+                          ul: ({ children }) => (
+                            <ul style={{ margin: "0 0 0.5em 0", paddingLeft: "1.2em" }}>{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol style={{ margin: "0 0 0.5em 0", paddingLeft: "1.2em" }}>{children}</ol>
+                          ),
+                          li: ({ children }) => (
+                            <li style={{ margin: "0.15em 0" }}>{children}</li>
+                          ),
+                          strong: ({ children }) => (
+                            <strong style={{ color: "var(--action-intense)" }}>{children}</strong>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               ))}
 
