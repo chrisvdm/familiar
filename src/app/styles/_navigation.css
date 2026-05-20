@@ -1,7 +1,10 @@
 .public-nav {
     position: fixed;
     top: 0;
+    width: 100%;
     max-width: 1024px;
     background-color: var(--trans-bg);
     padding: var(--xs-space) 0;
+    left: 0;
+    right: 0;
 }

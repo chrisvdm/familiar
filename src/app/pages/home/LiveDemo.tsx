@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import Section from "@/app/components/Section/Section";
@@ -12,8 +12,6 @@ const LiveDemo = () => {
   const { messages, todos, isLoading, sendMessage, resetDemo } = useLiveDemo();
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const handleAccordianClick = (item = "") => {
     const newItem = item === open ? "" : item;
     setOpen(newItem);
@@ -32,12 +30,8 @@ const LiveDemo = () => {
     }
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   return (
-    <Section title="Live Demo" id="live-demo">
+    <Section title="Live Demo">
       <p>
         This demo connects up with the <code>todoList</code> tool.
       </p>
@@ -121,7 +115,7 @@ const LiveDemo = () => {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+
             </div>
           </div>
 

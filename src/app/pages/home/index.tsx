@@ -5,7 +5,6 @@ import Navigation from "./Navigation";
 import Section from "@/app/components/Section/Section";
 import Grid from "@/app/components/Grid/Grid"
 import Code from "@/app/components/Code/Code"
-
 import LiveDemo from "./LiveDemo";
 
 const FIXES = [
@@ -97,8 +96,8 @@ export const Home = () => (
                 Receives text, picks the tool, calls your code, stores what
                 happened, replies where you are
               </p>
-              <img className="margin-top--xl" src='img02.svg' alt="diagram explaining familiar flow"/>
-             <img src='img03.svg'/>
+              <img className="img margin-top--xl" src='img02.svg' alt="diagram explaining familiar flow"/>
+             <img className="img" src='img03.svg'/>
             </div>
           </article>
         </div>

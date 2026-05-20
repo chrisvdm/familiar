@@ -78,6 +78,12 @@ cloudflared tunnel --url http://localhost:8787
 Then register the generated URL:
 
 ```shell
+familiar set-url https://your-tunnel-url.trycloudflare.com
+```
+
+Or use curl directly:
+
+```shell
 curl -X PATCH https://familiar.monster/api/v1/integration \
   -H "Authorization: Bearer fam_your_token" \
   -H "Content-Type: application/json" \

@@ -24,7 +24,7 @@ const Hero = () => {
               arguments, automatically).
             </p>
 
-            <div className="margin-top--xl">
+            <div className="margin-top--xl mobile--hidden">
                 <span className="section-kicker">Get started</span>
                 <Code>{`npx familiar-cli init`}</Code>
                 <span>Or via API:</span>
@@ -32,10 +32,16 @@ const Hero = () => {
             </div>
             </div>
             
-            <img src="/img01.svg" alt="drawing of a person texting their tools"/>
+            <img className="hero__img" src="/img01.svg" alt="drawing of a person texting their tools"/>
             
             
           </div>
+        <div className="margin-top--xl mobile--only">
+                <span className="section-kicker">Get started</span>
+                <Code>{`npx familiar-cli init`}</Code>
+                <span>Or via API:</span>
+                <Code>{`curl -X POST https://familiar.monster/api/v1/accounts`}</Code>
+            </div>
         </div>
       </header>
     )

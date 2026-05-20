@@ -118,6 +118,22 @@ Advanced shorthand:
 
 This means the explicit-invocation rule is message-scoped, not thread-scoped.
 
+## Memory policy
+
+A memory policy controls how much stored memory *familiar* retrieves before each turn. It does not affect whether memory is captured — all non-private conversations are captured by default.
+
+The policy is stored per user and defaults to `provider_user`.
+
+| Mode | Retrieval behavior |
+|---|---|
+| `none` | No durable shared memory. Only the current request and thread-local context. |
+| `thread` | Only thread-local memory. Cross-thread memory is blocked. |
+| `provider_user` | **Default.** Full user-scoped global memory across all threads. |
+| `custom_scope` | Retrieves memory under an explicit scope ID (for cross-integration sharing). |
+| `external` | The integration supplies memory via `context.external_memories` in the input payload. *familiar* does not retrieve its own memory. |
+
+Memory policy is set internally and cannot be changed through the public API today.
+
 > [!NOTE]
 > **Terminology**
 >

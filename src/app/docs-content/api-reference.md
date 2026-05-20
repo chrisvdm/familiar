@@ -457,12 +457,18 @@ Use this when:
 
 - you want to inspect what *familiar* remembers across normal conversations
 
+Token-scoped shortcut:
+
+```text
+GET /api/v1/users/:user_id/memory
+```
+
 ## Read thread memory
 
 Endpoint:
 
 ```text
-GET /api/v1/threads/:thread_id/memory
+GET /api/v1/threads/:thread_id/memory?user_id=:user_id
 ```
 
 Read memory for one specific thread.
@@ -471,6 +477,8 @@ Use this when:
 
 - you want to inspect thread-local context
 - you are debugging how *familiar* is carrying a task forward
+
+`user_id` is a required query parameter.
 
 ## Receive async executor results
 
@@ -628,6 +636,191 @@ Example payload:
 
 > [!NOTE]
 > Channel delivery should target one concrete channel, not broadcast to all channels by default.
+
+## Get account usage
+
+Endpoint:
+
+```text
+GET /api/v1/account/usage
+```
+
+Read usage and plan information for the current token's account.
+
+Example response:
+
+```json
+{
+  "account_id": "acct_123",
+  "plan": "free",
+  "action_count": 42,
+  "free_actions_used": 42,
+  "free_actions_remaining": 0
+}
+```
+
+## Get integration status
+
+Endpoint:
+
+```text
+GET /api/v1/integration/status
+```
+
+Returns the integration config plus account plan, action counts, and runtime statistics.
+
+Example response:
+
+```json
+{
+  "integration": {
+    "id": "setup_123",
+    "base_url": "https://executor.example",
+    "ai_api_key_set": true,
+    "ai_api_key_prefix": "sk-or-v1",
+    "created_at": "2026-03-25T10:00:00.000Z",
+    "updated_at": "2026-03-25T10:05:00.000Z"
+  },
+  "account": {
+    "id": "acct_123",
+    "plan": "free",
+    "action_count": 42,
+    "free_actions_used": 42,
+    "free_actions_remaining": 0
+  },
+  "runtime": {
+    "tool_count": 5,
+    "thread_count": 12
+  }
+}
+```
+
+## Get integration health
+
+Endpoint:
+
+```text
+GET /api/v1/integration/health
+```
+
+Returns a health summary for the current integration, including tool counts, executor failure rates, and callback activity from the last 24 hours.
+
+Example response:
+
+```json
+{
+  "integration": { "id": "setup_123", "configured": true },
+  "executor": { "base_url_configured": true, "recent_failures": 0 },
+  "tools": { "count": 5, "active": 4 },
+  "callbacks": { "recent_activity": true, "recent_count": 3 },
+  "delivery": { "recent_failures": 0 },
+  "overall": "healthy"
+}
+```
+
+## Get configured models
+
+Endpoint:
+
+```text
+GET /api/v1/models
+```
+
+Returns the AI model configuration for the current *familiar* deployment, including routing mode and per-stage model assignments.
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "routing_mode": "openrouter",
+  "models": {
+    "reply": { "value": "openai/gpt-4o-mini", "source": "env" },
+    "routing": { "value": "openai/gpt-4o-mini", "source": "env" },
+    "extraction": { "value": "openai/gpt-4o-mini", "source": "default" },
+    "memory_selector": { "value": "openai/gpt-4o-mini", "source": "default" },
+    "synthesis": { "value": "openai/gpt-4o-mini", "source": "default" }
+  }
+}
+```
+
+## Stream a response
+
+Endpoint:
+
+```text
+POST /api/v1/input/stream
+```
+
+Send a conversation turn and receive the assistant response as a Server-Sent Events stream.
+
+The request body is identical to `POST /api/v1/input`. The response is `text/event-stream` where each line is `data: {"type":"chunk","content":"..."}`.
+
+## Simulate a turn
+
+Endpoint:
+
+```text
+POST /api/v1/input/simulate
+```
+
+Preview what *familiar* would do without persisting messages, updating memory, or calling the executor.
+
+The request body is identical to `POST /api/v1/input`. The response includes the assistant's intended action, reasoning, and whether a tool would be called.
+
+Example response:
+
+```json
+{
+  "thread_id": "thread_abc",
+  "simulated": true,
+  "response": {
+    "type": "tool_call",
+    "content": "[Simulated] Would execute spreadsheet.update_row with arguments: {...}",
+    "reasoning": "The user wants to update a spreadsheet row.",
+    "task_status": "simulated"
+  },
+  "execution": {
+    "state": "simulated",
+    "execution_id": null
+  },
+  "model": "openai/gpt-4o-mini"
+}
+```
+
+## Query audit events
+
+Endpoint:
+
+```text
+GET /api/v1/audit/events
+```
+
+Query the audit log for the current token's integration.
+
+Query parameters:
+
+| Parameter | Description |
+|---|---|
+| `status` | Filter by `"ok"` or `"error"` |
+| `event` | Filter by event name |
+| `request_id` | Filter by request ID |
+| `limit` | Max events to return (default 50, max 100) |
+
+Example response:
+
+```json
+{
+  "events": [
+    {
+      "event": "provider.tool.executed",
+      "request_id": "req_123",
+      "status": "ok",
+      "at": "2026-05-10T08:00:00.000Z"
+    }
+  ]
+}
+```
 
 ## Status codes
 

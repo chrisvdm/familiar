@@ -14,6 +14,8 @@
 
 @import './_forms.css';
 
+@import './_images.css';
+
 @import './_dashboard.css';
 
 @import './_contact.css';
@@ -25,3 +27,5 @@
 @import './_live-demo.css';
 
 @import './_docs.css';
+
+@import './_mobile.css';

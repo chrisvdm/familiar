@@ -134,6 +134,18 @@ familiar set-key sk-or-v1-your_openrouter_key
 
 Only OpenRouter keys are accepted. The key must start with `sk-or-v1-`.
 
+### `familiar set-url <url>`
+
+Set the executor base URL for the current project integration.
+
+Reads `FAMILIAR_TOKEN` from `.dev.vars` in the current directory.
+
+```shell
+familiar set-url https://your-executor.example.com
+```
+
+This is an alternative to using `familiar portal` when you already have a public URL.
+
 ### `familiar tools sync`
 
 Sync tools from a JSON file. Defaults to `familiar.tools.json` in the current directory.
@@ -154,6 +166,16 @@ familiar portal --port 8787
 ```
 
 Reads `FAMILIAR_TOKEN` from `.dev.vars` in the current directory.
+
+### `familiar models`
+
+Show which AI models are configured for the current *familiar* deployment.
+
+```shell
+familiar models
+```
+
+Outputs a table of routing mode and per-stage model assignments (reply, routing, extraction, memory selector, synthesis).
 
 ### `familiar account show` / `familiar whoami`
 

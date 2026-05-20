@@ -75,6 +75,40 @@ const result = await familiar.input({
 });
 ```
 
+## Simulate a turn
+
+Preview what *familiar* would do without persisting anything:
+
+```typescript
+const result = await familiar.simulate({
+  text: "Update the client spreadsheet",
+  channel: { type: "web", id: "session_abc" },
+});
+
+// result.response.type — "direct_reply", "clarification", or "tool_call"
+// result.response.content — the assistant message that would be sent
+// result.response.reasoning — why familiar chose this action
+// result.model — which model made the decision
+```
+
+## Stream a response
+
+Receive the assistant response as an SSE stream, event by event:
+
+```typescript
+for await (const event of familiar.inputStream({
+  text: "Tell me a story",
+  channel: { type: "web", id: "session_abc" },
+})) {
+  if (event.type === "chunk") {
+    process.stdout.write(event.content);
+  }
+  if (event.type === "done") {
+    console.log("\n[done]");
+  }
+}
+```
+
 ## Sync tools
 
 Tell *familiar* which tools the current integration should use:
@@ -108,6 +142,17 @@ await familiar.input({
 });
 ```
 
+## Check integration health
+
+```typescript
+const health = await familiar.tools.health();
+
+console.log(health.overall); // "healthy", "warning", or "degraded"
+console.log(health.tools.count);     // total synced tools
+console.log(health.tools.active);    // active tools
+console.log(health.executor.recent_failures); // executor failures in last 24h
+```
+
 ## Inspect and update the integration
 
 ```typescript
@@ -124,6 +169,69 @@ await familiar.integration.update({
 // Clear the executor URL
 await familiar.integration.update({
   baseUrl: null,
+});
+```
+
+## Get integration status and account usage
+
+```typescript
+const status = await familiar.integration.status();
+
+console.log(status.account.plan);                  // "free" or "paid"
+console.log(status.account.actionCount);           // total actions used
+console.log(status.account.freeActionsRemaining);  // remaining free actions
+console.log(status.runtime.toolCount);             // synced tools
+console.log(status.runtime.threadCount);           // active threads
+```
+
+## Read memory
+
+```typescript
+// Shared user memory
+const { memory } = await familiar.memory.getUserMemory({ userId: "default" });
+
+// Thread-local memory
+const { memory } = await familiar.memory.getThreadMemory({ threadId: "thread_abc" });
+```
+
+## Manage threads
+
+```typescript
+// List threads
+const { threads } = await familiar.threads.list();
+
+// Create a thread
+const { threadId } = await familiar.threads.create({
+  title: "Q2 planning",
+  channel: { type: "web", id: "session_abc" },
+});
+
+// Create a private thread
+const { threadId } = await familiar.threads.create({
+  title: "Private session",
+  channel: { type: "web", id: "session_abc" },
+  isPrivate: true,
+});
+
+// Rename a thread
+await familiar.threads.update({
+  threadId: "thread_abc",
+  title: "New title",
+});
+
+// Delete a thread
+await familiar.threads.delete({ threadId: "thread_abc" });
+```
+
+## Query audit events
+
+```typescript
+const { events } = await familiar.audit.events({ limit: 20 });
+
+// Filter by status or event type
+const { events: errors } = await familiar.audit.events({
+  status: "error",
+  limit: 10,
 });
 ```
 
@@ -198,7 +306,7 @@ Send a conversation turn. Returns `InputResult`.
 
 Sync the tool set for the current token-backed integration. Returns `{ syncedTools, status }`.
 
-### Get current integration config 
+### Get current integration config
 `familiar.integration.get()`
 
 Get the current integration configuration. Returns `Integration`.
@@ -207,6 +315,71 @@ Get the current integration configuration. Returns `Integration`.
 `familiar.integration.update({ aiApiKey?, baseUrl? })`
 
 Update the AI provider key or executor base URL. Pass `null` to clear a value. Returns `Integration`.
+
+### Get integration status and account usage
+`familiar.integration.status()`
+
+Returns integration config plus account plan, action counts, and runtime stats (tool count, thread count).
+
+### Simulate a turn
+`familiar.simulate({ text, channel, userId?, threadId?, integrationId?, tools? })`
+
+Preview what *familiar* would do without persisting anything. Returns `SimulateInputResult`.
+
+### Stream a response
+`familiar.inputStream({ text, channel, userId?, threadId?, integrationId?, tools? })`
+
+Receive the assistant response as an async generator of SSE events. Yields `InputStreamEvent`.
+
+### Check integration health
+`familiar.tools.health()`
+
+Returns integration health including tool counts, executor failure rates, and overall status.
+
+### Get account details
+`familiar.account.get()`
+
+Returns account and token metadata for the current token.
+
+### Get account usage
+`familiar.account.usage()`
+
+Returns plan, action count, and free tier usage.
+
+### Read shared memory
+`familiar.memory.getUserMemory({ userId? })`
+
+Returns the shared memory string for a user. Defaults to `"default"`.
+
+### Read thread memory
+`familiar.memory.getThreadMemory({ threadId })`
+
+Returns the thread-local memory string for a specific thread.
+
+### List threads
+`familiar.threads.list({ userId? })`
+
+Returns a list of threads. Defaults to `"default"` user.
+
+### Create a thread
+`familiar.threads.create({ title?, isPrivate?, channel, userId?, integrationId? })`
+
+Creates a new thread. Returns `{ threadId, title, isPrivate, status }`.
+
+### Rename a thread
+`familiar.threads.update({ threadId, title, userId?, integrationId? })`
+
+Updates a thread's title.
+
+### Delete a thread
+`familiar.threads.delete({ threadId, userId?, integrationId? })`
+
+Deletes a thread and its associated memory.
+
+### Query audit events
+`familiar.audit.events({ status?, event?, requestId?, limit? })`
+
+Returns audit log events with optional filters.
 
 ## Types
 
@@ -242,6 +415,23 @@ type InputResult = {
   };
 };
 
+type SimulateInputResult = {
+  threadId: string;
+  integrationId?: string;
+  simulated: true;
+  response: {
+    type: string;
+    content: string;
+    reasoning: string | null;
+    task_status: string | null;
+  };
+  execution: {
+    state: string | null;
+    execution_id: string | null;
+  } | null;
+  model: string;
+};
+
 type Integration = {
   id: string;
   aiApiKeySet: boolean;
@@ -249,5 +439,46 @@ type Integration = {
   baseUrl: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type IntegrationStatus = {
+  integration: Integration;
+  account: {
+    id: string;
+    plan: "free" | "paid";
+    actionCount: number;
+    freeActionsUsed: number;
+    freeActionsRemaining: number | null;
+  };
+  runtime: {
+    toolCount: number;
+    threadCount: number;
+  };
+};
+
+type IntegrationHealth = {
+  integration: { id: string; configured: boolean };
+  executor: { base_url_configured: boolean; recent_failures: number };
+  tools: { count: number; active: number };
+  callbacks: { recent_activity: boolean; recent_count: number };
+  delivery: { recent_failures: number };
+  overall: "healthy" | "warning" | "degraded";
+};
+
+type Thread = {
+  threadId: string;
+  title: string;
+  isPrivate: boolean;
+  updatedAt: string;
+};
+
+type AuditEvent = {
+  event: string;
+  requestId?: string;
+  status?: "ok" | "error";
+  code?: string;
+  detail?: string;
+  metadata?: Record<string, unknown>;
+  at: string;
 };
 ```

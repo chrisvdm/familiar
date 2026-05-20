@@ -2,6 +2,70 @@
 
 *familiar* handles memory retrieval and storage through a pluggable backend interface. The default behavior requires no configuration. Developers who need a richer or external memory store can swap the backend.
 
+## Memory settings
+
+### Private threads
+
+Create a private thread when you want a conversation that stays completely local. Private threads keep their own transcript and thread-local memory, but they do **not** write into shared user memory and do not contribute to cross-thread recall.
+
+To create a private thread, send `is_private: true` when creating the thread:
+
+```json
+POST /api/v1/threads
+{
+  "title": "Sensitive planning",
+  "channel": { "type": "web", "id": "browser_session_abc" },
+  "is_private": true
+}
+```
+
+Then pass the returned `thread_id` on subsequent input calls.
+
+### Inspect memory
+
+You can read what *familiar* remembers through the API or the SDK.
+
+**Read shared user memory:**
+
+```text
+GET /api/v1/users/:user_id/memory
+```
+
+**Read thread-local memory:**
+
+```text
+GET /api/v1/threads/:thread_id/memory?user_id=:user_id
+```
+
+SDK equivalents:
+
+```typescript
+// Shared memory
+const { memory } = await familiar.memory.getUserMemory({ userId: "default" });
+
+// Thread memory
+const { memory } = await familiar.memory.getThreadMemory({ threadId: "thread_abc" });
+```
+
+> [!NOTE]
+> Memory is read-only through the public API. There is no endpoint to edit or delete individual memory facts.
+
+### Memory policy modes
+
+*familiar* retrieves memory based on a policy mode stored per user. The default mode is `provider_user`, which means full cross-thread memory is retrieved for every turn.
+
+The supported modes are:
+
+| Mode | Behavior |
+|---|---|
+| `none` | No durable shared memory. Only the current request and thread-local context. |
+| `thread` | Only thread-local memory. Cross-thread memory is blocked. |
+| `provider_user` | **Default.** Full user-scoped global memory across all threads. |
+| `custom_scope` | Retrieves memory under an explicit scope ID (for cross-integration sharing). |
+| `external` | *familiar* does not retrieve its own memory. The integration supplies `external_memories` in the input payload. |
+
+Memory policy is set internally and cannot be changed through the public API today.
+
 ## How it works
 
 Every conversation turn runs two memory operations:
