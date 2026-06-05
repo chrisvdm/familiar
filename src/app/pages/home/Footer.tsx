@@ -3,7 +3,7 @@ const Footer = () => {
     return (
         <footer className="footer margin-top--xl border-top padding-top--xl">
         
-        <div className="flex--row flex--space-between width-100">
+        <div className="flex--row flex--space-between width-100 footer-inner">
             <div>
                 <FamiliarName height={24} width={75}/>
                 <p className="footer-copy">
@@ -11,7 +11,7 @@ const Footer = () => {
                 </p>
             </div>
 
-            <div className="flex--row flex--gap-s">
+            <div className="flex--row flex--gap-s footer-links">
                 <a href="/contact">Contact</a>
                 <a href="/docs">Docs</a>
                 <a href="/setup">Setup</a>

@@ -5,6 +5,7 @@ import { defaultDoc } from "@/app/docs/content";
 import DocsNav from "./DocsNav";
 import DocsHeader from "./DocsHeader"
 import PageSections from "./PageSections";
+import { DocsMobileSidebar } from "./DocsMobileSidebar";
 
 export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   const pathname = requestInfo
@@ -19,10 +20,10 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   return (
 <div className="width--12"> 
       <section className="docs-layout flex--row">
-        <aside className="docs-sidebar padding--medium border-right">
+        <DocsMobileSidebar>
           <DocsHeader/>
           <DocsNav activeSlug={activeSlug}/>
-        </aside>
+        </DocsMobileSidebar>
         
 
         <article className="docs-main padding--large">{children}</article>

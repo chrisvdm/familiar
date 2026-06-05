@@ -177,12 +177,14 @@ const LiveDemo = () => {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
+            placeholder="Type a message…"
           />
           <div className="button-group">
             <button
               className="button padding--small"
               onClick={handleSend}
               disabled={isLoading || !inputValue.trim()}
+              type="button"
             >
               send
             </button>
@@ -190,6 +192,7 @@ const LiveDemo = () => {
               className="button padding--small"
               onClick={resetDemo}
               disabled={isLoading}
+              type="button"
             >
               clear memory
             </button>

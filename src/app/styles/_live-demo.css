@@ -18,6 +18,7 @@
 
 .accordian__item {
     margin-top: var(--s-space);
+    padding: var(--xs-space) 0;
 }
 
 .accordian__item,
@@ -29,7 +30,7 @@
 .accordian__item code:hover {
     cursor: pointer;
     color: var(--action) !important;
-} 
+}
 
 .accordian__item__content {
     margin-top: var(--xs-space);
