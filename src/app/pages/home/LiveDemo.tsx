@@ -37,7 +37,7 @@ const LiveDemo = () => {
       </p>
 
       <div className="live-demo bg--primary flex--column">
-        <div className="flex--row flex--1">
+        <div className="live-demo__panels flex--row flex--1">
           {/* Chat history */}
           <div
             className="chat-history border-right flex--1 padding--small"

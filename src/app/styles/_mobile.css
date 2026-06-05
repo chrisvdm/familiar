@@ -43,9 +43,13 @@
         display: block;
     }
 
-    .workpanel {
-        display: none;
-    }
+   .live-demo__panels {
+        flex-direction: column;
+   }
+
+   .workpanel {
+        border-top: 1px solid var(--accent);
+   }
 
      .docs-nav {
         display: none;
