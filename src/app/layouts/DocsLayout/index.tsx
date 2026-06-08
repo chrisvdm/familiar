@@ -5,7 +5,6 @@ import { defaultDoc } from "@/app/docs/content";
 import DocsNav from "./DocsNav";
 import DocsHeader from "./DocsHeader"
 import PageSections from "./PageSections";
-import { DocsMobileHeader } from "./DocsMobileHeader";
 
 export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   const pathname = requestInfo
@@ -17,16 +16,29 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   const activeSlug =
     pathname.replace(/^\/docs\/?/, "").split("/")[0] || defaultDoc?.slug || "";
 
+  const nav = <DocsNav activeSlug={activeSlug} />;
+
   return (
 <div className="width--12"> 
       <section className="docs-layout flex--row">
-        <DocsMobileHeader>
-          <div className="docs-header-desktop mobile--hidden">
-            <DocsHeader/>
-          </div>
-          <DocsNav activeSlug={activeSlug}/>
-        </DocsMobileHeader>
-        
+        {/* Mobile: fixed header with collapsible details */}
+        <div className="docs-header-mobile mobile--only">
+          <DocsHeader />
+          <details className="docs-mobile-details">
+            <summary className="docs-mobile-toggle" aria-label="Toggle documentation navigation">
+              <span>☰</span>
+            </summary>
+            <div className="docs-sidebar docs-sidebar--mobile padding--medium border-right">
+              {nav}
+            </div>
+          </details>
+        </div>
+
+        {/* Desktop: sidebar with logo + nav */}
+        <aside className="docs-sidebar docs-sidebar--desktop padding--medium border-right mobile--hidden">
+          <DocsHeader />
+          {nav}
+        </aside>
 
         <article className="docs-main padding--large">{children}</article>
       
