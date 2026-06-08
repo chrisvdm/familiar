@@ -20,8 +20,13 @@ export const DocsLayout = ({ children, requestInfo }: LayoutProps) => {
   return (
 <div className="width--12"> 
       <section className="docs-layout flex--row">
-        <DocsMobileSidebar>
+        <div className="docs-header-mobile mobile--only">
           <DocsHeader/>
+        </div>
+        <DocsMobileSidebar>
+          <div className="docs-header-desktop mobile--hidden">
+            <DocsHeader/>
+          </div>
           <DocsNav activeSlug={activeSlug}/>
         </DocsMobileSidebar>
         

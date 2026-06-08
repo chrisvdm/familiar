@@ -197,6 +197,15 @@
         height: auto;
     }
 
+    .docs-header-mobile {
+        padding: var(--s-space) var(--m-space);
+        border-bottom: 1px solid var(--accent);
+    }
+
+    .docs-header-mobile a {
+        text-decoration: none;
+    }
+
     .docs-mobile-toggle {
         display: block;
         width: 100%;
