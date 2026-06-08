@@ -12,6 +12,7 @@ const LiveDemo = () => {
   const { messages, todos, isLoading, sendMessage, resetDemo } = useLiveDemo();
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState("");
+  const [panelOpen, setPanelOpen] = useState(false);
   const handleAccordianClick = (item = "") => {
     const newItem = item === open ? "" : item;
     setOpen(newItem);
@@ -119,9 +120,20 @@ const LiveDemo = () => {
             </div>
           </div>
 
+          {/* Workpanel toggle (mobile only) */}
+          <button
+            className="workpanel-toggle mobile--only"
+            onClick={() => setPanelOpen(!panelOpen)}
+            aria-label="Toggle tool panel"
+            aria-expanded={panelOpen}
+            type="button"
+          >
+            {panelOpen ? "✕ Hide tools" : "☰ Show tools"}
+          </button>
+
           {/* Workpanel with accordions */}
           <div
-            className="workpanel width--3 padding--small"
+            className={`workpanel width--3 padding--small ${panelOpen ? "workpanel--open" : ""}`}
             style={{ overflowY: "auto", minHeight: 0 }}
           >
             <ul className="accordian flex--gap padding--small">
