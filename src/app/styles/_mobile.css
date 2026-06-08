@@ -208,10 +208,22 @@
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         border-bottom: 1px solid var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
 
     .docs-header-mobile a {
         text-decoration: none;
+    }
+
+    .docs-header-mobile .docs-mobile-toggle {
+        width: auto;
+        margin: 0;
+        padding: var(--xs-space) var(--s-space);
+        border: 1px solid var(--accent);
+        border-radius: 2px;
+        background: var(--secondary);
     }
 
     .docs-layout {
