@@ -21,7 +21,6 @@ export const PublicSiteNav = ({
         <nav
           className="landing-nav docs-nav-bar public-nav"
           aria-label="Primary"
-          style={{ position: "relative" }}
         >
           <a
             className="landing-nav-brand docs-nav-brand"

@@ -10,7 +10,6 @@ const Navigation = () => {
     <nav
       className="public-nav width--100 flex--row flex--space-between"
       aria-label="Primary"
-      style={{ position: "relative" }}
     >
       <a className="landing-nav-brand" href="/" aria-label="familiar home">
         <FamiliarName className="landing-nav-logo" />

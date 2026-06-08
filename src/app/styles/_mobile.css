@@ -198,12 +198,24 @@
     }
 
     .docs-header-mobile {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
         padding: var(--s-space) var(--m-space);
+        background: var(--trans-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border-bottom: 1px solid var(--accent);
     }
 
     .docs-header-mobile a {
         text-decoration: none;
+    }
+
+    .docs-layout {
+        padding-top: 3rem;
     }
 
     .docs-mobile-toggle {
