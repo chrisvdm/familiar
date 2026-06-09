@@ -106,12 +106,6 @@ export type ConversationEndpointDeps = {
     };
     requestId?: string;
   }) => Promise<Record<string, unknown>>;
-  incrementAccountActionCount: (accountId: string) => Promise<{
-    actionCount: number;
-    freeActionsUsed: number;
-    freeActionsRemaining: number | null;
-    plan: "free" | "paid";
-  }>;
   isProviderRateLimitError: (
     error: unknown,
   ) => error is Error & ProviderRateLimitShape;
@@ -203,9 +197,6 @@ export const createHandleConversationInputEndpoint = (
           providerConfig: auth.providerConfig,
           requestId,
         });
-        if (auth.accountId) {
-          await deps.incrementAccountActionCount(auth.accountId);
-        }
         const nextContext = deps.storeIdempotencyReplay({
           context: await deps.loadOrCreateProviderUserContext({
             providerId,
@@ -229,9 +220,6 @@ export const createHandleConversationInputEndpoint = (
         providerConfig: auth.providerConfig,
         requestId,
       });
-      if (auth.accountId) {
-        await deps.incrementAccountActionCount(auth.accountId);
-      }
       return deps.jsonResponse({
         requestId,
         body: result,

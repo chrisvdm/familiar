@@ -47,9 +47,7 @@ const makeAuth = (integration = makeIntegration()) => ({
   account: {
     id: "acct_123",
     defaultSetupId: "setup_123",
-    actionCount: 0,
-    freeActionsUsed: 0,
-    plan: "free",
+    // Billing removed for open-source
     createdAt: "2026-03-25T10:00:00.000Z",
   },
   integration,
@@ -70,7 +68,7 @@ const sharedDeps = {
   normalizeIntegrationBaseUrl: (u: string) => u.trim().replace(/\/$/, ""),
   createAccountWithInitialToken: async () => { throw new Error("should not create account"); },
   createBrowserLoginSession: async () => ({ code: "browser_abc123", expiresAt: "2026-03-25T11:00:00.000Z" }),
-  getAccountUsage: async () => ({ actionCount: 0, freeActionsUsed: 0, freeActionsRemaining: 10, plan: "free" as const }),
+  // Billing removed for open-source
   getIntegrationStatus: async () => ({ toolCount: 0, threadCount: 0 }),
   checkRateLimitByIp: async () => ({ allowed: true }),
 };
@@ -247,12 +245,7 @@ test("conversation endpoint forwards aiApiKey from auth to handleProviderConvers
       capturedConfig = providerConfig;
       return { state: "completed" };
     },
-    incrementAccountActionCount: async () => ({
-      actionCount: 1,
-      freeActionsUsed: 1,
-      freeActionsRemaining: 9,
-      plan: "free" as const,
-    }),
+    // Billing removed for open-source
     isProviderRateLimitError: (error: unknown): error is Error & { retryAfterSeconds: number } => false,
   });
 
@@ -302,12 +295,7 @@ test("conversation endpoint returns 400 configuration_required when no AI key is
     readIdempotencyReplay: () => ({ kind: "miss" as const }),
     storeIdempotencyReplay: ({ context }) => context,
     handleProviderConversationInput: async () => { throw new Error("should not be called"); },
-    incrementAccountActionCount: async () => ({
-      actionCount: 1,
-      freeActionsUsed: 1,
-      freeActionsRemaining: 9,
-      plan: "free" as const,
-    }),
+    // Billing removed for open-source
     isProviderRateLimitError: (error: unknown): error is Error & { retryAfterSeconds: number } => false,
   });
 

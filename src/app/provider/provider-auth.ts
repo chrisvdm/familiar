@@ -141,19 +141,6 @@ export const authenticateProviderRequest = ({
       };
     }
 
-    const withinFreeTier = accountAuth.account.freeActionsUsed < 10;
-
-    if (!accountAuth.integration.aiApiKey && !withinFreeTier) {
-      return {
-        ok: false as const,
-        status: 400,
-        error: {
-          code: "configuration_required" as const,
-          message: "No AI provider key configured. Set one via PATCH /api/v1/integration with your OpenRouter key.",
-        },
-      };
-    }
-
     return {
       ok: true as const,
       providerId: resolvedProviderId,

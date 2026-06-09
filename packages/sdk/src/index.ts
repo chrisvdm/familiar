@@ -340,10 +340,6 @@ export class Familiar {
         integration: Record<string, unknown>;
         account: {
           id: string;
-          plan: "free" | "paid";
-          action_count: number;
-          free_actions_used: number;
-          free_actions_remaining: number | null;
         };
         runtime: {
           tool_count: number;
@@ -360,10 +356,6 @@ export class Familiar {
         integration: deserializeIntegration(payload.integration),
         account: {
           id: payload.account.id,
-          plan: payload.account.plan,
-          actionCount: payload.account.action_count,
-          freeActionsUsed: payload.account.free_actions_used,
-          freeActionsRemaining: payload.account.free_actions_remaining,
         },
         runtime: {
           toolCount: payload.runtime.tool_count,
@@ -403,23 +395,15 @@ export class Familiar {
     usage: async (): Promise<AccountUsage> => {
       const payload = await request<{
         account_id: string;
-        plan: "free" | "paid";
-        action_count: number;
-        free_actions_used: number;
-        free_actions_remaining: number | null;
       }>({
         host: this.host,
         method: "GET",
-        path: "/api/v1/account/usage",
+        path: "/api/v1/account",
         token: this.token,
       });
 
       return {
         accountId: payload.account_id,
-        plan: payload.plan,
-        actionCount: payload.action_count,
-        freeActionsUsed: payload.free_actions_used,
-        freeActionsRemaining: payload.free_actions_remaining,
       };
     },
   };

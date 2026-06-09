@@ -77,12 +77,6 @@ type AccountEndpointDeps = {
     updatedAt: string;
   }>;
   createBrowserLoginSession: (token: string) => Promise<{ code: string; expiresAt: string }>;
-  getAccountUsage: (accountId: string) => Promise<{
-    actionCount: number;
-    freeActionsUsed: number;
-    freeActionsRemaining: number | null;
-    plan: "free" | "paid";
-  }>;
   getIntegrationStatus: (input: {
     accountId: string;
     integrationId: string;
@@ -224,56 +218,6 @@ export const createHandleGetAccountEndpoint = (deps: AccountEndpointDeps) => {
           created_at: auth.token.createdAt,
           last_used_at: auth.token.lastUsedAt,
         },
-      },
-    });
-  };
-};
-
-export const createHandleAccountUsageEndpoint = (deps: AccountEndpointDeps) => {
-  return async ({ request }: { request: Request }) => {
-    const requestId = deps.getRequestId(request);
-
-    if (request.method !== "GET") {
-      return deps.jsonError({
-        requestId,
-        status: 405,
-        code: "method_not_allowed",
-        message: "Method not allowed.",
-      });
-    }
-
-    const token = getBearerToken(request);
-
-    if (!token) {
-      return deps.jsonError({
-        requestId,
-        status: 401,
-        code: "unauthenticated",
-        message: "Missing bearer token.",
-      });
-    }
-
-    const auth = await deps.authenticateAccountToken(token);
-
-    if (!auth) {
-      return deps.jsonError({
-        requestId,
-        status: 403,
-        code: "forbidden",
-        message: "Invalid API token.",
-      });
-    }
-
-    const usage = await deps.getAccountUsage(auth.account.id);
-
-    return deps.jsonResponse({
-      requestId,
-      body: {
-        account_id: auth.account.id,
-        plan: usage.plan,
-        action_count: usage.actionCount,
-        free_actions_used: usage.freeActionsUsed,
-        free_actions_remaining: usage.freeActionsRemaining,
       },
     });
   };
@@ -474,7 +418,6 @@ export const createHandleIntegrationStatusEndpoint = (
       });
     }
 
-    const usage = await deps.getAccountUsage(auth.account.id);
     const runtime = await deps.getIntegrationStatus({
       accountId: auth.account.id,
       integrationId: auth.integration.id,
@@ -495,10 +438,6 @@ export const createHandleIntegrationStatusEndpoint = (
         },
         account: {
           id: auth.account.id,
-          plan: usage.plan,
-          action_count: usage.actionCount,
-          free_actions_used: usage.freeActionsUsed,
-          free_actions_remaining: usage.freeActionsRemaining,
         },
         runtime: {
           tool_count: runtime.toolCount,

@@ -1,9 +1,6 @@
 export type FamiliarAccount = {
   id: string;
   defaultSetupId: string;
-  actionCount: number;
-  freeActionsUsed: number;
-  plan: "free" | "paid";
   createdAt: string;
 };
 

@@ -184,12 +184,11 @@ Update the AI provider key or executor base URL. Pass `null` to clear a value.
 
 ### `familiar.integration.status()`
 
-Get the full integration status: config, account usage, and runtime stats (tool count, thread count).
+Get the full integration status: config, account info, and runtime stats (tool count, thread count).
 
 ```typescript
 const status = await familiar.integration.status();
-console.log(status.account.plan);        // "free" | "paid"
-console.log(status.account.actionCount);
+console.log(status.account.id);
 console.log(status.runtime.toolCount);   // number of synced tools
 console.log(status.runtime.threadCount); // number of threads
 ```
@@ -221,14 +220,11 @@ console.log(token.lastUsedAt);
 
 ### `familiar.account.usage()`
 
-Get current usage stats for the authenticated account.
+Get basic account info for the authenticated account.
 
 ```typescript
 const usage = await familiar.account.usage();
-console.log(usage.plan);                   // "free" | "paid"
-console.log(usage.actionCount);            // total actions used
-console.log(usage.freeActionsUsed);        // free tier actions consumed
-console.log(usage.freeActionsRemaining);   // null if paid, number if free
+console.log(usage.accountId);
 ```
 
 ### `familiar.threads.list({ userId? })`

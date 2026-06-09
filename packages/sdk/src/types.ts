@@ -49,10 +49,6 @@ export type IntegrationStatus = {
   integration: Integration;
   account: {
     id: string;
-    plan: "free" | "paid";
-    actionCount: number;
-    freeActionsUsed: number;
-    freeActionsRemaining: number | null;
   };
   runtime: {
     toolCount: number;
@@ -79,10 +75,6 @@ export type CreateAccountResult = {
 
 export type AccountUsage = {
   accountId: string;
-  plan: "free" | "paid";
-  actionCount: number;
-  freeActionsUsed: number;
-  freeActionsRemaining: number | null;
 };
 
 export type Thread = {

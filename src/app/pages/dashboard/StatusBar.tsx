@@ -1,32 +1,18 @@
 const StatusBar = ({
-  plan,
-  actionCount,
-  freeActionsUsed,
-  freeActionsRemaining,
   toolCount,
   threadCount,
 }: {
-  plan: string;
-  actionCount: number;
-  freeActionsUsed: number;
-  freeActionsRemaining: number | null;
   toolCount: number;
   threadCount: number;
 }) => (
   <div className="status-bar">
     <div className="status-metric">
-      <p className="status-metric-label">Plan</p>
-      <p className="status-metric-value">{plan}</p>
+      <p className="status-metric-label">Tools</p>
+      <p className="status-metric-value">{toolCount}</p>
     </div>
     <div className="status-metric">
-      <p className="status-metric-label">Actions</p>
-      <p className="status-metric-value">{actionCount}</p>
-    </div>
-    <div className="status-metric">
-      <p className="status-metric-label">Tools / Threads</p>
-      <p className="status-metric-value">
-        {toolCount} / {threadCount}
-      </p>
+      <p className="status-metric-label">Threads</p>
+      <p className="status-metric-value">{threadCount}</p>
     </div>
   </div>
 );

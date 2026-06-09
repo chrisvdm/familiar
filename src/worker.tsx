@@ -33,9 +33,11 @@ import {
   checkRateLimitByIp,
   createAccountWithInitialToken,
   registerAccountUser,
+  authenticateAccountToken,
   authenticateUser,
   storeContactSubmission,
   consumeBrowserLoginSession,
+  updateAccountIntegrationBaseUrl,
 } from "@/app/account/account.service";
 import { Contact } from "@/app/pages/contact";
 
@@ -225,8 +227,15 @@ export default defineApp([
       const formData = await request.formData();
       const email = (formData.get("email")?.toString() ?? "").trim();
       const password = formData.get("password")?.toString() ?? "";
+      const openrouterApiKey = (formData.get("openrouter_api_key")?.toString() ?? "").trim();
+
+      if (!openrouterApiKey) {
+        return new Response("OpenRouter API key is required.", { status: 400 });
+      }
 
       let tokenValue: string;
+      let accountId: string;
+      let integrationId: string;
 
       if (email && password) {
         const result = await registerAccountUser({ email, password });
@@ -234,9 +243,24 @@ export default defineApp([
           return new Response(result.error, { status: 400 });
         }
         tokenValue = result.value.token;
+        accountId = result.value.user.accountId;
+        // Get integration from the user's account
+        const auth = await authenticateAccountToken(tokenValue);
+        integrationId = auth?.account.defaultSetupId ?? "";
       } else {
         const result = await createAccountWithInitialToken({});
         tokenValue = result.token.value;
+        accountId = result.account.id;
+        integrationId = result.integration.id;
+      }
+
+      if (integrationId) {
+        await updateAccountIntegrationBaseUrl({
+          accountId,
+          integrationId,
+          baseUrl: null,
+          aiApiKey: openrouterApiKey,
+        });
       }
 
       let session = await browserSessionStore.load(request);

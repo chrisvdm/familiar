@@ -5,13 +5,11 @@ import {
   checkRateLimitByIp,
   createAccountWithInitialToken,
   createBrowserLoginSession,
-  getAccountUsage,
   getIntegrationStatus,
   normalizeIntegrationBaseUrl,
   updateAccountIntegrationBaseUrl,
 } from "./account.service";
 import {
-  createHandleAccountUsageEndpoint,
   createHandleCreateAccountEndpoint,
   createHandleCreateBrowserSessionEndpoint,
   createHandleCurrentIntegrationEndpoint,
@@ -30,7 +28,6 @@ const sharedDeps = {
   normalizeIntegrationBaseUrl,
   updateAccountIntegrationBaseUrl,
   createBrowserLoginSession,
-  getAccountUsage,
   getIntegrationStatus,
   checkRateLimitByIp,
 };
@@ -40,9 +37,6 @@ export const handleCreateAccountEndpoint =
 
 export const handleGetAccountEndpoint =
   createHandleGetAccountEndpoint(sharedDeps);
-
-export const handleAccountUsageEndpoint =
-  createHandleAccountUsageEndpoint(sharedDeps);
 
 export const handleCurrentIntegrationEndpoint =
   createHandleCurrentIntegrationEndpoint(sharedDeps);

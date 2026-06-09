@@ -27,7 +27,7 @@ const sharedDeps = {
     updatedAt: "2026-03-25T10:05:00.000Z",
   }),
   createBrowserLoginSession: async () => ({ code: "browser_abc123", expiresAt: "2026-03-25T11:00:00.000Z" }),
-  getAccountUsage: async () => ({ actionCount: 0, freeActionsUsed: 0, freeActionsRemaining: 10, plan: "free" as const }),
+  // Billing removed for open-source
   getIntegrationStatus: async () => ({ toolCount: 0, threadCount: 0 }),
   checkRateLimitByIp: async () => ({ allowed: true }),
 };
@@ -40,9 +40,7 @@ test("create account endpoint returns account and first token", async () => {
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
-        actionCount: 0,
-        freeActionsUsed: 0,
-        plan: "free",
+        // Billing removed for open-source
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
@@ -99,9 +97,7 @@ test("get account endpoint resolves account from bearer token", async () => {
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
-        actionCount: 0,
-        freeActionsUsed: 0,
-        plan: "free",
+        // Billing removed for open-source
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
@@ -162,9 +158,7 @@ test("current integration endpoint returns stored executor base url", async () =
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
-        actionCount: 0,
-        freeActionsUsed: 0,
-        plan: "free",
+        // Billing removed for open-source
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {
@@ -237,9 +231,7 @@ test("current integration endpoint updates the executor base url", async () => {
       account: {
         id: "acct_123",
         defaultSetupId: "setup_123",
-        actionCount: 0,
-        freeActionsUsed: 0,
-        plan: "free",
+        // Billing removed for open-source
         createdAt: "2026-03-25T10:00:00.000Z",
       },
       integration: {

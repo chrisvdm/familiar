@@ -172,14 +172,12 @@ await familiar.integration.update({
 });
 ```
 
-## Get integration status and account usage
+## Get integration status and account info
 
 ```typescript
 const status = await familiar.integration.status();
 
-console.log(status.account.plan);                  // "free" or "paid"
-console.log(status.account.actionCount);           // total actions used
-console.log(status.account.freeActionsRemaining);  // remaining free actions
+console.log(status.account.id);
 console.log(status.runtime.toolCount);             // synced tools
 console.log(status.runtime.threadCount);           // active threads
 ```
@@ -316,10 +314,10 @@ Get the current integration configuration. Returns `Integration`.
 
 Update the AI provider key or executor base URL. Pass `null` to clear a value. Returns `Integration`.
 
-### Get integration status and account usage
+### Get integration status and account info
 `familiar.integration.status()`
 
-Returns integration config plus account plan, action counts, and runtime stats (tool count, thread count).
+Returns integration config plus account info and runtime stats (tool count, thread count).
 
 ### Simulate a turn
 `familiar.simulate({ text, channel, userId?, threadId?, integrationId?, tools? })`
@@ -341,10 +339,10 @@ Returns integration health including tool counts, executor failure rates, and ov
 
 Returns account and token metadata for the current token.
 
-### Get account usage
+### Get account info
 `familiar.account.usage()`
 
-Returns plan, action count, and free tier usage.
+Returns basic account information.
 
 ### Read shared memory
 `familiar.memory.getUserMemory({ userId? })`
@@ -445,10 +443,6 @@ type IntegrationStatus = {
   integration: Integration;
   account: {
     id: string;
-    plan: "free" | "paid";
-    actionCount: number;
-    freeActionsUsed: number;
-    freeActionsRemaining: number | null;
   };
   runtime: {
     toolCount: number;

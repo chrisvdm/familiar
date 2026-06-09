@@ -637,25 +637,21 @@ Example payload:
 > [!NOTE]
 > Channel delivery should target one concrete channel, not broadcast to all channels by default.
 
-## Get account usage
+## Get account info
 
 Endpoint:
 
 ```text
-GET /api/v1/account/usage
+GET /api/v1/account
 ```
 
-Read usage and plan information for the current token's account.
+Read basic information for the current token's account.
 
 Example response:
 
 ```json
 {
-  "account_id": "acct_123",
-  "plan": "free",
-  "action_count": 42,
-  "free_actions_used": 42,
-  "free_actions_remaining": 0
+  "account_id": "acct_123"
 }
 ```
 
@@ -667,7 +663,7 @@ Endpoint:
 GET /api/v1/integration/status
 ```
 
-Returns the integration config plus account plan, action counts, and runtime statistics.
+Returns the integration config plus account info and runtime statistics.
 
 Example response:
 
@@ -682,11 +678,7 @@ Example response:
     "updated_at": "2026-03-25T10:05:00.000Z"
   },
   "account": {
-    "id": "acct_123",
-    "plan": "free",
-    "action_count": 42,
-    "free_actions_used": 42,
-    "free_actions_remaining": 0
+    "id": "acct_123"
   },
   "runtime": {
     "tool_count": 5,

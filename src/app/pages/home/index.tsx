@@ -27,22 +27,6 @@ const FIXES = [
   
 ];
 
-const PRICINGCOLUMNS = ['tier', 'price']
-
-const PRICING = [
-  ["First 10 actions",
-    "Free — try without commitment",
-  ],
-  [
-    "Per action",
-    "$0.005",
-  ],
-  [
-    "Custom integration",
-    "Talk to us",
-  ],
-];
-
 export const Home = () => (
   <main className="page">
     <div className="page__shell">
@@ -120,13 +104,6 @@ export const Home = () => (
             who own their tools.
           </p>
         </div>
-      </Section>
-
-      <Section title="Pricing">
-        <Grid columns={PRICINGCOLUMNS} rows={PRICING} />
-        <p className="section-closing">
-          Usage-based. No subscription for silence.
-        </p>
       </Section>
 
       <LiveDemo/>

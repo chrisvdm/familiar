@@ -17,9 +17,7 @@ const normalizeAccountRecord = (
 ): import("./account.types").FamiliarAccount => ({
   id: record.id as string,
   defaultSetupId: record.defaultSetupId as string,
-  actionCount: typeof record.actionCount === "number" ? record.actionCount : 0,
-  freeActionsUsed: typeof record.freeActionsUsed === "number" ? record.freeActionsUsed : 0,
-  plan: (record.plan as "free" | "paid") || "free",
+  // Billing fields removed for open-source
   createdAt: record.createdAt as string,
 });
 

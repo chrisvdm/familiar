@@ -15,9 +15,6 @@ import {
   storeIdempotencyReplay,
 } from "./provider.idempotency";
 import {
-  incrementAccountActionCount,
-} from "../account/account.service";
-import {
   handleProviderConversationInput,
   isProviderRateLimitError,
 } from "./provider.service";
@@ -44,6 +41,5 @@ export const handleConversationInputEndpoint =
     readIdempotencyReplay,
     storeIdempotencyReplay,
     handleProviderConversationInput,
-    incrementAccountActionCount,
     isProviderRateLimitError,
   });

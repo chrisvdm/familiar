@@ -27,9 +27,7 @@ test("normalizeAccountRegistryState backfills integrations for legacy state", ()
       acct_123: {
         id: "acct_123",
         defaultSetupId: "setup_123",
-        actionCount: 0,
-        freeActionsUsed: 0,
-        plan: "free",
+        // Billing fields removed for open-source
         createdAt: "2026-03-25T10:00:00.000Z",
       },
     },
@@ -55,9 +53,7 @@ test("normalizeAccountRegistryState backfills integrations for legacy state", ()
       acct_123: {
         id: "acct_123",
         defaultSetupId: "setup_123",
-        actionCount: 0,
-        freeActionsUsed: 0,
-        plan: "free",
+        // Billing fields removed for open-source
         createdAt: "2026-03-25T10:00:00.000Z",
       },
     },

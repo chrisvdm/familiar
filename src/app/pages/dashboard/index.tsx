@@ -236,13 +236,7 @@ export const Dashboard = async ({
 
   const accountId = auth.account.id;
 
-  const [integrations, usage] = await Promise.all([
-    listAccountIntegrations(accountId),
-    (async () => {
-      const { getAccountUsage } = await import("@/app/account/account.service");
-      return getAccountUsage(accountId);
-    })(),
-  ]);
+  const integrations = await listAccountIntegrations(accountId);
 
   const activeIntegration =
     integrations.find((i) => i.id === ctx.session?.selectedIntegrationId) ??
@@ -294,10 +288,6 @@ export const Dashboard = async ({
             <h1 className="section-title">Status</h1>
           </div>
           <StatusBar
-            plan={usage.plan}
-            actionCount={usage.actionCount}
-            freeActionsUsed={usage.freeActionsUsed}
-            freeActionsRemaining={usage.freeActionsRemaining}
             toolCount={health.tools.count}
             threadCount={context?.threads.length ?? 0}
           />
