@@ -20,6 +20,8 @@ import {
 } from "./demo-executors/manifests";
 import {
   handleProviderConversationInput,
+} from "./provider.conversation.ts";
+import {
   syncProviderTools,
 } from "./provider.service";
 import { deleteProviderUserContext, loadProviderUserContext, resetProviderUserContext } from "./provider.storage";

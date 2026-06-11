@@ -1,3 +1,4 @@
+import { threadMutationSchema } from "./provider.schemas.ts";
 import type { ProviderUserContext } from "./provider.types.ts";
 import {
   requireNonEmptyString,
@@ -159,6 +160,23 @@ export const createHandleThreadMutationEndpoint = (
         params.threadId ?? input.thread_id,
         "thread_id",
       );
+      const normalizedInput = {
+        ...input,
+        integration_id: providerId,
+        user_id: userId,
+        thread_id: threadId,
+      };
+
+      const parsed = threadMutationSchema.safeParse(normalizedInput);
+      if (!parsed.success) {
+        const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: issues,
+        });
+      }
 
       const storageKey = idempotencyKey
         ? deps.buildIdempotencyKey({

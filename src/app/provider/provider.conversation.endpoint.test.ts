@@ -457,7 +457,7 @@ test("conversation endpoint handles chunked input append mode", async () => {
   });
 
   assert.equal(response.status, 200);
-  const body = await response.json();
+  const body = (await response.json()) as { appended: boolean; thread_id: string };
   assert.equal(body.appended, true);
   assert.equal(body.thread_id, "thread_abc");
 });
@@ -496,6 +496,6 @@ test("conversation endpoint handles chunked input final chunk", async () => {
   });
 
   assert.equal(response.status, 200);
-  const body = await response.json();
+  const body = (await response.json()) as { action: string };
   assert.equal(body.action, "direct_reply");
 });

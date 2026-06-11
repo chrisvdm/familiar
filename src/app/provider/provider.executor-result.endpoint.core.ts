@@ -1,3 +1,4 @@
+import { providerExecutorResultSchema } from "./provider.schemas.ts";
 import type {
   ProviderExecutorResultInput,
   ProviderUserContext,
@@ -193,6 +194,17 @@ export const createHandleExecutorResultEndpoint = (
         user_id: userId,
         thread_id: requireNonEmptyString(threadId, "thread_id"),
       } satisfies NormalizedProviderExecutorResultInput;
+
+      const parsed = providerExecutorResultSchema.safeParse(normalizedInput);
+      if (!parsed.success) {
+        const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: issues,
+        });
+      }
 
       const idempotencyKey =
         deps.getIdempotencyHeader(request) ||

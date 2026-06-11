@@ -1,7 +1,7 @@
 import { authenticateProviderRequest } from "./provider-auth";
 import { getIdempotencyHeader, getRequestId, jsonError, jsonResponse, readJson, replayIdempotentResponse } from "./provider.http";
 import { buildIdempotencyKey, hashIdempotencyRequest, readIdempotencyReplay, storeIdempotencyReplay } from "./provider.idempotency";
-import { createProviderThread } from "./provider.service";
+import { createProviderThread } from "./provider.threads.ts";
 import { loadOrCreateProviderUserContext, saveProviderUserContext } from "./provider.storage";
 import { createHandleThreadCreateEndpoint } from "./provider.thread-create.endpoint.core";
 

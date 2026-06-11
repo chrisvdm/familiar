@@ -26,6 +26,8 @@ type AccountRegistryStub = {
     baseUrl?: string | null;
     aiApiKey?: string | null;
     toolUrls?: Record<string, string>;
+    name?: string;
+    transport?: "webhook" | "websocket";
   }) => Promise<{ value: FamiliarIntegrationConfig } | { error: string }>;
   authenticateToken: (input: {
     tokenHash: string;
@@ -40,6 +42,12 @@ type AccountRegistryStub = {
     | { value: { tokenValue: string; accountId: string } }
     | { error: string }
   >;
+  incrementActionCount: (input: {
+    accountId: string;
+  }) => Promise<{ value: { actionCount: number } } | { error: string }>;
+  getAccountUsage: (input: {
+    accountId: string;
+  }) => Promise<{ value: { actionCount: number; freeActionsRemaining: number } } | { error: string }>;
   listAccountIntegrations: (input: {
     accountId: string;
   }) => Promise<{ value: FamiliarIntegrationConfig[] } | { error: string }>;
@@ -127,6 +135,7 @@ export const createAccountWithInitialToken = async ({
   const account: FamiliarAccount = {
     id: createAccountId(),
     defaultSetupId: setupId,
+    actionCount: 0,
     createdAt: new Date().toISOString(),
   };
   const integration: FamiliarIntegrationConfig = {
@@ -137,6 +146,7 @@ export const createAccountWithInitialToken = async ({
     aiApiKey: null,
     toolUrls: {},
     webhookSecret: `whsec_${randomHex(32)}`,
+    transport: "webhook",
     createdAt: account.createdAt,
     updatedAt: account.createdAt,
   };
@@ -177,17 +187,20 @@ export const updateAccountIntegrationBaseUrl = async ({
   integrationId,
   baseUrl,
   aiApiKey,
+  transport,
 }: {
   accountId: string;
   integrationId: string;
   baseUrl: string | null;
   aiApiKey: string | null;
+  transport?: "webhook" | "websocket";
 }) => {
   const result = await getAccountRegistryStub().updateIntegration({
     accountId,
     integrationId,
     baseUrl,
     aiApiKey,
+    transport,
   });
 
   if ("error" in result) {
@@ -235,6 +248,22 @@ export const consumeBrowserLoginSession = async (code: string) => {
   const result = await getAccountRegistryStub().consumeBrowserLoginSession({ code });
   if ("error" in result) {
     return null;
+  }
+  return result.value;
+};
+
+export const incrementAccountActionCount = async (accountId: string) => {
+  const result = await getAccountRegistryStub().incrementActionCount({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.value;
+};
+
+export const getAccountUsage = async (accountId: string) => {
+  const result = await getAccountRegistryStub().getAccountUsage({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
   }
   return result.value;
 };

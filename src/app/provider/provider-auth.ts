@@ -141,6 +141,19 @@ export const authenticateProviderRequest = ({
       };
     }
 
+    const withinFreeTier = (accountAuth.account.actionCount || 0) < 5;
+
+    if (!accountAuth.integration.aiApiKey && !withinFreeTier) {
+      return {
+        ok: false as const,
+        status: 400,
+        error: {
+          code: "configuration_required" as const,
+          message: "No AI provider key configured. Set one via PATCH /api/v1/integration with your OpenRouter key.",
+        },
+      };
+    }
+
     return {
       ok: true as const,
       providerId: resolvedProviderId,
@@ -157,6 +170,9 @@ export const authenticateProviderRequest = ({
           : {}),
         ...(accountAuth.integration.webhookSecret
           ? { webhookSecret: accountAuth.integration.webhookSecret }
+          : {}),
+        ...(accountAuth.integration.transport
+          ? { transport: accountAuth.integration.transport }
           : {}),
       },
       accountId: accountAuth.account.id,

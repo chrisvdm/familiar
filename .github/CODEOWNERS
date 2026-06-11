@@ -1,0 +1,9 @@
+# Core logic requires human review
+src/app/provider/          @chris
+src/app/chat/              @chris
+src/app/account/           @chris
+docs/blueprints/           @chris
+wrangler.jsonc             @chris
+
+# CI/CD
+.github/workflows/         @chris

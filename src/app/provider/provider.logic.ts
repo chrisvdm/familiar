@@ -1,13 +1,6 @@
-import {
-  createEmptyGlobalMemory,
-  type GlobalMemory,
-} from "../chat/shared.ts";
+import { createEmptyGlobalMemory, type GlobalMemory } from "../chat/shared.ts";
 
-import type {
-  AllowedTool,
-  MemoryPolicy,
-  ProviderExecutionState,
-} from "./provider.types";
+import type { AllowedTool, MemoryPolicy, ProviderExecutionState } from "./provider.types.ts";
 
 export const CONVERSATION_RATE_LIMIT_WINDOW_MS = 60_000;
 export const CONVERSATION_RATE_LIMIT_MAX_REQUESTS = 30;
@@ -22,13 +15,40 @@ export const SOFT_THREADS_LIMIT = 450;
 export const MAX_MESSAGES_PER_THREAD = 5_000;
 export const MAX_TOOLS_PER_SYNC = 500;
 export const SOFT_TOOLS_LIMIT = 200;
+export const WEB_PROVIDER_ID = "texty_web";
 
-export const clampDecisionConfidence = (
-  value: unknown,
-  fallback = 1,
-) => {
-  const numericValue =
-    typeof value === "number" && Number.isFinite(value) ? value : fallback;
+export const normalizeAllowedTools = (
+  tools: Array<{
+    tool_name: string;
+    description: string;
+    input_schema: Record<string, unknown>;
+    input_mode?: "processed" | "raw";
+    executor_payload?: unknown;
+    policy?: Record<string, unknown>;
+    status?: "active" | "disabled";
+    base_url?: string;
+  }>,
+): AllowedTool[] =>
+  tools.map((tool) => {
+    validateToolSchema(tool);
+
+    const normalizedTool = {
+      toolName: tool.tool_name,
+      description: tool.description,
+      inputSchema: tool.input_schema,
+      inputMode: tool.input_mode ?? "processed",
+      executorPayload: tool.executor_payload,
+      policy: tool.policy ?? {},
+      status: tool.status ?? "active",
+    } satisfies AllowedTool;
+
+    validateToolInputMode(normalizedTool);
+
+    return normalizedTool;
+  });
+
+export const clampDecisionConfidence = (value: unknown, fallback = 1) => {
+  const numericValue = typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
   if (numericValue < 0) {
     return 0;
@@ -91,7 +111,9 @@ export const interpretPendingToolConfirmation = (input: string) => {
     return "unknown" as const;
   }
 
-  if (CONFIRM_WORDS.some((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `))) {
+  if (
+    CONFIRM_WORDS.some((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `))
+  ) {
     return "confirm" as const;
   }
 
@@ -135,8 +157,7 @@ export const extractToolStringValue = ({
   return null;
 };
 
-const TOOL_SHORTCUT_PATTERN =
-  /(?:^|\s)@(?:\[(.+?)\]|([A-Za-z0-9._-]+))(?=\s|$)/g;
+const TOOL_SHORTCUT_PATTERN = /(?:^|\s)@(?:\[(.+?)\]|([A-Za-z0-9._-]+))(?=\s|$)/g;
 const TOOL_SHORTCUT_EXIT_PATTERN =
   /^that'?s (?:all(?: for)?|enough(?: for)?)\s+(@(?:\[(.+?)\]|([A-Za-z0-9._-]+))|(.+))$/i;
 
@@ -203,9 +224,7 @@ const stripInlineToolExitPhrase = ({
   const explicitEndPattern = /(?:^|\s)(@@|@end)(?=\s|$)/i;
   const explicitEndMatch = content.match(explicitEndPattern);
   const explicitEndIndex =
-    explicitEndMatch && typeof explicitEndMatch.index === "number"
-      ? explicitEndMatch.index
-      : null;
+    explicitEndMatch && typeof explicitEndMatch.index === "number" ? explicitEndMatch.index : null;
   const inlineExitIndex = match && typeof match.index === "number" ? match.index : null;
 
   if (explicitEndIndex === null && inlineExitIndex === null) {
@@ -308,13 +327,10 @@ export const parseToolShortcutInvocations = ({
   return invocations;
 };
 
-export const getToolInputMode = (tool: {
-  inputMode?: "processed" | "raw";
-}) => tool.inputMode ?? "processed";
+export const getToolInputMode = (tool: { inputMode?: "processed" | "raw" }) =>
+  tool.inputMode ?? "processed";
 
-export const getRawToolStringFieldName = (tool: {
-  inputSchema?: Record<string, unknown>;
-}) => {
+export const getRawToolStringFieldName = (tool: { inputSchema?: Record<string, unknown> }) => {
   const properties =
     tool.inputSchema &&
     typeof tool.inputSchema === "object" &&
@@ -369,7 +385,11 @@ export const validateToolSchema = (tool: {
     throw new Error(`Tool ${tool.tool_name} must have a non-empty description string.`);
   }
 
-  if (!tool.input_schema || typeof tool.input_schema !== "object" || Array.isArray(tool.input_schema)) {
+  if (
+    !tool.input_schema ||
+    typeof tool.input_schema !== "object" ||
+    Array.isArray(tool.input_schema)
+  ) {
     throw new Error(`Tool ${tool.tool_name} must have a valid input_schema object.`);
   }
 
@@ -378,7 +398,11 @@ export const validateToolSchema = (tool: {
     throw new Error(`Tool ${tool.tool_name} input_schema must have type "object".`);
   }
 
-  if (tool.input_mode !== undefined && tool.input_mode !== "processed" && tool.input_mode !== "raw") {
+  if (
+    tool.input_mode !== undefined &&
+    tool.input_mode !== "processed" &&
+    tool.input_mode !== "raw"
+  ) {
     throw new Error(`Tool ${tool.tool_name} input_mode must be "processed" or "raw".`);
   }
 
@@ -411,9 +435,7 @@ export const isToolShortcutExitInput = ({
     return false;
   }
 
-  const requestedToolName = (match[2] || match[3] || match[4] || "")
-    .trim()
-    .toLowerCase();
+  const requestedToolName = (match[2] || match[3] || match[4] || "").trim().toLowerCase();
 
   return Boolean(requestedToolName) && requestedToolName === toolName.trim().toLowerCase();
 };
@@ -546,19 +568,14 @@ export const splitTodoItemsFromText = (value: string) => {
     .map((part) => part.trim())
     .filter(Boolean);
 
-  if (
-    parts.length > 1 &&
-    parts.every((part) => TODO_ITEM_VERB_PATTERN.test(part))
-  ) {
+  if (parts.length > 1 && parts.every((part) => TODO_ITEM_VERB_PATTERN.test(part))) {
     return parts;
   }
 
   return [normalized];
 };
 
-export const getRequiredToolArgumentFields = (
-  inputSchema: Record<string, unknown> | undefined,
-) => {
+export const getRequiredToolArgumentFields = (inputSchema: Record<string, unknown> | undefined) => {
   if (!inputSchema || typeof inputSchema !== "object") {
     return [];
   }
@@ -575,11 +592,7 @@ export const getRequiredToolArgumentFields = (
 export const hasMeaningfulToolArgumentValue = (value: unknown): boolean => {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    return Boolean(
-      normalized &&
-        normalized !== "null" &&
-        normalized !== "undefined",
-    );
+    return Boolean(normalized && normalized !== "null" && normalized !== "undefined");
   }
 
   if (Array.isArray(value)) {
@@ -681,8 +694,7 @@ export const determineMockExecutionState = ({
   toolName: string;
   args: Record<string, unknown>;
 }): ProviderExecutionState => {
-  const requestedState =
-    typeof args.mock_state === "string" ? args.mock_state : null;
+  const requestedState = typeof args.mock_state === "string" ? args.mock_state : null;
 
   if (
     requestedState === "accepted" ||
@@ -714,16 +726,12 @@ export const determineMockExecutionState = ({
   return "completed";
 };
 
-
 export type JsonSchemaValidationError = {
   path: string;
   message: string;
 };
 
-const validateJsonSchemaType = (
-  value: unknown,
-  expectedType: string,
-): boolean => {
+const validateJsonSchemaType = (value: unknown, expectedType: string): boolean => {
   switch (expectedType) {
     case "string":
       return typeof value === "string";
@@ -759,7 +767,10 @@ const validateJsonSchemaValue = (
   if (Array.isArray(s.type)) {
     const matched = (s.type as string[]).some((t) => validateJsonSchemaType(value, t));
     if (!matched) {
-      errors.push({ path, message: `Expected one of types ${JSON.stringify(s.type)}, got ${JSON.stringify(value)}` });
+      errors.push({
+        path,
+        message: `Expected one of types ${JSON.stringify(s.type)}, got ${JSON.stringify(value)}`,
+      });
       return;
     }
   } else if (typeof s.type === "string") {
@@ -772,16 +783,25 @@ const validateJsonSchemaValue = (
   if (s.enum !== undefined) {
     const enumValues = s.enum as unknown[];
     if (!enumValues.includes(value)) {
-      errors.push({ path, message: `Expected one of ${JSON.stringify(enumValues)}, got ${JSON.stringify(value)}` });
+      errors.push({
+        path,
+        message: `Expected one of ${JSON.stringify(enumValues)}, got ${JSON.stringify(value)}`,
+      });
     }
   }
 
   if (typeof value === "string") {
     if (typeof s.minLength === "number" && value.length < s.minLength) {
-      errors.push({ path, message: `String length ${value.length} is less than minimum ${s.minLength}` });
+      errors.push({
+        path,
+        message: `String length ${value.length} is less than minimum ${s.minLength}`,
+      });
     }
     if (typeof s.maxLength === "number" && value.length > s.maxLength) {
-      errors.push({ path, message: `String length ${value.length} exceeds maximum ${s.maxLength}` });
+      errors.push({
+        path,
+        message: `String length ${value.length} exceeds maximum ${s.maxLength}`,
+      });
     }
     if (typeof s.pattern === "string") {
       const regex = new RegExp(s.pattern);

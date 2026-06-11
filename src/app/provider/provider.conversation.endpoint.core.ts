@@ -1,10 +1,11 @@
+import { providerConversationInputSchema } from "./provider.schemas.ts";
 import type { ProviderConversationInput, ProviderUserContext } from "./provider.types.ts";
 import {
   resolveProviderIdFromInput,
   resolveUserIdFromInput,
 } from "./provider.endpoint-input.ts";
 
-type NormalizedProviderConversationInput = ProviderConversationInput & {
+export type NormalizedProviderConversationInput = ProviderConversationInput & {
   integration_id: string;
   user_id: string;
 };
@@ -106,6 +107,9 @@ export type ConversationEndpointDeps = {
     };
     requestId?: string;
   }) => Promise<Record<string, unknown>>;
+  incrementAccountActionCount: (accountId: string) => Promise<{
+    actionCount: number;
+  }>;
   isProviderRateLimitError: (
     error: unknown,
   ) => error is Error & ProviderRateLimitShape;
@@ -158,6 +162,17 @@ export const createHandleConversationInputEndpoint = (
         }),
       } satisfies NormalizedProviderConversationInput;
 
+      const parsed = providerConversationInputSchema.safeParse(normalizedInput);
+      if (!parsed.success) {
+        const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: issues,
+        });
+      }
+
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({
           providerId,
@@ -197,6 +212,9 @@ export const createHandleConversationInputEndpoint = (
           providerConfig: auth.providerConfig,
           requestId,
         });
+        if (auth.accountId) {
+          await deps.incrementAccountActionCount(auth.accountId);
+        }
         const nextContext = deps.storeIdempotencyReplay({
           context: await deps.loadOrCreateProviderUserContext({
             providerId,
@@ -220,6 +238,9 @@ export const createHandleConversationInputEndpoint = (
         providerConfig: auth.providerConfig,
         requestId,
       });
+      if (auth.accountId) {
+        await deps.incrementAccountActionCount(auth.accountId);
+      }
       return deps.jsonResponse({
         requestId,
         body: result,

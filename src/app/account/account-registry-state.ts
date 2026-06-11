@@ -17,7 +17,7 @@ const normalizeAccountRecord = (
 ): import("./account.types").FamiliarAccount => ({
   id: record.id as string,
   defaultSetupId: record.defaultSetupId as string,
-  // Billing fields removed for open-source
+  actionCount: typeof record.actionCount === "number" ? record.actionCount : 0,
   createdAt: record.createdAt as string,
 });
 
@@ -34,6 +34,7 @@ const normalizeIntegrationRecord = (
       ? (record.toolUrls as Record<string, string>)
       : {},
   webhookSecret: (record.webhookSecret as string) || "",
+  transport: (record.transport as "webhook" | "websocket") || "webhook",
   createdAt: record.createdAt as string,
   updatedAt: record.updatedAt as string,
 });

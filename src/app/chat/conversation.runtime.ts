@@ -1,8 +1,10 @@
 import type { ChatMessage } from "./shared";
 
 export type OpenRouterMessage = {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  tool_call_id?: string;
+  tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[];
 };
 
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";

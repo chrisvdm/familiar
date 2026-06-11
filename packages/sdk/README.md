@@ -48,6 +48,34 @@ await familiar.integration.update({
 
 Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
 
+## Tool manifest schema
+
+A machine-readable JSON Schema is available for validating `familiar.tools.json` files:
+
+```
+node_modules/familiar-sdk/schema/familiar.tools.schema.json
+```
+
+Use it in your editor or CI to catch invalid manifests before syncing:
+
+```json
+{
+  "$schema": "https://familiar.monster/schema/familiar.tools.schema.json",
+  "tools": [
+    {
+      "tool_name": "hello.greet",
+      "description": "Say hello",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" }
+        }
+      }
+    }
+  ]
+}
+```
+
 ## Sync tools
 
 ```typescript
@@ -225,6 +253,8 @@ Get basic account info for the authenticated account.
 ```typescript
 const usage = await familiar.account.usage();
 console.log(usage.accountId);
+console.log(usage.actionCount);
+console.log(usage.freeActionsRemaining);
 ```
 
 ### `familiar.threads.list({ userId? })`

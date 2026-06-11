@@ -85,6 +85,7 @@ export type ProviderConfig = {
   aiApiKey?: string;
   toolUrls?: Record<string, string>;
   webhookSecret?: string;
+  transport?: "webhook" | "websocket";
 };
 
 export type ProviderChannelInput = {
@@ -160,3 +161,9 @@ export type ProviderConversationResponseKind =
   | "follow_up"
   | "confirmation"
   | "task_result";
+
+export type RawToolArgumentUpdate = {
+  arguments?: Record<string, unknown>;
+  follow_up?: string | null;
+  followUp?: string | null;
+};

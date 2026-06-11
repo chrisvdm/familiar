@@ -1,3 +1,5 @@
+import { integrationPatchSchema } from "../provider/provider.schemas.ts";
+
 type CreateAccountResult = {
 
   account: {
@@ -7,6 +9,7 @@ type CreateAccountResult = {
   integration: {
     id: string;
     baseUrl: string | null;
+    aiApiKey: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -28,6 +31,7 @@ type AuthenticatedAccount = {
     id: string;
     baseUrl: string | null;
     aiApiKey: string | null;
+    transport: "webhook" | "websocket";
     createdAt: string;
     updatedAt: string;
   };
@@ -40,7 +44,7 @@ type AuthenticatedAccount = {
   };
 };
 
-type AccountEndpointDeps = {
+export type AccountEndpointDeps = {
   getRequestId: (request: Request) => string;
   readJson: <T>(request: Request) => Promise<T>;
   jsonResponse: (input: {
@@ -69,14 +73,38 @@ type AccountEndpointDeps = {
     integrationId: string;
     baseUrl: string | null;
     aiApiKey: string | null;
+    transport?: "webhook" | "websocket";
   }) => Promise<{
     id: string;
     baseUrl: string | null;
     aiApiKey: string | null;
+    transport: "webhook" | "websocket";
     createdAt: string;
     updatedAt: string;
   }>;
+  syncProviderTools: (
+    input: {
+      integration_id: string;
+      user_id: string;
+      tools: Array<{
+        tool_name: string;
+        description: string;
+        input_schema: Record<string, unknown>;
+        input_mode?: "processed" | "raw";
+        executor_payload?: unknown;
+        policy?: Record<string, unknown>;
+        status?: "active" | "disabled";
+        base_url?: string;
+      }>;
+    },
+    requestId?: string,
+    accountId?: string,
+  ) => Promise<Record<string, unknown>>;
   createBrowserLoginSession: (token: string) => Promise<{ code: string; expiresAt: string }>;
+  getAccountUsage: (accountId: string) => Promise<{
+    actionCount: number;
+    freeActionsRemaining: number;
+  }>;
   getIntegrationStatus: (input: {
     accountId: string;
     integrationId: string;
@@ -134,8 +162,50 @@ export const createHandleCreateAccountEndpoint = (deps: AccountEndpointDeps) => 
     }
 
     try {
-      await deps.readJson<Record<string, never> | undefined>(request);
+      const body = await deps.readJson<{
+        base_url?: string;
+        ai_api_key?: string;
+        tools?: Array<{
+          tool_name: string;
+          description: string;
+          input_schema: Record<string, unknown>;
+          input_mode?: "processed" | "raw";
+          executor_payload?: unknown;
+          policy?: Record<string, unknown>;
+          status?: "active" | "disabled";
+          base_url?: string;
+        }>;
+      }>(request);
+
       const result = await deps.createAccountWithInitialToken({});
+
+      let integration = result.integration;
+
+      if (body.base_url || body.ai_api_key !== undefined) {
+        const normalizedBaseUrl = body.base_url
+          ? deps.normalizeIntegrationBaseUrl(body.base_url)
+          : null;
+        integration = await deps.updateAccountIntegrationBaseUrl({
+          accountId: result.account.id,
+          integrationId: result.integration.id,
+          baseUrl: normalizedBaseUrl,
+          aiApiKey: body.ai_api_key ?? null,
+        });
+      }
+
+      let toolsSyncResult: Record<string, unknown> | undefined;
+
+      if (body.tools && body.tools.length > 0) {
+        toolsSyncResult = await deps.syncProviderTools(
+          {
+            integration_id: result.integration.id,
+            user_id: "default",
+            tools: body.tools,
+          },
+          requestId,
+          result.account.id,
+        );
+      }
 
       return deps.jsonResponse({
         requestId,
@@ -151,6 +221,20 @@ export const createHandleCreateAccountEndpoint = (deps: AccountEndpointDeps) => 
             last_four: result.token.lastFour,
             created_at: result.token.createdAt,
           },
+          integration: {
+            id: integration.id,
+            base_url: integration.baseUrl,
+            ai_api_key_set: !!integration.aiApiKey,
+            created_at: integration.createdAt,
+          },
+          ...(toolsSyncResult
+            ? {
+                tools: {
+                  synced: toolsSyncResult.synced_tools,
+                  status: toolsSyncResult.status,
+                },
+              }
+            : {}),
         },
       });
     } catch (error) {
@@ -271,6 +355,7 @@ export const createHandleCurrentIntegrationEndpoint = (
             ai_api_key_prefix: auth.integration.aiApiKey
               ? auth.integration.aiApiKey.slice(0, 8)
               : null,
+            transport: auth.integration.transport,
             created_at: auth.integration.createdAt,
             updated_at: auth.integration.updatedAt,
           },
@@ -279,36 +364,41 @@ export const createHandleCurrentIntegrationEndpoint = (
     }
 
     try {
-      const input = await deps.readJson<{
-        base_url?: string | null;
-        ai_api_key?: string | null;
-      }>(request);
+      const body = await deps.readJson<Record<string, unknown>>(request);
+      const parsed = integrationPatchSchema.safeParse(body);
+
+      if (!parsed.success) {
+        const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: issues,
+        });
+      }
+
+      const input = parsed.data;
 
       const normalizedBaseUrl =
         input.base_url == null ? null : deps.normalizeIntegrationBaseUrl(input.base_url);
 
       // --GROK--: ai_api_key absent means keep current value; null means clear it; string means set it
-      const incomingAiApiKey = "ai_api_key" in input ? input.ai_api_key : undefined;
-      if (incomingAiApiKey !== undefined && incomingAiApiKey !== null) {
-        if (!incomingAiApiKey.startsWith("sk-or-v1-")) {
-          return deps.jsonError({
-            requestId,
-            status: 400,
-            code: "invalid_request",
-            message: "Unrecognised API key format. Expected an OpenRouter key starting with sk-or-v1-.",
-          });
-        }
-      }
+      const incomingAiApiKey = "ai_api_key" in body ? input.ai_api_key : undefined;
 
       // --GROK--: when ai_api_key is absent from the payload, preserve the existing value
       const resolvedAiApiKey =
         incomingAiApiKey !== undefined ? incomingAiApiKey : auth.integration.aiApiKey;
+
+      // --GROK--: when transport is absent from the payload, preserve the existing value
+      const resolvedTransport =
+        input.transport !== undefined ? input.transport : auth.integration.transport;
 
       const integration = await deps.updateAccountIntegrationBaseUrl({
         accountId: auth.account.id,
         integrationId: auth.integration.id,
         baseUrl: normalizedBaseUrl,
         aiApiKey: resolvedAiApiKey ?? null,
+        transport: resolvedTransport,
       });
 
       return deps.jsonResponse({
@@ -321,6 +411,7 @@ export const createHandleCurrentIntegrationEndpoint = (
             ai_api_key_prefix: integration.aiApiKey
               ? integration.aiApiKey.slice(0, 8)
               : null,
+            transport: integration.transport,
             created_at: integration.createdAt,
             updated_at: integration.updatedAt,
           },
@@ -449,3 +540,49 @@ export const createHandleIntegrationStatusEndpoint = (
 };
 
 
+
+export const createHandleAccountUsageEndpoint = (deps: AccountEndpointDeps) => {
+  return async ({ request }: { request: Request }) => {
+    const requestId = deps.getRequestId(request);
+
+    if (request.method !== "GET") {
+      return deps.jsonError({
+        requestId,
+        status: 405,
+        code: "method_not_allowed",
+        message: "Method not allowed.",
+      });
+    }
+
+    const token = getBearerToken(request);
+    if (!token) {
+      return deps.jsonError({
+        requestId,
+        status: 401,
+        code: "unauthenticated",
+        message: "Missing bearer token.",
+      });
+    }
+
+    const auth = await deps.authenticateAccountToken(token);
+    if (!auth) {
+      return deps.jsonError({
+        requestId,
+        status: 403,
+        code: "forbidden",
+        message: "Invalid API token.",
+      });
+    }
+
+    const usage = await deps.getAccountUsage(auth.account.id);
+
+    return deps.jsonResponse({
+      requestId,
+      body: {
+        account_id: auth.account.id,
+        action_count: usage.actionCount,
+        free_actions_remaining: usage.freeActionsRemaining,
+      },
+    });
+  };
+};

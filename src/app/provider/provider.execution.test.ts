@@ -76,7 +76,9 @@ test("executeProviderToolRequest returns failed for invalid JSON responses", asy
   );
 });
 
-test("executeProviderToolRequest returns failed for unreachable executors", async () => {
+test("executeProviderToolRequest retries connection errors and returns offline message after exhaustion", async () => {
+  let attemptCount = 0;
+
   const result = await executeProviderToolRequest({
     providerConfig: {
       token: "dev-token",
@@ -87,11 +89,15 @@ test("executeProviderToolRequest returns failed for unreachable executors", asyn
     threadId: "thread_123",
     toolName: "spreadsheet.update_row",
     args: {},
+    maxRetries: 2,
+    retryDelayMs: 10,
     fetchImpl: async () => {
+      attemptCount++;
       throw new Error("network down");
     },
   });
 
+  assert.equal(attemptCount, 3); // initial + 2 retries
   assert.equal(result.executionId.length > 0, true);
   assert.deepEqual(
     {
@@ -101,10 +107,112 @@ test("executeProviderToolRequest returns failed for unreachable executors", asyn
     },
     {
       state: "failed",
-      message: "The executor could not be reached.",
+      message: "Your local agent is currently offline. The request will be delivered when it reconnects.",
       data: null,
     },
   );
+});
+
+test("executeProviderToolRequest succeeds on a later retry attempt", async () => {
+  let attemptCount = 0;
+
+  const result = await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example",
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    maxRetries: 2,
+    retryDelayMs: 10,
+    fetchImpl: async () => {
+      attemptCount++;
+      if (attemptCount < 2) {
+        throw new Error("network down");
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          state: "completed",
+          result: { summary: "Recovered on retry." },
+        }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.equal(attemptCount, 2);
+  assert.deepEqual(
+    {
+      state: result.state,
+      message: result.message,
+    },
+    {
+      state: "completed",
+      message: "Recovered on retry.",
+    },
+  );
+});
+
+test("executeProviderToolRequest does not retry timeouts", async () => {
+  let attemptCount = 0;
+
+  const result = await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example",
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    maxRetries: 2,
+    retryDelayMs: 10,
+    fetchImpl: async () => {
+      attemptCount++;
+      const error = new Error("The operation was aborted");
+      error.name = "AbortError";
+      throw error;
+    },
+  });
+
+  assert.equal(attemptCount, 1); // no retries
+  assert.equal(result.state, "failed");
+  assert.equal(result.message, "The executor request timed out.");
+});
+
+test("executeProviderToolRequest does not retry HTTP errors", async () => {
+  let attemptCount = 0;
+
+  const result = await executeProviderToolRequest({
+    providerConfig: {
+      token: "dev-token",
+      baseUrl: "https://executor.example",
+    },
+    providerId: "provider_a",
+    userId: "user_123",
+    threadId: "thread_123",
+    toolName: "spreadsheet.update_row",
+    args: {},
+    maxRetries: 2,
+    retryDelayMs: 10,
+    fetchImpl: async () => {
+      attemptCount++;
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({ ok: false, error: { message: "Server exploded" } }),
+      } as unknown as Response;
+    },
+  });
+
+  assert.equal(attemptCount, 1); // no retries
+  assert.equal(result.state, "failed");
+  assert.equal(result.message, "Server exploded");
 });
 
 test("executeProviderToolRequest returns normalized success payloads", async () => {

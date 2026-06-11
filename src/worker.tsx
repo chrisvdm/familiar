@@ -1,8 +1,10 @@
+import { env } from "cloudflare:workers";
 import { layout, render, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
 
 import { ChatSessionDurableObject } from "@/app/chat/chat-session-do";
 import { AccountRegistryDurableObject } from "@/app/account/account-registry-do";
+import { ExecutorConnectionDurableObject } from "@/app/provider/provider.websocket-do";
 import { Document } from "@/app/document";
 import { DocsLayout } from "@/app/layouts/DocsLayout/";
 import { PublicLayout } from "@/app/layouts/public-layout";
@@ -33,11 +35,10 @@ import {
   checkRateLimitByIp,
   createAccountWithInitialToken,
   registerAccountUser,
-  authenticateAccountToken,
   authenticateUser,
   storeContactSubmission,
   consumeBrowserLoginSession,
-  updateAccountIntegrationBaseUrl,
+  authenticateAccountToken,
 } from "@/app/account/account.service";
 import { Contact } from "@/app/pages/contact";
 
@@ -227,15 +228,8 @@ export default defineApp([
       const formData = await request.formData();
       const email = (formData.get("email")?.toString() ?? "").trim();
       const password = formData.get("password")?.toString() ?? "";
-      const openrouterApiKey = (formData.get("openrouter_api_key")?.toString() ?? "").trim();
-
-      if (!openrouterApiKey) {
-        return new Response("OpenRouter API key is required.", { status: 400 });
-      }
 
       let tokenValue: string;
-      let accountId: string;
-      let integrationId: string;
 
       if (email && password) {
         const result = await registerAccountUser({ email, password });
@@ -243,24 +237,9 @@ export default defineApp([
           return new Response(result.error, { status: 400 });
         }
         tokenValue = result.value.token;
-        accountId = result.value.user.accountId;
-        // Get integration from the user's account
-        const auth = await authenticateAccountToken(tokenValue);
-        integrationId = auth?.account.defaultSetupId ?? "";
       } else {
         const result = await createAccountWithInitialToken({});
         tokenValue = result.token.value;
-        accountId = result.account.id;
-        integrationId = result.integration.id;
-      }
-
-      if (integrationId) {
-        await updateAccountIntegrationBaseUrl({
-          accountId,
-          integrationId,
-          baseUrl: null,
-          aiApiKey: openrouterApiKey,
-        });
       }
 
       let session = await browserSessionStore.load(request);
@@ -355,6 +334,32 @@ export default defineApp([
       return new Response("Unable to send message", { status: 400 });
     }
   }),
+  route("/ws/executor", async ({ request }) => {
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token")?.trim();
+
+    if (!token) {
+      return new Response("Missing token query parameter.", { status: 401 });
+    }
+
+    const auth = await authenticateAccountToken(token);
+
+    if (!auth) {
+      return new Response("Invalid token.", { status: 401 });
+    }
+
+    if (auth.integration.transport !== "websocket") {
+      return new Response(
+        "Integration not configured for WebSocket transport. Set transport to 'websocket' via PATCH /api/v1/integration.",
+        { status: 400 },
+      );
+    }
+
+    const id = env.EXECUTOR_CONNECTIONS.idFromName(auth.integration.id);
+    const stub = env.EXECUTOR_CONNECTIONS.get(id);
+
+    return stub.fetch(request);
+  }),
   ...accountRoutes,
   ...providerRoutes,
   ...providerDemoRoutes,
@@ -419,5 +424,6 @@ export {
   AccountRegistryDurableObject,
   BrowserSessionDurableObject,
   ChatSessionDurableObject,
+  ExecutorConnectionDurableObject,
   ProviderUserContextDurableObject,
 };

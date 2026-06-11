@@ -30,6 +30,7 @@ const makeIntegration = (overrides: Partial<{
   baseUrl: string | null;
   toolUrls: Record<string, string>;
   webhookSecret: string;
+  transport: "webhook" | "websocket";
 }> = {}) => ({
   id: "setup_123",
   accountId: "acct_123",
@@ -38,6 +39,7 @@ const makeIntegration = (overrides: Partial<{
   aiApiKey: null,
   toolUrls: {},
   webhookSecret: "whsec_test",
+  transport: "webhook" as const,
   createdAt: "2026-03-25T10:00:00.000Z",
   updatedAt: "2026-03-25T10:00:00.000Z",
   ...overrides,
@@ -68,9 +70,29 @@ const sharedDeps = {
   normalizeIntegrationBaseUrl: (u: string) => u.trim().replace(/\/$/, ""),
   createAccountWithInitialToken: async () => { throw new Error("should not create account"); },
   createBrowserLoginSession: async () => ({ code: "browser_abc123", expiresAt: "2026-03-25T11:00:00.000Z" }),
-  // Billing removed for open-source
+  getAccountUsage: async () => ({ actionCount: 0, freeActionsRemaining: 5 }),
   getIntegrationStatus: async () => ({ toolCount: 0, threadCount: 0 }),
   checkRateLimitByIp: async () => ({ allowed: true }),
+  syncProviderTools: async () => ({
+    integration_id: "setup_123",
+    user_id: "default",
+    synced_tools: 0,
+    status: "ok",
+  }),
+  updateAccountIntegrationBaseUrl: async (input: {
+    accountId: string;
+    integrationId: string;
+    baseUrl: string | null;
+    aiApiKey: string | null;
+    transport?: "webhook" | "websocket";
+  }) => ({
+    id: input.integrationId,
+    baseUrl: input.baseUrl,
+    aiApiKey: input.aiApiKey,
+    transport: input.transport ?? "webhook",
+    createdAt: "2026-03-25T10:00:00.000Z",
+    updatedAt: "2026-03-25T10:00:00.000Z",
+  }),
 };
 
 const integrationRequest = (method: "GET" | "PATCH", body?: unknown) =>
@@ -94,7 +116,7 @@ test("PATCH /integration stores a valid OpenRouter key and returns masked prefix
     authenticateAccountToken: async () => makeAuth(),
     updateAccountIntegrationBaseUrl: async (input) => {
       captured = { aiApiKey: input.aiApiKey };
-      return { ...makeIntegration({ aiApiKey: input.aiApiKey }), baseUrl: input.baseUrl };
+      return { ...makeIntegration({ aiApiKey: input.aiApiKey }), baseUrl: input.baseUrl, transport: input.transport ?? "webhook" };
     },
   });
 
@@ -140,7 +162,7 @@ test("PATCH /integration clears the key when ai_api_key is null", async () => {
     authenticateAccountToken: async () => makeAuth(makeIntegration({ aiApiKey: VALID_KEY })),
     updateAccountIntegrationBaseUrl: async (input) => {
       captured = { aiApiKey: input.aiApiKey };
-      return { ...makeIntegration({ aiApiKey: input.aiApiKey }), baseUrl: input.baseUrl };
+      return { ...makeIntegration({ aiApiKey: input.aiApiKey }), baseUrl: input.baseUrl, transport: input.transport ?? "webhook" };
     },
   });
 
@@ -166,7 +188,7 @@ test("PATCH /integration preserves existing key when ai_api_key is absent from p
     authenticateAccountToken: async () => makeAuth(makeIntegration({ aiApiKey: VALID_KEY })),
     updateAccountIntegrationBaseUrl: async (input) => {
       captured = { aiApiKey: input.aiApiKey };
-      return { ...makeIntegration({ aiApiKey: input.aiApiKey }), baseUrl: input.baseUrl };
+      return { ...makeIntegration({ aiApiKey: input.aiApiKey }), baseUrl: input.baseUrl, transport: input.transport ?? "webhook" };
     },
   });
 
@@ -245,7 +267,7 @@ test("conversation endpoint forwards aiApiKey from auth to handleProviderConvers
       capturedConfig = providerConfig;
       return { state: "completed" };
     },
-    // Billing removed for open-source
+    incrementAccountActionCount: async () => ({ actionCount: 1 }),
     isProviderRateLimitError: (error: unknown): error is Error & { retryAfterSeconds: number } => false,
   });
 
@@ -295,7 +317,7 @@ test("conversation endpoint returns 400 configuration_required when no AI key is
     readIdempotencyReplay: () => ({ kind: "miss" as const }),
     storeIdempotencyReplay: ({ context }) => context,
     handleProviderConversationInput: async () => { throw new Error("should not be called"); },
-    // Billing removed for open-source
+    incrementAccountActionCount: async () => ({ actionCount: 1 }),
     isProviderRateLimitError: (error: unknown): error is Error & { retryAfterSeconds: number } => false,
   });
 
@@ -338,6 +360,7 @@ test("normalizeAccountRegistryState backfills aiApiKey null on integration recor
         aiApiKey: null,
         toolUrls: {},
         webhookSecret: "whsec_legacy",
+        transport: "webhook",
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

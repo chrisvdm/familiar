@@ -46,6 +46,10 @@
       {
         "name": "ACCOUNT_REGISTRY",
         "class_name": "AccountRegistryDurableObject"
+      },
+      {
+        "name": "EXECUTOR_CONNECTIONS",
+        "class_name": "ExecutorConnectionDurableObject"
       }
     ]
   },
@@ -66,6 +70,10 @@
     {
       "tag": "v4",
       "new_sqlite_classes": ["AccountRegistryDurableObject"]
+    },
+    {
+      "tag": "v5",
+      "new_sqlite_classes": ["ExecutorConnectionDurableObject"]
     }
   ],
 

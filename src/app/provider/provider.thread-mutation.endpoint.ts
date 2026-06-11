@@ -16,7 +16,7 @@ import {
 import {
   deleteProviderThread,
   renameProviderThread,
-} from "./provider.service";
+} from "./provider.threads.ts";
 import {
   loadOrCreateProviderUserContext,
   saveProviderUserContext,

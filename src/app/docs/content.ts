@@ -9,6 +9,7 @@ const DOC_ORDER = [
   "install-and-run",
   "cli",
   "sdk",
+  "agent-quickstart",
   "quickstart",
   "cookbook",
   "cookbook-discord-mentions",

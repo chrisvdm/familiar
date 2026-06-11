@@ -69,6 +69,7 @@ export class AccountRegistryDurableObject extends DurableObject {
     aiApiKey: string | null;
     name?: string;
     toolUrls?: Record<string, string>;
+    transport?: "webhook" | "websocket";
   }) {
     const state = await this.loadState();
     const account = state.accounts[input.accountId];
@@ -86,6 +87,7 @@ export class AccountRegistryDurableObject extends DurableObject {
           aiApiKey: input.aiApiKey,
           ...(input.name !== undefined ? { name: input.name } : {}),
           ...(input.toolUrls !== undefined ? { toolUrls: input.toolUrls } : {}),
+          ...(input.transport !== undefined ? { transport: input.transport } : {}),
           updatedAt: now,
         }
       : {
@@ -96,6 +98,7 @@ export class AccountRegistryDurableObject extends DurableObject {
           aiApiKey: input.aiApiKey,
           toolUrls: input.toolUrls ?? {},
           webhookSecret: `whsec_${randomHex(32)}`,
+          transport: input.transport ?? "webhook",
           createdAt: now,
           updatedAt: now,
         };
@@ -233,6 +236,41 @@ export class AccountRegistryDurableObject extends DurableObject {
     };
 
     return { value: auth };
+  }
+
+  async incrementActionCount(input: { accountId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    account.actionCount = (account.actionCount || 0) + 1;
+
+    await this.saveState(state);
+
+    return {
+      value: {
+        actionCount: account.actionCount,
+      },
+    };
+  }
+
+  async getAccountUsage(input: { accountId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    return {
+      value: {
+        actionCount: account.actionCount || 0,
+        freeActionsRemaining: Math.max(0, 5 - (account.actionCount || 0)),
+      },
+    };
   }
 
   async listAccountIntegrations(input: { accountId: string }) {

@@ -46,6 +46,7 @@ export const sharedEndpointDeps = {
   jsonResponse,
   jsonError,
   replayIdempotentResponse,
+  incrementAccountActionCount: async () => ({ actionCount: 1 }),
 };
 
 export const okAuth = () => ({

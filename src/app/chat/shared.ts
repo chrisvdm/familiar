@@ -1,10 +1,21 @@
-export type ChatRole = "system" | "user" | "assistant";
+export type ChatRole = "system" | "user" | "assistant" | "tool";
+
+export type ToolCall = {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+};
 
 export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
   createdAt: string;
+  toolCallId?: string;
+  toolCalls?: ToolCall[];
 };
 
 export type PendingToolConfirmation = {
@@ -858,11 +869,12 @@ export const normalizeChatSessionState = (
       : null,
 });
 
-export const createAssistantMessage = (content: string): ChatMessage => ({
+export const createAssistantMessage = (content: string, toolCalls?: ToolCall[]): ChatMessage => ({
   id: crypto.randomUUID(),
   role: "assistant",
   content,
   createdAt: new Date().toISOString(),
+  ...(toolCalls ? { toolCalls } : {}),
 });
 
 export const createUserMessage = (content: string): ChatMessage => ({
@@ -870,6 +882,14 @@ export const createUserMessage = (content: string): ChatMessage => ({
   role: "user",
   content,
   createdAt: new Date().toISOString(),
+});
+
+export const createToolMessage = (content: string, toolCallId: string): ChatMessage => ({
+  id: crypto.randomUUID(),
+  role: "tool",
+  content,
+  createdAt: new Date().toISOString(),
+  toolCallId,
 });
 
 export const createInitialChatState = (): ChatSessionState => ({

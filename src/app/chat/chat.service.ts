@@ -22,13 +22,13 @@ import {
   persistBrowserSession as persistSessionState,
   type BrowserSession,
 } from "../session/session";
+import { WEB_PROVIDER_ID } from "../provider/provider.logic.ts";
 import {
   createProviderThread,
   deleteProviderThread,
-  handleProviderConversationInput,
   renameProviderThread,
-  WEB_PROVIDER_ID,
-} from "../provider/provider.service";
+} from "../provider/provider.threads.ts";
+import { handleProviderConversationInput } from "../provider/provider.conversation.ts";
 import {
   loadOrCreateProviderUserContext,
   saveProviderUserContext,

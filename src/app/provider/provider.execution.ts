@@ -38,6 +38,18 @@ const VALID_EXECUTION_STATES = new Set<ProviderExecutionState>([
 ]);
 
 const EXECUTOR_REQUEST_TIMEOUT_MS = 15_000;
+const EXECUTOR_MAX_RETRIES = 3;
+const EXECUTOR_RETRY_DELAY_MS = 1000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRetryableConnectionError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  // Timeouts are not connection errors — the server was reachable but slow
+  if (error.name === "AbortError") return false;
+  // Any other fetch error is treated as a connection-level failure
+  return true;
+};
 
 const EXECUTOR_PAYLOAD_TOKENS = {
   "$execution_id": "execution_id",
@@ -219,6 +231,8 @@ export const executeProviderToolRequest = async ({
   executorPayloadTemplate,
   fetchImpl = fetch,
   timeoutMs = EXECUTOR_REQUEST_TIMEOUT_MS,
+  maxRetries,
+  retryDelayMs,
 }: {
   providerConfig: ProviderConfig;
   providerId: string;
@@ -234,6 +248,8 @@ export const executeProviderToolRequest = async ({
   executorPayloadTemplate?: unknown;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  maxRetries?: number;
+  retryDelayMs?: number;
 }) => {
   const executionId = crypto.randomUUID();
 
@@ -256,8 +272,6 @@ export const executeProviderToolRequest = async ({
     throw new Error("Executor base URL is not configured.");
   }
 
-  const controller = new AbortController();
-  const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
   const requestIdValue = requestId ?? crypto.randomUUID();
 
   const webhookSignature = providerConfig.webhookSecret
@@ -299,54 +313,74 @@ export const executeProviderToolRequest = async ({
           context: requestContext,
         };
 
-  try {
-    const response = await fetchImpl(buildExecutorToolUrl(toolUrl), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${providerConfig.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
+  const retries = maxRetries ?? EXECUTOR_MAX_RETRIES;
+  const baseDelay = retryDelayMs ?? EXECUTOR_RETRY_DELAY_MS;
+  let lastError: unknown;
 
-    let payload: ProviderToolExecutionResponse;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) {
+      await sleep(baseDelay * (2 ** (attempt - 1)));
+    }
+
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      payload = (await response.json()) as ProviderToolExecutionResponse;
-    } catch {
-      return {
-        executionId,
-        state: "failed" as const,
-        message: "The executor returned an invalid JSON response.",
-        data: null,
-      };
-    }
+      const response = await fetchImpl(buildExecutorToolUrl(toolUrl), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${providerConfig.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
 
-    return normalizeProviderToolExecution({
-      executionId,
-      responseOk: response.ok,
-      payload,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      return {
-        executionId,
-        state: "failed" as const,
-        message: "The executor request timed out.",
-        data: null,
-      };
-    }
+      clearTimeout(timeoutHandle);
 
+      let payload: ProviderToolExecutionResponse;
+
+      try {
+        payload = (await response.json()) as ProviderToolExecutionResponse;
+      } catch {
+        return {
+          executionId,
+          state: "failed" as const,
+          message: "The executor returned an invalid JSON response.",
+          data: null,
+        };
+      }
+
+      return normalizeProviderToolExecution({
+        executionId,
+        responseOk: response.ok,
+        payload,
+      });
+    } catch (error) {
+      clearTimeout(timeoutHandle);
+      lastError = error;
+
+      if (!isRetryableConnectionError(error) || attempt >= retries) {
+        break;
+      }
+    }
+  }
+
+  if (lastError instanceof Error && lastError.name === "AbortError") {
     return {
       executionId,
       state: "failed" as const,
-      message: "The executor could not be reached.",
+      message: "The executor request timed out.",
       data: null,
     };
-  } finally {
-    clearTimeout(timeoutHandle);
   }
+
+  return {
+    executionId,
+    state: "failed" as const,
+    message: "Your local agent is currently offline. The request will be delivered when it reconnects.",
+    data: null,
+  };
 };
 
 export const sendProviderChannelMessage = async ({

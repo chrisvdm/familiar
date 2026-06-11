@@ -23,8 +23,8 @@ export const Setup = ({
             <p className="setup-eyebrow">Hosted Onboarding</p>
             <h1 className="setup-title">Get started with familiar</h1>
             <p className="setup-copy">
-              Create an account and go straight to your dashboard. You will need
-              an OpenRouter API key for routing.
+              Create an account and go straight to your dashboard. You get 5 free
+              actions to test — then add your OpenRouter API key to keep going.
             </p>
           </section>
 
@@ -32,18 +32,11 @@ export const Setup = ({
             <section className="setup-panel">
               <h2 className="setup-panel-title">Quick start</h2>
               <p className="setup-panel-copy">
-                No email required. Just provide your OpenRouter API key.
+                No email required. One click for AI agents, CLI users, and anyone
+                who wants a token immediately.
               </p>
 
-              <form action="/setup/create" method="post" className="setup-form">
-                <input
-                  type="text"
-                  name="openrouter_api_key"
-                  placeholder="OpenRouter API key"
-                  required
-                  autoComplete="off"
-                  className="setup-input"
-                />
+              <form action="/setup/create" method="post">
                 <button className="setup-button" type="submit">
                   Create account
                 </button>
@@ -76,14 +69,6 @@ export const Setup = ({
                   required
                   autoComplete="new-password"
                   minLength={8}
-                  className="setup-input"
-                />
-                <input
-                  type="text"
-                  name="openrouter_api_key"
-                  placeholder="OpenRouter API key"
-                  required
-                  autoComplete="off"
                   className="setup-input"
                 />
                 <button

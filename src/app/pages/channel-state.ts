@@ -1,7 +1,5 @@
-import {
-  getProviderHydratedState,
-  WEB_PROVIDER_ID,
-} from "../provider/provider.service";
+import { WEB_PROVIDER_ID } from "../provider/provider.logic.ts";
+import { getProviderHydratedState } from "../provider/provider.threads.ts";
 import {
   getBrowserSessionIdFromRequest,
   type BrowserSession,

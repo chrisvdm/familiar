@@ -1,6 +1,7 @@
 export type FamiliarAccount = {
   id: string;
   defaultSetupId: string;
+  actionCount: number;
   createdAt: string;
 };
 
@@ -12,6 +13,7 @@ export type FamiliarIntegrationConfig = {
   aiApiKey: string | null;
   toolUrls: Record<string, string>;
   webhookSecret: string;
+  transport: "webhook" | "websocket";
   createdAt: string;
   updatedAt: string;
 };

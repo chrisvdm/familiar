@@ -13,6 +13,19 @@ export type Tool = {
   baseUrl?: string;
 };
 
+export type CreateAccountInput = {
+  baseUrl?: string;
+  aiApiKey?: string;
+  tools?: Array<{
+    toolName: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+    inputMode?: "processed" | "raw";
+    status?: "active" | "inactive";
+    baseUrl?: string;
+  }>;
+};
+
 export type Message = {
   messageId: string;
   role: "user" | "assistant";
@@ -71,10 +84,22 @@ export type Token = {
 export type CreateAccountResult = {
   account: Account;
   token: Token;
+  integration: {
+    id: string;
+    baseUrl: string | null;
+    aiApiKeySet: boolean;
+    createdAt: string;
+  };
+  tools?: {
+    synced: number;
+    status: string;
+  };
 };
 
 export type AccountUsage = {
   accountId: string;
+  actionCount: number;
+  freeActionsRemaining: number | null;
 };
 
 export type Thread = {

@@ -14,11 +14,13 @@ import {
 import {
   getProviderHealth,
   getProviderMemory,
-  getProviderThreadMemory,
+} from "./provider.service.ts";
+import { getProviderThreadMemory } from "./provider.threads.ts";
+import {
   handleStreamConversationInput,
-  listProviderThreads,
   simulateConversationInput,
-} from "./provider.service";
+} from "./provider.conversation.ts";
+import { listProviderThreads } from "./provider.threads.ts";
 import { loadOrCreateProviderUserContext } from "./provider.storage";
 
 export const providerRoutes = [

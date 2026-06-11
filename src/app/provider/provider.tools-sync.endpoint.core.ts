@@ -1,4 +1,5 @@
 import type { ProviderToolSyncInput, ProviderUserContext } from "./provider.types.ts";
+import { providerToolSyncSchema } from "./provider.schemas.ts";
 import {
   resolveProviderIdFromInput,
   resolveUserIdFromInput,
@@ -156,6 +157,17 @@ export const createHandleToolsSyncEndpoint = (deps: ToolsSyncEndpointDeps) => {
         integration_id: providerId,
         user_id: userId,
       } satisfies NormalizedProviderToolSyncInput;
+
+      const parsed = providerToolSyncSchema.safeParse(normalizedInput);
+      if (!parsed.success) {
+        const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: issues,
+        });
+      }
 
       if (params.integrationId && providerId !== params.integrationId) {
         return deps.jsonError({

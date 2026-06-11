@@ -1,3 +1,4 @@
+import { threadCreateSchema } from "./provider.schemas.ts";
 import type { ProviderUserContext } from "./provider.types.ts";
 import {
   resolveProviderIdFromInput,
@@ -148,6 +149,22 @@ export const createHandleThreadCreateEndpoint = (
         explicitUserId: input.user_id,
         authenticatedAccountId: auth.accountId,
       });
+      const normalizedInput = {
+        ...input,
+        integration_id: providerId,
+        user_id: userId,
+      };
+
+      const parsed = threadCreateSchema.safeParse(normalizedInput);
+      if (!parsed.success) {
+        const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+        return deps.jsonError({
+          requestId,
+          status: 400,
+          code: "invalid_request",
+          message: issues,
+        });
+      }
 
       if (idempotencyKey) {
         const context = await deps.loadOrCreateProviderUserContext({

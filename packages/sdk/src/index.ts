@@ -53,11 +53,46 @@ export class Familiar {
     this.host = host;
   }
 
-  static async createAccount({ host = DEFAULT_HOST }: { host?: string } = {}): Promise<CreateAccountResult> {
+  static async createAccount({
+    host = DEFAULT_HOST,
+    baseUrl,
+    aiApiKey,
+    tools,
+  }: {
+    host?: string;
+    baseUrl?: string;
+    aiApiKey?: string;
+    tools?: Array<{
+      toolName: string;
+      description: string;
+      inputSchema: Record<string, unknown>;
+      inputMode?: "processed" | "raw";
+      status?: "active" | "inactive";
+      baseUrl?: string;
+    }>;
+  } = {}): Promise<CreateAccountResult> {
     const payload = await request<{
       account: { id: string; created_at: string };
       token: { value: string; prefix: string; last_four: string; created_at: string };
-    }>({ host, method: "POST", path: "/api/v1/accounts", body: {} });
+      integration: { id: string; base_url: string | null; ai_api_key_set: boolean; created_at: string };
+      tools?: { synced: number; status: string };
+    }>({
+      host,
+      method: "POST",
+      path: "/api/v1/accounts",
+      body: {
+        ...(baseUrl ? { base_url: baseUrl } : {}),
+        ...(aiApiKey ? { ai_api_key: aiApiKey } : {}),
+        ...(tools ? { tools: tools.map((t) => ({
+          tool_name: t.toolName,
+          description: t.description,
+          input_schema: t.inputSchema,
+          ...(t.inputMode ? { input_mode: t.inputMode } : {}),
+          ...(t.status ? { status: t.status } : {}),
+          ...(t.baseUrl ? { base_url: t.baseUrl } : {}),
+        })) } : {}),
+      },
+    });
 
     return {
       account: { id: payload.account.id, createdAt: payload.account.created_at },
@@ -67,6 +102,13 @@ export class Familiar {
         lastFour: payload.token.last_four,
         createdAt: payload.token.created_at,
       },
+      integration: {
+        id: payload.integration.id,
+        baseUrl: payload.integration.base_url,
+        aiApiKeySet: payload.integration.ai_api_key_set,
+        createdAt: payload.integration.created_at,
+      },
+      ...(payload.tools ? { tools: { synced: payload.tools.synced, status: payload.tools.status } } : {}),
     };
   }
 
@@ -395,15 +437,19 @@ export class Familiar {
     usage: async (): Promise<AccountUsage> => {
       const payload = await request<{
         account_id: string;
+        action_count: number;
+        free_actions_remaining: number;
       }>({
         host: this.host,
         method: "GET",
-        path: "/api/v1/account",
+        path: "/api/v1/account/usage",
         token: this.token,
       });
 
       return {
         accountId: payload.account_id,
+        actionCount: payload.action_count,
+        freeActionsRemaining: payload.free_actions_remaining,
       };
     },
   };

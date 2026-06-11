@@ -411,7 +411,7 @@ test("tools sync endpoint returns warning when soft limit exceeded", async () =>
   });
 
   assert.equal(response.status, 200);
-  const body = await response.json();
+  const body = (await response.json()) as { warning: string };
   assert.ok(body.warning);
   assert.match(body.warning, /exceeds recommended soft limit/);
 });

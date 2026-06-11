@@ -15,9 +15,14 @@ import {
   storeIdempotencyReplay,
 } from "./provider.idempotency";
 import {
+  incrementAccountActionCount,
+} from "../account/account.service";
+import {
   handleProviderConversationInput,
+} from "./provider.conversation.ts";
+import {
   isProviderRateLimitError,
-} from "./provider.service";
+} from "./provider.rate-limit.ts";
 import {
   loadOrCreateProviderUserContext,
   saveProviderUserContext,
@@ -41,5 +46,6 @@ export const handleConversationInputEndpoint =
     readIdempotencyReplay,
     storeIdempotencyReplay,
     handleProviderConversationInput,
+    incrementAccountActionCount,
     isProviderRateLimitError,
   });
