@@ -21,6 +21,7 @@ Usage:
   familiar whoami [--host <url>] [--token <token>]
   familiar set-key <key> [--host <url>] [--token <token>]
   familiar set-url <url> [--host <url>] [--token <token>]
+  familiar set-transport <webhook|websocket> [--host <url>] [--token <token>]
   familiar tools sync [--file <path>] [--host <url>] [--token <token>]
   familiar portal --port <port> [--host <url>] [--token <token>]
   familiar models [--host <url>] [--token <token>]
@@ -36,6 +37,8 @@ Commands:
   set-key         Set the OpenRouter AI provider key for the current project integration.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   set-url         Set the executor base URL familiar will call when tools run.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  set-transport   Set the executor transport to webhook or websocket.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   tools sync      Sync tools from a JSON file (default: familiar.tools.json).
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
@@ -398,6 +401,34 @@ const setUrl = async ({ host, token, url: baseUrl }) => {
   print(`Executor URL set: ${baseUrl.trim()}`);
 };
 
+const setTransport = async ({ host, token, transport }) => {
+  if (!transport?.trim()) {
+    throw new Error("Usage: familiar set-transport <webhook|websocket>");
+  }
+
+  const normalized = transport.trim();
+
+  if (normalized !== "webhook" && normalized !== "websocket") {
+    throw new Error("Transport must be either 'webhook' or 'websocket'.");
+  }
+
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Add FAMILIAR_TOKEN to .dev.vars or run `familiar init`.",
+    );
+  }
+
+  await patchJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/integration`,
+    body: { transport: normalized },
+    token: resolvedToken,
+  });
+
+  print(`Executor transport set: ${normalized}`);
+};
+
 const syncTools = async ({ host, token, file }) => {
   const resolvedToken = await resolveToken(token);
 
@@ -560,6 +591,11 @@ const main = async () => {
 
   if (positionals[0] === "set-url") {
     await setUrl({ host, token, url: positionals[1] });
+    return;
+  }
+
+  if (positionals[0] === "set-transport") {
+    await setTransport({ host, token, transport: positionals[1] });
     return;
   }
 

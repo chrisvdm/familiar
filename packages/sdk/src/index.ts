@@ -360,9 +360,11 @@ export class Familiar {
     update: async ({
       aiApiKey,
       baseUrl,
+      transport,
     }: {
       aiApiKey?: string | null;
       baseUrl?: string | null;
+      transport?: "webhook" | "websocket";
     }): Promise<Integration> => {
       const payload = await request<{ integration: Record<string, unknown> }>({
         host: this.host,
@@ -372,6 +374,7 @@ export class Familiar {
         body: {
           ...(aiApiKey !== undefined ? { ai_api_key: aiApiKey } : {}),
           ...(baseUrl !== undefined ? { base_url: baseUrl } : {}),
+          ...(transport !== undefined ? { transport } : {}),
         },
       });
       return deserializeIntegration(payload.integration);
@@ -686,6 +689,7 @@ const deserializeIntegration = (raw: Record<string, unknown>): Integration => ({
   aiApiKeySet: raw.ai_api_key_set as boolean,
   aiApiKeyPrefix: raw.ai_api_key_prefix as string | null,
   baseUrl: raw.base_url as string | null,
+  transport: (raw.transport as "webhook" | "websocket") ?? "webhook",
   createdAt: raw.created_at as string,
   updatedAt: raw.updated_at as string,
 });

@@ -54,6 +54,7 @@ export type Integration = {
   aiApiKeySet: boolean;
   aiApiKeyPrefix: string | null;
   baseUrl: string | null;
+  transport: "webhook" | "websocket";
   createdAt: string;
   updatedAt: string;
 };
