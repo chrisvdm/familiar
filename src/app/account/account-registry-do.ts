@@ -128,6 +128,50 @@ export class AccountRegistryDurableObject extends DurableObject {
     };
   }
 
+  async listTokens(input: { accountId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    const tokens = Object.values(state.tokens)
+      .filter((token) => token.accountId === input.accountId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    return { value: tokens };
+  }
+
+  async revokeToken(input: { accountId: string; tokenId: string }) {
+    const state = await this.loadState();
+    const account = state.accounts[input.accountId];
+
+    if (!account) {
+      return { error: "Account not found." };
+    }
+
+    const token = state.tokens[input.tokenId];
+
+    if (!token || token.accountId !== input.accountId) {
+      return { error: "Token not found." };
+    }
+
+    if (token.revokedAt) {
+      return { error: "Token already revoked." };
+    }
+
+    const revokedToken = {
+      ...token,
+      revokedAt: new Date().toISOString(),
+    };
+
+    state.tokens[input.tokenId] = revokedToken;
+    await this.saveState(state);
+
+    return { value: revokedToken };
+  }
+
   async createBrowserLoginSession(input: {
     tokenValue: string;
     accountId: string;

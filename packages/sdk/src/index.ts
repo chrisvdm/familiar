@@ -14,6 +14,9 @@ import type {
   ThreadCreateResult,
   ThreadDeleteResult,
   AuditListResult,
+  TokenCreateResult,
+  TokenListResult,
+  TokenRevokeResult,
   SimulateInputResult,
   InputStreamEvent,
   FamiliarErrorCode,
@@ -40,6 +43,9 @@ export type {
   ThreadDeleteResult,
   AuditEvent,
   AuditListResult,
+  TokenCreateResult,
+  TokenListResult,
+  TokenRevokeResult,
   FamiliarErrorCode,
   InputStreamEvent,
 } from "./types.js";
@@ -479,6 +485,95 @@ export class Familiar {
         accountId: payload.account_id,
         actionCount: payload.action_count,
         freeActionsRemaining: payload.free_actions_remaining,
+      };
+    },
+  };
+
+  tokens = {
+    list: async (): Promise<TokenListResult> => {
+      const payload = await request<{
+        tokens: Array<{
+          id: string;
+          prefix: string;
+          last_four: string;
+          created_at: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+        }>;
+      }>({
+        host: this.host,
+        method: "GET",
+        path: "/api/v1/tokens",
+        token: this.token,
+      });
+
+      return {
+        tokens: payload.tokens.map((t) => ({
+          id: t.id,
+          prefix: t.prefix,
+          lastFour: t.last_four,
+          createdAt: t.created_at,
+          lastUsedAt: t.last_used_at,
+          revokedAt: t.revoked_at,
+        })),
+      };
+    },
+
+    create: async (): Promise<TokenCreateResult> => {
+      const payload = await request<{
+        token: {
+          value: string;
+          id: string;
+          prefix: string;
+          last_four: string;
+          created_at: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+        };
+      }>({
+        host: this.host,
+        method: "POST",
+        path: "/api/v1/tokens",
+        token: this.token,
+      });
+
+      return {
+        value: payload.token.value,
+        id: payload.token.id,
+        prefix: payload.token.prefix,
+        lastFour: payload.token.last_four,
+        createdAt: payload.token.created_at,
+        lastUsedAt: payload.token.last_used_at,
+        revokedAt: payload.token.revoked_at,
+      };
+    },
+
+    revoke: async ({ tokenId }: { tokenId: string }): Promise<TokenRevokeResult> => {
+      const payload = await request<{
+        token: {
+          id: string;
+          prefix: string;
+          last_four: string;
+          created_at: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+        };
+      }>({
+        host: this.host,
+        method: "DELETE",
+        path: `/api/v1/tokens/${encodeURIComponent(tokenId)}`,
+        token: this.token,
+      });
+
+      return {
+        token: {
+          id: payload.token.id,
+          prefix: payload.token.prefix,
+          lastFour: payload.token.last_four,
+          createdAt: payload.token.created_at,
+          lastUsedAt: payload.token.last_used_at,
+          revokedAt: payload.token.revoked_at,
+        },
       };
     },
   };

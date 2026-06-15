@@ -1,15 +1,18 @@
-import { getRequestId, jsonError, jsonResponse, readJson } from "../provider/provider.http";
+import { getRequestId, jsonError, jsonResponse, readJson } from "../provider/provider.http.ts";
 
 import {
   authenticateAccountToken,
   checkRateLimitByIp,
+  createAccountToken,
   createAccountWithInitialToken,
   createBrowserLoginSession,
   getAccountUsage,
   getIntegrationStatus,
+  listAccountTokens,
   normalizeIntegrationBaseUrl,
+  revokeAccountToken,
   updateAccountIntegrationBaseUrl,
-} from "./account.service";
+} from "./account.service.ts";
 import { syncProviderTools } from "../provider/provider.service.ts";
 import {
   createHandleAccountUsageEndpoint,
@@ -18,8 +21,12 @@ import {
   createHandleCurrentIntegrationEndpoint,
   createHandleGetAccountEndpoint,
   createHandleIntegrationStatusEndpoint,
-} from "./account.http-core";
-import { createHandleGetModelsEndpoint } from "./account.models.http";
+} from "./account.http-core.ts";
+import {
+  createHandleRevokeTokenEndpoint,
+  createHandleTokensEndpoint,
+} from "./account.tokens.http.ts";
+import { createHandleGetModelsEndpoint } from "./account.models.http.ts";
 
 const sharedDeps = {
   getRequestId,
@@ -31,6 +38,9 @@ const sharedDeps = {
   normalizeIntegrationBaseUrl,
   updateAccountIntegrationBaseUrl,
   createBrowserLoginSession,
+  createAccountToken,
+  listAccountTokens,
+  revokeAccountToken,
   getAccountUsage,
   getIntegrationStatus,
   checkRateLimitByIp,
@@ -57,3 +67,7 @@ export const handleIntegrationStatusEndpoint =
 
 export const handleGetModelsEndpoint =
   createHandleGetModelsEndpoint(sharedDeps);
+
+export const handleTokensEndpoint = createHandleTokensEndpoint(sharedDeps);
+
+export const handleRevokeTokenEndpoint = createHandleRevokeTokenEndpoint(sharedDeps);

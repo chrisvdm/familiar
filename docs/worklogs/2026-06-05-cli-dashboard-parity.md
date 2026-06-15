@@ -27,5 +27,17 @@ The web-based account dashboard currently provides integration health, usage, au
   - `familiar account usage`
   - `familiar audit events [--limit <n>]`
   - `familiar threads list [--user-id <id>]`
-- Existing `/api/v1/*` endpoints are reused; no backend changes required for these commands.
-- Token management still needs new backend endpoints if/when it is exposed.
+- Added token management commands to the CLI and SDK:
+  - `familiar tokens list` → `GET /api/v1/tokens`
+  - `familiar tokens create` → `POST /api/v1/tokens`
+  - `familiar tokens revoke <token-id>` → `DELETE /api/v1/tokens/:tokenId`
+- Backend changes:
+  - New `AccountRegistry` DO methods: `issueToken`, `listTokens`, `revokeToken`.
+  - New service helpers: `createAccountToken`, `listAccountTokens`, `revokeAccountToken`.
+  - New endpoint factories in `account.tokens.http.ts`: `createHandleTokensEndpoint` and `createHandleRevokeTokenEndpoint`.
+  - Wired routes in `account.routes.ts`:
+    - `GET /api/v1/tokens`
+    - `POST /api/v1/tokens`
+    - `DELETE /api/v1/tokens/:tokenId`
+- The full token value is returned only on creation; list and revoke expose only the prefix and last four characters.
+- Revocation sets `revokedAt` on the token record; the hashed token remains in storage for audit purposes but is no longer valid for auth.

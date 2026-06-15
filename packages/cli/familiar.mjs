@@ -19,6 +19,9 @@ Usage:
   familiar login [--host <url>]
   familiar account show [--host <url>] [--token <token>]
   familiar account usage [--host <url>] [--token <token>]
+  familiar tokens list [--host <url>] [--token <token>]
+  familiar tokens create [--host <url>] [--token <token>]
+  familiar tokens revoke <token-id> [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
   familiar set-key <key> [--host <url>] [--token <token>]
   familiar set-url <url> [--host <url>] [--token <token>]
@@ -40,6 +43,9 @@ Commands:
                   Uses the token stored by init.
   account show    Show the account for the current API token.
   account usage   Show action count and free tier remaining.
+  tokens list     List API tokens for the account.
+  tokens create   Create a new API token.
+  tokens revoke   Revoke an API token.
   whoami          Alias for account show.
   set-key         Set the OpenRouter AI provider key for the current project integration.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
@@ -652,6 +658,82 @@ const showAccountUsage = async ({ host, token }) => {
   print(`Free actions remaining: ${payload.free_actions_remaining ?? "unlimited"}`);
 };
 
+const listTokens = async ({ host, token }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/tokens`,
+    token: resolvedToken,
+  });
+
+  if (!payload.tokens || payload.tokens.length === 0) {
+    print("No tokens.");
+    return;
+  }
+
+  const maxPrefix = Math.max(...payload.tokens.map((t) => t.prefix.length), 6);
+  print(`${"ID".padEnd(12)}  ${"PREFIX".padEnd(maxPrefix)}  CREATED`);
+  for (const t of payload.tokens) {
+    const revoked = t.revoked_at ? " (revoked)" : "";
+    print(`${t.id.slice(0, 12).padEnd(12)}  ${t.prefix.padEnd(maxPrefix)}  ${t.created_at}${revoked}`);
+  }
+};
+
+const createToken = async ({ host, token }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const payload = await postJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/tokens`,
+    body: {},
+    token: resolvedToken,
+  });
+
+  print(`Token created: ${payload.token.value}`);
+  print(`ID: ${payload.token.id}`);
+  print(`Prefix: ${payload.token.prefix}`);
+  print("Store it securely — this is the only time the full value is shown.");
+};
+
+const revokeToken = async ({ host, token, tokenId }) => {
+  if (!tokenId?.trim()) {
+    throw new Error("Usage: familiar tokens revoke <token-id>");
+  }
+
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const payload = await fetch(`${host.replace(/\/$/, "")}/api/v1/tokens/${encodeURIComponent(tokenId.trim())}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${resolvedToken}`,
+    },
+  });
+
+  if (!payload.ok) {
+    const body = await payload.json();
+    throw new Error(body?.error?.message || `Request failed: ${payload.status}`);
+  }
+
+  print(`Token revoked: ${tokenId.trim()}`);
+};
+
 const showIntegrationHealth = async ({ host, token }) => {
   const resolvedToken = await resolveToken(token);
 
@@ -777,6 +859,21 @@ const main = async () => {
 
   if (command === "account usage") {
     await showAccountUsage({ host, token });
+    return;
+  }
+
+  if (command === "tokens list") {
+    await listTokens({ host, token });
+    return;
+  }
+
+  if (command === "tokens create") {
+    await createToken({ host, token });
+    return;
+  }
+
+  if (command === "tokens revoke") {
+    await revokeToken({ host, token, tokenId: positionals[2] });
     return;
   }
 

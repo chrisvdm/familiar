@@ -150,6 +150,18 @@ Show integration status including tool count and thread count.
 
 Show action count and free tier remaining.
 
+### `familiar tokens list`
+
+List API tokens for the account. Shows the token prefix, last four characters, creation date, and revocation status. The full token value is only shown once, immediately after creation.
+
+### `familiar tokens create`
+
+Create a new API token. Prints the full token value — save it immediately, because it cannot be retrieved again.
+
+### `familiar tokens revoke <token-id>`
+
+Revoke an API token by its `id` (from `familiar tokens list`). Revoked tokens cannot be used for subsequent requests.
+
 ### `familiar audit events [--limit <n>]`
 
 Show recent audit log events. Defaults to 20 events; maximum 100.

@@ -148,6 +148,27 @@ export type AuditListResult = {
   events: AuditEvent[];
 };
 
+export type TokenInfo = {
+  id: string;
+  prefix: string;
+  lastFour: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+};
+
+export type TokenListResult = {
+  tokens: TokenInfo[];
+};
+
+export type TokenCreateResult = {
+  value: string;
+} & TokenInfo;
+
+export type TokenRevokeResult = {
+  token: TokenInfo;
+};
+
 export type SimulateInputResult = {
   integrationId?: string;
   userId?: string;

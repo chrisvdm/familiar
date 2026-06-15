@@ -32,6 +32,17 @@ type AccountRegistryStub = {
   authenticateToken: (input: {
     tokenHash: string;
   }) => Promise<{ value: FamiliarTokenAuth } | { error: string }>;
+  issueToken: (input: {
+    accountId: string;
+    token: FamiliarApiToken;
+  }) => Promise<{ account: FamiliarAccount; token: FamiliarApiToken } | { error: string }>;
+  listTokens: (input: {
+    accountId: string;
+  }) => Promise<{ value: FamiliarApiToken[] } | { error: string }>;
+  revokeToken: (input: {
+    accountId: string;
+    tokenId: string;
+  }) => Promise<{ value: FamiliarApiToken } | { error: string }>;
   createBrowserLoginSession: (input: {
     tokenValue: string;
     accountId: string;
@@ -262,6 +273,42 @@ export const incrementAccountActionCount = async (accountId: string) => {
 
 export const getAccountUsage = async (accountId: string) => {
   const result = await getAccountRegistryStub().getAccountUsage({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.value;
+};
+
+export const createAccountToken = async (accountId: string) => {
+  const { value, token } = await createTokenRecord({ accountId });
+  const result = await getAccountRegistryStub().issueToken({ accountId, token });
+
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+
+  return {
+    value,
+    token: result.token,
+  };
+};
+
+export const listAccountTokens = async (accountId: string) => {
+  const result = await getAccountRegistryStub().listTokens({ accountId });
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return result.value;
+};
+
+export const revokeAccountToken = async ({
+  accountId,
+  tokenId,
+}: {
+  accountId: string;
+  tokenId: string;
+}) => {
+  const result = await getAccountRegistryStub().revokeToken({ accountId, tokenId });
   if ("error" in result) {
     throw new Error(result.error);
   }
