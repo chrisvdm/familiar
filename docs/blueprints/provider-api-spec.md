@@ -793,6 +793,113 @@ Status codes:
 - `401` unauthenticated
 - `403` forbidden
 
+### 16. List API tokens
+
+`GET /api/v1/tokens`
+
+Purpose:
+
+- list the API tokens belonging to the authenticated account
+
+Response:
+
+```json
+{
+  "tokens": [
+    {
+      "id": "tok_123",
+      "prefix": "fam_abc",
+      "last_four": "1234",
+      "created_at": "2026-06-15T10:00:00.000Z",
+      "last_used_at": "2026-06-15T11:00:00.000Z",
+      "revoked_at": null
+    }
+  ]
+}
+```
+
+Notes:
+
+- the full token value is never returned by this endpoint; only the prefix and last four characters are exposed
+- `revoked_at` is set when the token has been revoked
+
+Status codes:
+
+- `200` success
+- `401` unauthenticated
+- `403` forbidden
+
+### 17. Create API token
+
+`POST /api/v1/tokens`
+
+Purpose:
+
+- issue a new API token for the authenticated account
+
+Response:
+
+```json
+{
+  "token": {
+    "value": "fam_xxx...",
+    "id": "tok_456",
+    "prefix": "fam_xxx",
+    "last_four": "5678",
+    "created_at": "2026-06-15T10:00:00.000Z",
+    "last_used_at": null,
+    "revoked_at": null
+  }
+}
+```
+
+Notes:
+
+- the full `value` is returned exactly once, on creation
+- the caller must store the value immediately; it cannot be retrieved later
+
+Status codes:
+
+- `201` created
+- `401` unauthenticated
+- `403` forbidden
+
+### 18. Revoke API token
+
+`DELETE /api/v1/tokens/:token_id`
+
+Purpose:
+
+- revoke an existing API token so it can no longer authenticate requests
+
+Response:
+
+```json
+{
+  "token": {
+    "id": "tok_123",
+    "prefix": "fam_abc",
+    "last_four": "1234",
+    "created_at": "2026-06-15T10:00:00.000Z",
+    "last_used_at": "2026-06-15T11:00:00.000Z",
+    "revoked_at": "2026-06-15T12:00:00.000Z"
+  }
+}
+```
+
+Notes:
+
+- revocation takes effect immediately
+- the token record is retained for audit purposes
+
+Status codes:
+
+- `200` success
+- `400` invalid request (missing `token_id`)
+- `401` unauthenticated
+- `403` forbidden
+- `404` token not found
+
 ## Tool Execution Contract
 
 When familiar decides a tool should run, it should call the target that owns the tool.

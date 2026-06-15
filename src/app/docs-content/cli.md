@@ -186,7 +186,79 @@ familiar account show
 familiar whoami
 ```
 
+### `familiar account usage`
 
+Show action count and free tier remaining.
+
+```shell
+familiar account usage
+```
+
+### `familiar integration health`
+
+Show integration health summary (overall status, executor URL, active tools, recent failures).
+
+```shell
+familiar integration health
+```
+
+### `familiar integration status`
+
+Show integration status including tool count and thread count.
+
+```shell
+familiar integration status
+```
+
+### `familiar audit events`
+
+Show recent audit log events. Defaults to 20 events; maximum 100.
+
+```shell
+familiar audit events
+familiar audit events --limit 50
+```
+
+### `familiar threads list`
+
+List conversation threads. Defaults to the `default` user.
+
+```shell
+familiar threads list
+familiar threads list --user-id chris_123
+```
+
+### `familiar tokens list`
+
+List API tokens for the account. Shows the token prefix, last four characters, creation date, and revocation status. The full token value is only shown once, immediately after creation.
+
+```shell
+familiar tokens list
+```
+
+### `familiar tokens create`
+
+Create a new API token. Prints the full token value — save it immediately, because it cannot be retrieved again.
+
+```shell
+familiar tokens create
+```
+
+### `familiar tokens revoke <token-id>`
+
+Revoke an API token by its `id` (from `familiar tokens list`). Revoked tokens cannot be used for subsequent requests.
+
+```shell
+familiar tokens revoke tok_123
+```
+
+### `familiar tools add <tool-file.json>`
+
+Add or update a single tool from a JSON file without replacing the full manifest.
+
+```shell
+familiar tools add ./tools/echo.json
+```
 
 ## Options
 

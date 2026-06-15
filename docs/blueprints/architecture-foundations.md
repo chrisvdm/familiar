@@ -91,8 +91,9 @@ An account owns billing and connected apps.
 For MVP, the important simplification is:
 
 - one account can own many integrations
-- one integration gets one runtime token
-- that token can be shared by the team working on that app
+- one account can have many API tokens
+- one integration is identified by its own token at setup time
+- API tokens can be shared by the team working on that app
 - end users do not get integration tokens
 
 ## Identity Model

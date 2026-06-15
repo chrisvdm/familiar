@@ -56,7 +56,7 @@ The project is currently an MVP in progress. The core shape is in place but the 
 |--------|---------|
 | `src/app/provider/` | Public API surface. Handles `/api/v1/*` endpoints for tool sync, conversation input, executor result callbacks, thread CRUD, and health checks. |
 | `src/app/chat/` | Chat session state machine, memory synthesis, conversation prompts, and per-thread storage. |
-| `src/app/account/` | Account lifecycle, API token auth, CLI session polling, and the AccountRegistry Durable Object. |
+| `src/app/account/` | Account lifecycle, API token auth and token management, CLI session polling, and the AccountRegistry Durable Object. |
 | `src/app/memory/` | Pluggable memory backend. `memory.factory.ts` selects between the built-in default or an external MemPalace backend. |
 | `src/app/session/` | Browser-side session management via `defineDurableSession` from `rwsdk/auth`. |
 
@@ -232,6 +232,7 @@ npx wrangler deploy
 ## Security Considerations
 
 - **Auth**: Provider API requests require `Authorization: Bearer <token>`. Tokens are hashed before storage in the AccountRegistry DO.
+- **Token management**: `GET /api/v1/tokens`, `POST /api/v1/tokens`, and `DELETE /api/v1/tokens/:tokenId` allow listing, creating, and revoking account API tokens. The full token value is only returned on creation.
 - **CLI auth**: Uses short-lived CLI sessions polled by the browser, completed via `POST /api/v1/auth/cli/sessions/:id/complete`.
 - **Idempotency**: Write endpoints support `Idempotency-Key` headers. Replays are stored in the ProviderUserContext DO.
 - **CSP**: Strict Content-Security-Policy headers are set in `src/app/headers.ts` including nonce-based script-src.
