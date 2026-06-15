@@ -3,3 +3,8 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 OPENROUTER_MEMORY_MODEL=openai/gpt-4o-mini
 OPENROUTER_SITE_URL=http://localhost:5173
 OPENROUTER_SITE_NAME=familiar
+
+# Local dev only — bypasses IP-based rate limits (account creation, login, contact)
+# so E2E tests can run repeatedly without hitting the 5 accounts/hour cap.
+# NEVER enable this in production.
+# FAMILIAR_TEST_BYPASS_RATE_LIMIT=true

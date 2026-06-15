@@ -407,6 +407,11 @@ export const checkRateLimitByIp = async ({
   maxRequests: number;
   windowMs: number;
 }) => {
+  // Local dev only. NEVER set FAMILIAR_TEST_BYPASS_RATE_LIMIT in production.
+  if (env.FAMILIAR_TEST_BYPASS_RATE_LIMIT === "true") {
+    return { allowed: true };
+  }
+
   const ip =
     request.headers.get("CF-Connecting-IP") ??
     request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ??

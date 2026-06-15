@@ -184,6 +184,7 @@ Local secrets go in `.dev.vars` (never committed):
 | `CLOUDFLARE_ROUTING_MODEL` | Workers AI model for intent routing (default: `@cf/meta/llama-3.1-8b-instruct-fast`). |
 | `CLOUDFLARE_EXTRACTION_MODEL` | Workers AI model for schema extraction (default: `@cf/qwen/qwen3-30b-a3b-fp8`). |
 | `FAMILIAR_MEMORY_BACKEND` | `default` or `mempalace`. |
+| `FAMILIAR_TEST_BYPASS_RATE_LIMIT` | **Local dev only.** Set to `true` to bypass IP-based rate limits (account creation, login, contact) for repeated E2E test runs. Never enable in production. |
 
 Production secrets are managed via `wrangler secret` and referenced in `wrangler.jsonc`.
 

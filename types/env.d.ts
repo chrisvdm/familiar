@@ -23,5 +23,7 @@ declare namespace Cloudflare {
     CLOUDFLARE_DECISION_MODEL?: string;
     CLOUDFLARE_EXTRACTION_MODEL?: string;
     TEXTY_USE_WORKERS_AI_ROUTING?: string;
+    // NEVER set this in production. Local dev only — bypasses IP-based rate limits for E2E tests.
+    FAMILIAR_TEST_BYPASS_RATE_LIMIT?: string;
   }
 }
