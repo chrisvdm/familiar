@@ -62,7 +62,7 @@ export const PublicSiteNav = ({
             </a>
             <a
               className="landing-nav-link"
-              href="/setup"
+              href="/docs/cli"
               onClick={() => setOpen(false)}
             >
               Setup

@@ -63,14 +63,17 @@ Or use the CLI:
 familiar init
 ```
 
-### Web setup
+### CLI setup
 
-Visit `/setup` in a browser. Two options:
+Onboarding is CLI-first. Install the CLI and run:
 
-- **Quick start** — one click, no credentials. Creates an account + token immediately.
-- **Register with email** — creates a password-protected account for easy dashboard login later.
+```shell
+familiar init
+```
 
-After web registration, your API token is visible on the `/dashboard` page.
+This creates an account, issues the first API token, and stores it in `~/.familiar/config.json`.
+
+The legacy `/setup` browser page has been removed; `/setup` now redirects to `/docs/cli`.
 
 ## Step 2: Set your AI provider key
 

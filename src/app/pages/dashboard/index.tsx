@@ -119,7 +119,7 @@ export const Dashboard = async ({
               </p>
               <a
                 className="dashboard-empty-link"
-                href="/setup"
+                href="/docs/cli"
                 style={{
                   display: "inline-block",
                   marginTop: "12px",

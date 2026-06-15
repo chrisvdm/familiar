@@ -8,9 +8,9 @@ The web-based account dashboard currently provides integration health, usage, au
 
 ### Decision 1: Keep web dashboard code intact
 
-**Chosen:** Add CLI equivalents for dashboard features without removing the web dashboard, `/setup/*`, `/auth/browser`, or `BrowserSessionDurableObject`.
+**Chosen:** Add CLI equivalents for dashboard features without removing the web dashboard, `/auth/browser`, or `BrowserSessionDurableObject`. The `/setup` frontend page was removed and now redirects to `/docs/cli`, but `POST /setup/create` and the browser session machinery remain for future CLI-to-web login flows.
 
-**Motivation:** A future CLI-to-web login flow will need the browser session machinery. Removing it now would force a rewrite later. The web UI can stay dormant while CLI becomes the primary operator surface.
+**Motivation:** CLI is now the primary operator surface. Removing the `/setup` page steers new users to `familiar init`, while keeping the browser session machinery avoids a rewrite later.
 
 ### Decision 2: CLI commands mirror dashboard sections
 

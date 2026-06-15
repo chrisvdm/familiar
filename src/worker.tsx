@@ -15,7 +15,6 @@ import { DocsAiPage } from "@/app/pages/docs-ai";
 import { Home } from "@/app/pages/home/index";
 import { Dashboard } from "@/app/pages/dashboard/index";
 
-import { Setup } from "@/app/pages/setup";
 import { SandboxMessenger } from "@/app/pages/sandbox-messenger";
 import { SandboxProvider } from "@/app/pages/sandbox-provider";
 import { providerRoutes } from "@/app/provider/provider.routes";
@@ -262,6 +261,12 @@ export default defineApp([
       return new Response("Unable to create account", { status: 400 });
     }
   }),
+  route("/setup", async () => {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "/docs/cli" },
+    });
+  }),
   route("/dashboard/select-integration", async ({ request, response }) => {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
@@ -371,7 +376,6 @@ export default defineApp([
       route("/temp-home", Home),
       route("/dashboard", Dashboard),
       layout(PublicLayout, [
-        route("/setup", Setup),
         route("/auth/browser", async ({ request, response }) => {
         const url = new URL(request.url);
         const code = url.searchParams.get("code")?.trim();

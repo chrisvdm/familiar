@@ -104,10 +104,10 @@ export const Contact = ({
                   </p>
                 </div>
                 <div className="contact-info-item">
-                  <h3 className="contact-info-label">Setup</h3>
+                  <h3 className="contact-info-label">CLI</h3>
                   <p className="contact-info-body">
-                    <a href="/setup" className="contact-info-link">
-                      Create an account →
+                    <a href="/docs/cli" className="contact-info-link">
+                      Get started with the CLI →
                     </a>
                   </p>
                 </div>

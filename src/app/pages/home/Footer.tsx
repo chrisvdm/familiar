@@ -14,7 +14,7 @@ const Footer = () => {
             <div className="flex--row flex--gap-s footer-links">
                 <a href="/contact">Contact</a>
                 <a href="/docs">Docs</a>
-                <a href="/setup">Setup</a>
+                <a href="/docs/cli">CLI</a>
             </div>
 
         </div>

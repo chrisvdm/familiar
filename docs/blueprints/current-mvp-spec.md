@@ -101,7 +101,7 @@ If `tools` is supplied on input:
 - store those tools in the current token-backed setup
 - immediately use them for that request
 
-This is a bootstrap convenience while admin/setup flows are still evolving.
+This is a bootstrap convenience while the CLI onboarding flow matures.
 
 `POST /api/v1/tools/sync` also configures that same token-backed setup. It does not create the setup itself.
 
@@ -711,8 +711,8 @@ Current status:
 - the CLI package name is prepared
 - npm publish is not live yet
 - current working hosted bootstrap remains:
-  - `/setup`
   - `POST /api/v1/accounts`
+  - `/setup` redirects to `/docs/cli`
 
 Current local config path:
 

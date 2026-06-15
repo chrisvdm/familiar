@@ -48,10 +48,11 @@ That makes the product much easier for:
 - CLI users
 - AI agents
 
-Two account creation paths exist:
+Account creation paths:
 
 - `POST /api/v1/accounts` — programmatic, no credentials. Returns token immediately.
-- `/setup` web form — human-facing. Offers both quick account creation (no credentials) and email/password registration.
+- `familiar init` — CLI-first onboarding that creates an account and stores the token locally.
+- `/setup` now redirects to `/docs/cli`; the setup web form has been removed in favor of CLI onboarding.
 
 ### Next Step
 
@@ -156,7 +157,7 @@ The important rule is:
 
 Email and password are available as an optional human web-auth layer on top of the token system.
 
-- `/setup` offers both quick account creation and email/password registration
+- `/setup` redirects to `/docs/cli`; onboarding is CLI-first
 - `/dashboard/login` accepts email/password OR an API token
 - Passwords are hashed with PBKDF2-SHA-256 (100k iterations)
 - The user's API token is stored on their user record for retrieval after login

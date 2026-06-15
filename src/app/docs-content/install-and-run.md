@@ -24,15 +24,18 @@ curl -X POST https://familiar.monster/api/v1/accounts \
 
 That returns your first API token.
 
-### In your browser
+### With the CLI
 
-Open:
+Install the CLI and run:
 
-```text
-https://familiar.monster/setup
+```shell
+npm install -g familiar-cli
+familiar init
 ```
 
-That page creates an account and shows your first API token once.
+This creates an account and stores your first API token in `~/.familiar/config.json`.
+
+The legacy `/setup` browser page has been removed; `/setup` now redirects to `/docs/cli`.
 
 ## 2. Choose your integration path
 

@@ -10,8 +10,8 @@ export const PublicSiteFooter = () => (
       <a className="footer-link" href="/docs/">
         Docs
       </a>
-      <a className="footer-link" href="/setup">
-        Setup
+      <a className="footer-link" href="/docs/cli">
+        CLI
       </a>
       <a className="footer-link" href="/sandbox/demo-executor">
         Demo
