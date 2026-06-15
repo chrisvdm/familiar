@@ -253,7 +253,7 @@ npm run build   # outputs to dist/
 
 A Node.js CLI distributed as a single `.mjs` file.
 
-Commands: `init`, `login`, `account create`, `whoami`, `set-key`, `tools sync`, `portal`.
+Commands: `init`, `login`, `account show`/`whoami`, `account usage`, `set-key`, `set-url`, `set-transport`, `tools add`, `tools sync`, `integration health`, `integration status`, `audit events`, `threads list`, `models`, `portal`.
 
 Reads config from `~/.familiar/config.json` and `.dev.vars` in the current directory.
 

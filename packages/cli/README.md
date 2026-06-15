@@ -130,6 +130,34 @@ familiar set-url ""
 
 Sync tools from a JSON file. Defaults to `familiar.tools.json` in the current directory. Use `--file` to point to a different path.
 
+### `familiar tools add <tool-file.json>`
+
+Add or update a single tool from a JSON file without replacing the full manifest.
+
+```shell
+familiar tools add ./tools/echo.json
+```
+
+### `familiar integration health`
+
+Show integration health summary (overall status, executor URL, active tools, recent failures).
+
+### `familiar integration status`
+
+Show integration status including tool count and thread count.
+
+### `familiar account usage`
+
+Show action count and free tier remaining.
+
+### `familiar audit events [--limit <n>]`
+
+Show recent audit log events. Defaults to 20 events; maximum 100.
+
+### `familiar threads list [--user-id <id>]`
+
+List conversation threads. Defaults to the `default` user.
+
 ### `familiar portal --port <port>`
 
 Start a local tunnel to the given port, register it with familiar, and keep it alive. Re-registers automatically if the tunnel restarts.
@@ -156,5 +184,7 @@ Web dashboard users can find their full API token on the dashboard and import it
 |---|---|
 | `--host <url>` | familiar API base URL. Defaults to the hosted instance. |
 | `--token <token>` | Use a token directly instead of reading from `.dev.vars` or the global config. |
-| `--file <path>` | Path to tools JSON file (for `tools sync`). |
+| `--file <path>` | Path to tools JSON file (for `tools sync` and `tools add`). |
+| `--limit <n>` | Number of audit events to show (for `audit events`). |
+| `--user-id <id>` | User ID for `threads list`. |
 | `--port <port>` | Local port to tunnel (for `portal`). |

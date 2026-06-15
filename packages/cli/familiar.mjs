@@ -18,12 +18,17 @@ Usage:
   familiar init [--token <token>] [--host <url>]
   familiar login [--host <url>]
   familiar account show [--host <url>] [--token <token>]
+  familiar account usage [--host <url>] [--token <token>]
   familiar whoami [--host <url>] [--token <token>]
   familiar set-key <key> [--host <url>] [--token <token>]
   familiar set-url <url> [--host <url>] [--token <token>]
   familiar set-transport <webhook|websocket> [--host <url>] [--token <token>]
   familiar tools add <tool-file.json> [--host <url>] [--token <token>]
   familiar tools sync [--file <path>] [--host <url>] [--token <token>]
+  familiar integration health [--host <url>] [--token <token>]
+  familiar integration status [--host <url>] [--token <token>]
+  familiar audit events [--limit <n>] [--host <url>] [--token <token>]
+  familiar threads list [--user-id <id>] [--host <url>] [--token <token>]
   familiar portal --port <port> [--host <url>] [--token <token>]
   familiar models [--host <url>] [--token <token>]
   familiar --help
@@ -34,6 +39,7 @@ Commands:
   login           Open the familiar dashboard in your browser.
                   Uses the token stored by init.
   account show    Show the account for the current API token.
+  account usage   Show action count and free tier remaining.
   whoami          Alias for account show.
   set-key         Set the OpenRouter AI provider key for the current project integration.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
@@ -45,6 +51,16 @@ Commands:
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   tools sync      Sync tools from a JSON file (default: familiar.tools.json).
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  integration health
+                  Show integration health summary.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  integration status
+                  Show integration status, tool count, and thread count.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  audit events    Show recent audit log events.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  threads list    List conversation threads.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   portal          Start a local tunnel and keep familiar pointed at it.
                   Requires cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation
   models          Show which AI models are configured for this familiar deployment.
@@ -54,6 +70,8 @@ Options:
   --token <token> Use a token directly instead of the stored local token.
   --port <port>   Local port your executor is running on (required for portal).
   --file <path>   Path to tools JSON file (default: familiar.tools.json).
+  --limit <n>     Number of audit events or threads to show (default: 20).
+  --user-id <id>  User ID for thread lists (default: default).
   --help          Show this help text.
 `;
 
@@ -63,6 +81,8 @@ const parseArgs = (argv) => {
   let token;
   let port;
   let file;
+  let limit;
+  let userId;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -101,6 +121,18 @@ const parseArgs = (argv) => {
       continue;
     }
 
+    if (value === "--limit") {
+      limit = argv[index + 1]?.trim();
+      index += 1;
+      continue;
+    }
+
+    if (value === "--user-id") {
+      userId = argv[index + 1]?.trim();
+      index += 1;
+      continue;
+    }
+
     positionals.push(value);
   }
 
@@ -111,6 +143,8 @@ const parseArgs = (argv) => {
     token,
     port,
     file,
+    limit,
+    userId,
   };
 };
 
@@ -599,8 +633,125 @@ const showModels = async ({ host, token }) => {
   }
 };
 
+const showAccountUsage = async ({ host, token }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/account/usage`,
+    token: resolvedToken,
+  });
+
+  print(`Account ID: ${payload.account_id}`);
+  print(`Actions used: ${payload.action_count}`);
+  print(`Free actions remaining: ${payload.free_actions_remaining ?? "unlimited"}`);
+};
+
+const showIntegrationHealth = async ({ host, token }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/integration/health`,
+    token: resolvedToken,
+  });
+
+  print(`Overall: ${payload.overall}`);
+  print(`Executor base URL configured: ${payload.executor.base_url_configured ? "yes" : "no"}`);
+  print(`Tools: ${payload.tools.active}/${payload.tools.count} active`);
+  print(`Recent executor failures: ${payload.executor.recent_failures}`);
+  print(`Recent callback activity: ${payload.callbacks.recent_activity ? "yes" : "no"}`);
+};
+
+const showIntegrationStatus = async ({ host, token }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/integration/status`,
+    token: resolvedToken,
+  });
+
+  print(`Integration ID: ${payload.integration.id}`);
+  print(`Tools: ${payload.runtime.tool_count}`);
+  print(`Threads: ${payload.runtime.thread_count}`);
+};
+
+const showAuditEvents = async ({ host, token, limit }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const maxEvents = Math.min(parseInt(limit || "20", 10), 100);
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/audit/events?limit=${maxEvents}`,
+    token: resolvedToken,
+  });
+
+  if (!payload.events || payload.events.length === 0) {
+    print("No audit events.");
+    return;
+  }
+
+  for (const event of payload.events) {
+    const status = event.status ? `[${event.status}]` : "";
+    print(`${event.at} ${event.event} ${status}`.trim());
+    if (event.request_id) print(`  request_id: ${event.request_id}`);
+    if (event.detail) print(`  detail: ${event.detail}`);
+  }
+};
+
+const listThreads = async ({ host, token, userId }) => {
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Run `familiar init` or pass `--token <token>`.",
+    );
+  }
+
+  const path = userId
+    ? `/api/v1/users/${encodeURIComponent(userId)}/threads`
+    : "/api/v1/users/default/threads";
+
+  const payload = await getJson({
+    url: `${host.replace(/\/$/, "")}${path}`,
+    token: resolvedToken,
+  });
+
+  if (!payload.threads || payload.threads.length === 0) {
+    print("No threads.");
+    return;
+  }
+
+  const maxTitle = Math.max(...payload.threads.map((t) => t.title.length), 5);
+  print(`${"ID".padEnd(12)}  ${"TITLE".padEnd(maxTitle)}  UPDATED`);
+  for (const thread of payload.threads) {
+    print(`${thread.thread_id.slice(0, 12).padEnd(12)}  ${thread.title.padEnd(maxTitle)}  ${thread.updated_at}`);
+  }
+};
+
 const main = async () => {
-  const { help, positionals, host, token, port, file } = parseArgs(process.argv.slice(2));
+  const { help, positionals, host, token, port, file, limit, userId } = parseArgs(process.argv.slice(2));
 
   if (help || positionals.length === 0) {
     print(helpText);
@@ -621,6 +772,11 @@ const main = async () => {
 
   if (command === "account show" || command === "whoami") {
     await showAccount({ host, token });
+    return;
+  }
+
+  if (command === "account usage") {
+    await showAccountUsage({ host, token });
     return;
   }
 
@@ -656,6 +812,26 @@ const main = async () => {
 
   if (command === "tools sync") {
     await syncTools({ host, token, file });
+    return;
+  }
+
+  if (command === "integration health") {
+    await showIntegrationHealth({ host, token });
+    return;
+  }
+
+  if (command === "integration status") {
+    await showIntegrationStatus({ host, token });
+    return;
+  }
+
+  if (command === "audit events") {
+    await showAuditEvents({ host, token, limit });
+    return;
+  }
+
+  if (command === "threads list") {
+    await listThreads({ host, token, userId });
     return;
   }
 
