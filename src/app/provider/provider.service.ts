@@ -122,6 +122,87 @@ export const syncProviderTools = async (
   };
 };
 
+type ProviderToolInput = NormalizedProviderToolSyncInput["tools"][number];
+type NormalizedProviderToolAddInput = {
+  integration_id: string;
+  user_id: string;
+  tool: ProviderToolInput;
+};
+
+export const addProviderTool = async (
+  input: NormalizedProviderToolAddInput,
+  requestId?: string,
+  accountId?: string,
+) => {
+  const normalizedTool = normalizeAllowedTools([input.tool])[0];
+
+  if (!normalizedTool) {
+    throw new Error("Invalid tool payload.");
+  }
+
+  const context = await loadOrCreateProviderUserContext({
+    providerId: input.integration_id,
+    userId: input.user_id,
+  });
+
+  const rateLimitedContext = enforceToolsSyncRateLimit({ context });
+
+  const existingIndex = rateLimitedContext.allowedTools.findIndex(
+    (tool) => tool.toolName === normalizedTool.toolName,
+  );
+
+  const nextAllowedTools =
+    existingIndex >= 0
+      ? [
+          ...rateLimitedContext.allowedTools.slice(0, existingIndex),
+          normalizedTool,
+          ...rateLimitedContext.allowedTools.slice(existingIndex + 1),
+        ]
+      : [...rateLimitedContext.allowedTools, normalizedTool];
+
+  const nextContext: ProviderUserContext = {
+    ...rateLimitedContext,
+    allowedTools: nextAllowedTools,
+  };
+
+  await saveProviderUserContext(nextContext);
+
+  if (accountId && typeof input.tool.base_url === "string" && input.tool.base_url.trim()) {
+    await updateIntegrationToolUrls({
+      accountId,
+      integrationId: input.integration_id,
+      toolUrls: {
+        [normalizedTool.toolName]: validateExecutorUrl(
+          input.tool.base_url,
+          `Tool URL for ${normalizedTool.toolName}`,
+        ),
+      },
+    });
+  }
+
+  logProviderAudit({
+    event: "provider.tool.added",
+    requestId,
+    providerId: input.integration_id,
+    userId: input.user_id,
+    status: "ok",
+    metadata: {
+      toolName: normalizedTool.toolName,
+      totalTools: nextContext.allowedTools.length,
+      updated: existingIndex >= 0,
+    },
+  });
+
+  return {
+    integration_id: input.integration_id,
+    user_id: input.user_id,
+    tool_name: normalizedTool.toolName,
+    total_tools: nextContext.allowedTools.length,
+    status: "ok",
+    updated: existingIndex >= 0,
+  };
+};
+
 export const getProviderMemory = async ({
   providerId,
   userId,

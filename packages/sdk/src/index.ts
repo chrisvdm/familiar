@@ -4,6 +4,7 @@ import type {
   Tool,
   InputResult,
   SyncToolsResult,
+  AddToolResult,
   Integration,
   IntegrationStatus,
   IntegrationHealth,
@@ -25,6 +26,7 @@ export type {
   Message,
   InputResult,
   SyncToolsResult,
+  AddToolResult,
   Integration,
   IntegrationStatus,
   IntegrationHealth,
@@ -300,6 +302,30 @@ export class Familiar {
   }
 
   tools = {
+    add: async ({ tool }: { tool: Tool }): Promise<AddToolResult> => {
+      const payload = await request<{
+        integration_id?: string;
+        tool_name: string;
+        total_tools: number;
+        status: string;
+        updated: boolean;
+      }>({
+        host: this.host,
+        method: "POST",
+        path: "/api/v1/tools",
+        token: this.token,
+        body: { tool: serializeTool(tool) },
+      });
+
+      return {
+        integrationId: payload.integration_id,
+        toolName: payload.tool_name,
+        totalTools: payload.total_tools,
+        status: payload.status,
+        updated: payload.updated,
+      };
+    },
+
     sync: async ({ tools }: { tools: Tool[] }): Promise<SyncToolsResult> => {
       const payload = await request<{
         integration_id?: string;

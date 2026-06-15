@@ -49,6 +49,14 @@ export type SyncToolsResult = {
   status: string;
 };
 
+export type AddToolResult = {
+  integrationId?: string;
+  toolName: string;
+  totalTools: number;
+  status: string;
+  updated: boolean;
+};
+
 export type Integration = {
   id: string;
   aiApiKeySet: boolean;

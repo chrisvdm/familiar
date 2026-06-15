@@ -5,6 +5,7 @@ import { handleConversationInputEndpoint } from "./provider.conversation.endpoin
 import { handleExecutorResultEndpoint } from "./provider.executor-result.endpoint";
 import { handleThreadCreateEndpoint } from "./provider.thread-create.endpoint";
 import { handleThreadMutationEndpoint } from "./provider.thread-mutation.endpoint";
+import { handleToolAddEndpoint } from "./provider.tool-add.endpoint";
 import { handleToolsSyncEndpoint } from "./provider.tools-sync.endpoint";
 import {
   getRequestId,
@@ -24,6 +25,12 @@ import { listProviderThreads } from "./provider.threads.ts";
 import { loadOrCreateProviderUserContext } from "./provider.storage";
 
 export const providerRoutes = [
+  route("/api/v1/tools", handleToolAddEndpoint),
+  route("/api/v1/users/:userId/tools", handleToolAddEndpoint),
+  route(
+    "/api/v1/integrations/:integrationId/users/:userId/tools",
+    handleToolAddEndpoint,
+  ),
   route("/api/v1/tools/sync", handleToolsSyncEndpoint),
   route("/api/v1/users/:userId/tools/sync", handleToolsSyncEndpoint),
   route(

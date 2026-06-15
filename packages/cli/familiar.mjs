@@ -22,6 +22,7 @@ Usage:
   familiar set-key <key> [--host <url>] [--token <token>]
   familiar set-url <url> [--host <url>] [--token <token>]
   familiar set-transport <webhook|websocket> [--host <url>] [--token <token>]
+  familiar tools add <tool-file.json> [--host <url>] [--token <token>]
   familiar tools sync [--file <path>] [--host <url>] [--token <token>]
   familiar portal --port <port> [--host <url>] [--token <token>]
   familiar models [--host <url>] [--token <token>]
@@ -39,6 +40,8 @@ Commands:
   set-url         Set the executor base URL familiar will call when tools run.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   set-transport   Set the executor transport to webhook or websocket.
+                  Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
+  tools add       Add or update a single tool from a JSON file.
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
   tools sync      Sync tools from a JSON file (default: familiar.tools.json).
                   Reads FAMILIAR_TOKEN from .dev.vars in the current directory.
@@ -429,6 +432,53 @@ const setTransport = async ({ host, token, transport }) => {
   print(`Executor transport set: ${normalized}`);
 };
 
+const addTool = async ({ host, token, file }) => {
+  if (!file?.trim()) {
+    throw new Error("Usage: familiar tools add <tool-file.json>");
+  }
+
+  const resolvedToken = await resolveToken(token);
+
+  if (!resolvedToken) {
+    throw new Error(
+      "No API token found. Add FAMILIAR_TOKEN to .dev.vars or run `familiar init`.",
+    );
+  }
+
+  const toolPath = path.resolve(process.cwd(), file.trim());
+  let raw;
+
+  try {
+    raw = await fs.readFile(toolPath, "utf8");
+  } catch {
+    throw new Error(`Tool file not found: ${toolPath}`);
+  }
+
+  let tool;
+  try {
+    tool = JSON.parse(raw);
+  } catch {
+    throw new Error(`Tool file is not valid JSON: ${toolPath}`);
+  }
+
+  if (Array.isArray(tool)) {
+    throw new Error(`Tool file must contain a single tool object, not an array.`);
+  }
+
+  if (!tool || typeof tool !== "object" || !tool.tool_name) {
+    throw new Error(`Tool file must contain an object with a tool_name field.`);
+  }
+
+  const payload = await postJson({
+    url: `${host.replace(/\/$/, "")}/api/v1/tools`,
+    body: { tool },
+    token: resolvedToken,
+  });
+
+  const updated = payload.updated ? "updated" : "added";
+  print(`Tool ${updated}: ${payload.tool_name} (${payload.total_tools} total).`);
+};
+
 const syncTools = async ({ host, token, file }) => {
   const resolvedToken = await resolveToken(token);
 
@@ -596,6 +646,11 @@ const main = async () => {
 
   if (positionals[0] === "set-transport") {
     await setTransport({ host, token, transport: positionals[1] });
+    return;
+  }
+
+  if (command === "tools add") {
+    await addTool({ host, token, file: positionals[2] });
     return;
   }
 
