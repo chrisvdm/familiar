@@ -12,6 +12,13 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
         name="description"
         content="Your scripts, but you can text them. familiar adds reach, memory, and routing to your existing tools."
       />
+      <meta property="og:title" content="familiar" />
+      <meta
+        property="og:description"
+        content="Your scripts, but you can text them. familiar adds reach, memory, and routing to your existing tools."
+      />
+      <meta property="og:type" content="website" />
+      <meta name="twitter:card" content="summary" />
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
