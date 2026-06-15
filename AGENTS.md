@@ -86,7 +86,9 @@ npm run preview
 npm test               # Node.js built-in test runner with experimental strip-types
 
 # Clean build caches
-npm run clean          # removes ./node_modules/.vite
+npm run clean          # removes ./node_modules/.vite and local Durable Object SQLite state
+npm run clean:vite     # removes ./node_modules/.vite only
+npm run clean:do       # removes .wrangler/state/v3/do (use when Durable Object schemas change)
 
 # Utility scripts
 npm run memory         # reset or debug sandbox memory contexts
@@ -141,6 +143,8 @@ Defined in `wrangler.jsonc` and exported from `src/worker.tsx`:
 | `CHAT_SESSIONS` | `ChatSessionDurableObject` | Per-thread chat state storage |
 | `PROVIDER_USER_CONTEXTS` | `ProviderUserContextDurableObject` | Per-user tool lists, memory policy, rate limits, audit log |
 | `ACCOUNT_REGISTRY` | `AccountRegistryDurableObject` | Account and token registry |
+
+Local Wrangler dev persists Durable Object state in `.wrangler/state/v3/do/` as SQLite files. If you see migration errors or stale state after changing a DO schema, run `npm run clean:do` to wipe the local DO storage. It will be recreated on the next dev server start.
 
 ### Memory System
 
