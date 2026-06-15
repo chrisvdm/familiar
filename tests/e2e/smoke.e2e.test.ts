@@ -10,7 +10,7 @@ test("server is reachable", async () => {
   assert.ok(response.ok || response.status === 200, `server returned ${response.status}`);
 });
 
-test("POST /api/v1/accounts creates an account and returns a token", async () => {
+test("shared account provides a valid token, accountId, and integrationId", async () => {
   const { token, accountId, integrationId } = await getSharedAccount();
 
   assert.ok(token.startsWith("fam_"), "token should start with fam_");
