@@ -333,6 +333,27 @@ export const buildDirectReply = async ({
   });
 };
 
+const IDENTITY_QUESTION_PATTERNS = [
+  /\bwho\s+are\s+you\b/,
+  /\bwhat\s+are\s+you\b/,
+  /\bwhat\s+can\s+you\s+do\b/,
+  /\bwhat\s+tools\s+(?:are\s+available|do\s+you\s+have)\b/,
+];
+
+export const isIdentityQuestion = (content: string): boolean =>
+  IDENTITY_QUESTION_PATTERNS.some((pattern) => pattern.test(content.toLowerCase()));
+
+export const buildIdentityResponse = (tools: AllowedTool[]): string => {
+  const activeTools = tools.filter((tool) => tool.status === "active");
+
+  if (activeTools.length === 0) {
+    return "I am a tool routing tool. There are no available tools right now.";
+  }
+
+  const list = activeTools.map((tool) => `- ${tool.toolName}: ${tool.description}`).join("\n");
+  return `I am a tool routing tool. Here are the available tools:\n${list}`;
+};
+
 export const createDecideConversationAction = (deps: { aiClient: AiClient }) => {
   const decide = async ({
     content,
@@ -353,6 +374,14 @@ export const createDecideConversationAction = (deps: { aiClient: AiClient }) => 
     aiApiKey?: string;
     generateReply?: boolean;
   }): Promise<ConversationDecision> => {
+    if (isIdentityQuestion(content)) {
+      return {
+        action: "direct_reply",
+        reply: buildIdentityResponse(tools),
+        reasoning: "User asked about my identity or available tools.",
+      };
+    }
+
     if (tools.filter((tool) => tool.status === "active").length === 0) {
       if (!generateReply) {
         return {
