@@ -1,4 +1,6 @@
-import { createDefaultAiClient, type AiClient } from "./ai-client.ts";
+import { env } from "cloudflare:workers";
+
+import { createDefaultAiClient, type AiClient, type AiEnv } from "./ai-client.ts";
 import {
   buildPromptContext,
   createDateTimeSystemPrompt,
@@ -92,7 +94,7 @@ import type { NormalizedProviderConversationInput } from "./provider.conversatio
 import { createMemoryBackend } from "../memory/memory.factory.ts";
 import { requestInfo } from "rwsdk/worker";
 
-const defaultAiClient = createDefaultAiClient();
+const defaultAiClient = createDefaultAiClient(env as AiEnv);
 
 export const appendMessagesToThread = async ({
   threadId,
