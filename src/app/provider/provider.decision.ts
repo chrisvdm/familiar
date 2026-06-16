@@ -339,6 +339,43 @@ export const buildDirectReply = async ({
   });
 };
 
+export const buildDirectReplyStream = async function* ({
+  aiClient,
+  content,
+  messages,
+  memoryContext,
+  timeZone,
+  aiApiKey,
+}: {
+  aiClient: AiClient;
+  content: string;
+  messages: ChatMessage[];
+  memoryContext: string | null;
+  timeZone?: string | null;
+  aiApiKey?: string;
+}): AsyncGenerator<string, void, unknown> {
+  yield* aiClient.replyStream({
+    apiKey: aiApiKey,
+    timeZone,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are familiar. Reply directly to the user in a brief, natural, human-facing way. Do not describe tool-selection reasoning or internal decision logic.",
+      },
+      ...(memoryContext
+        ? [
+            {
+              role: "system" as const,
+              content: memoryContext,
+            },
+          ]
+        : []),
+      ...buildPromptContext([...messages, createUserMessage(content)]),
+    ],
+  });
+};
+
 const IDENTITY_QUESTION_PATTERNS = [
   /\bwho\s+are\s+you\b/,
   /\bwhat\s+are\s+you\b/,
@@ -388,26 +425,10 @@ export const createDecideConversationAction = (deps: { aiClient: AiClient }) => 
       };
     }
 
-    if (tools.filter((tool) => tool.status === "active").length === 0) {
-      if (!generateReply) {
-        return {
-          action: "direct_reply",
-          reply: "",
-        } satisfies ConversationDecision;
-      }
-
-      const reply = await buildDirectReply({
-        aiClient: deps.aiClient,
-        content,
-        messages,
-        memoryContext,
-        timeZone,
-        aiApiKey,
-      });
-
+    if (tools.filter((tool) => tool.status === "active").length === 0 && !generateReply) {
       return {
         action: "direct_reply",
-        reply,
+        reply: "",
       } satisfies ConversationDecision;
     }
 
@@ -489,27 +510,11 @@ export const createDecideConversationAction = (deps: { aiClient: AiClient }) => 
       const directReply = normalizeNullableModelText(parsed.reply);
       const needsReplyModel = parsed.needs_reply_model === true;
 
-      if (needsReplyModel || directReply === "") {
-        const reply = await buildDirectReply({
-          aiClient: deps.aiClient,
-          content,
-          messages,
-          memoryContext,
-          timeZone,
-          aiApiKey,
-        });
-
-        return {
-          action: "direct_reply",
-          reply,
-          reasoning: reasoning ?? undefined,
-        } satisfies ConversationDecision;
-      }
-
       return {
         action: "direct_reply",
         reply: directReply,
         reasoning: reasoning ?? undefined,
+        useReplyModel: needsReplyModel || directReply === "",
       } satisfies ConversationDecision;
     }
 

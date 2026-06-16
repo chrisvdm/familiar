@@ -26,7 +26,7 @@ const makeTool = (
 });
 
 const makeMockAiClient = (overrides: Partial<AiClient> = {}): AiClient => ({
-  route: async () => '{"tool":"none","arguments":{},"reasoning":"test","confidence":0}',
+  route: async () => '{"tool":"none","arguments":{},"reasoning":"test","confidence":0,"reply":"Hello!"}',
   extract: async () => '{"arguments":{}}',
   reply: async () => "Hello!",
   replyStream: async function* () {

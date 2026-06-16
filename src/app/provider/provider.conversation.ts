@@ -1,6 +1,11 @@
 import { env } from "cloudflare:workers";
 
-import { createDefaultAiClient, type AiClient, type AiEnv } from "./ai-client.ts";
+import {
+  createDefaultAiClient,
+  type AiClient,
+  type AiEnv,
+} from "./ai-client.ts";
+import { buildDirectReply, buildDirectReplyStream } from "./provider.decision.ts";
 import {
   buildPromptContext,
   createDateTimeSystemPrompt,
@@ -194,45 +199,6 @@ const TOOL_ARGUMENT_UPDATE_PROMPT = [
   "If required information is still missing, return a follow_up question.",
   "If the required information is now complete, return follow_up as null.",
 ].join("\n");
-
-const buildDirectReplyStream = async function* ({
-  aiClient,
-  content,
-  messages,
-  memoryContext,
-  timeZone,
-  aiApiKey,
-  replyModel: _replyModel,
-}: {
-  aiClient: AiClient;
-  content: string;
-  messages: ChatMessage[];
-  memoryContext: string | null;
-  timeZone?: string | null;
-  aiApiKey?: string;
-  replyModel?: string;
-}): AsyncGenerator<string, void, unknown> {
-  yield* aiClient.replyStream({
-    apiKey: aiApiKey,
-    timeZone,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are familiar. Reply directly to the user in a brief, natural, human-facing way. Do not describe tool-selection reasoning or internal decision logic.",
-      },
-      ...(memoryContext
-        ? [
-            {
-              role: "system" as const,
-              content: memoryContext,
-            },
-          ]
-        : []),
-      ...buildPromptContext([...messages, createUserMessage(content)]),
-    ],
-  });
-};
 
 export const decideConversationAction = createDecideConversationAction({ aiClient: defaultAiClient });
 
@@ -738,7 +704,18 @@ export const handleProviderConversationInput = async ({
     decisionReasoning = decision.reasoning ?? null;
 
     if (decision.action === "direct_reply") {
-      assistantContent = decision.reply;
+      if (decision.useReplyModel) {
+        assistantContent = await buildDirectReply({
+          aiClient,
+          content,
+          messages: currentState.messages,
+          memoryContext,
+          timeZone,
+          aiApiKey: providerConfig.aiApiKey,
+        });
+      } else {
+        assistantContent = decision.reply;
+      }
       action = "direct_reply";
     } else if (decision.action === "clarification") {
       assistantContent = decision.question;
@@ -1255,7 +1232,7 @@ export const handleStreamConversationInput = async ({
       replyModel: model,
       timeZone,
       aiApiKey: providerConfig.aiApiKey,
-      generateReply: false,
+      generateReply: true,
     });
     decisionReasoning = decision.reasoning ?? null;
     streamDecision = decision;
@@ -1291,17 +1268,22 @@ export const handleStreamConversationInput = async ({
           });
 
           let streamedContent = "";
-          for await (const chunk of buildDirectReplyStream({
-            aiClient,
-            content,
-            messages: currentState.messages,
-            memoryContext,
-            replyModel: model,
-            timeZone,
-            aiApiKey: providerConfig.aiApiKey,
-          })) {
-            streamedContent += chunk;
-            send("delta", { content: chunk });
+
+          if (streamDecision.useReplyModel) {
+            for await (const chunk of buildDirectReplyStream({
+              aiClient,
+              content,
+              messages: currentState.messages,
+              memoryContext,
+              timeZone,
+              aiApiKey: providerConfig.aiApiKey,
+            })) {
+              streamedContent += chunk;
+              send("delta", { content: chunk });
+            }
+          } else {
+            streamedContent = streamDecision.reply;
+            send("delta", { content: streamedContent });
           }
 
           assistantContent = streamedContent;
