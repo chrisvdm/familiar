@@ -227,6 +227,8 @@ export const createDefaultAiClient = (env: AiEnv = {} as AiEnv): AiClient => {
                   reasoning: { type: "string" },
                   follow_up: { type: "string" },
                   confidence: { type: "number" },
+                  reply: { type: "string" },
+                  needs_reply_model: { type: "boolean" },
                 },
                 required: ["tool", "arguments", "reasoning", "confidence"],
               },

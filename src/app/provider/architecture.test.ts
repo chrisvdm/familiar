@@ -95,7 +95,7 @@ test("TOOL_DECISION_PROMPT has not drifted", () => {
 
   // If you intentionally change the prompt, update this hash.
   // This catches agents "improving" prompts without realizing they're part of the API contract.
-  const expectedHash = 2136651779;
+  const expectedHash = -644745394;
 
   assert.equal(
     hash,

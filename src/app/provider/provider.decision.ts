@@ -10,6 +10,7 @@ export type ConversationDecision =
       action: "direct_reply";
       reply: string;
       reasoning?: string;
+      useReplyModel?: boolean;
     }
   | {
       action: "clarification";
@@ -40,6 +41,8 @@ export type RawConversationDecision = {
   follow_up?: string | null;
   followUp?: string | null;
   confidence?: number;
+  reply?: string;
+  needs_reply_model?: boolean;
 };
 
 export const getConversationResponseKind = ({
@@ -68,9 +71,10 @@ const TOOL_DECISION_PROMPT = [
   "Analyze the user input and determine the user's intent.",
   "Based on the intent, determine which tool is best suited to handle the request.",
   "Return strict JSON only. No markdown fences. No function call syntax. No code blocks.",
-  "Your entire response must be a single JSON object with exactly these five keys: tool, arguments, reasoning, follow_up, confidence.",
-  'Tool call example: {"tool":"todos.add","arguments":{"todo_items":["buy milk"]},"reasoning":"User wants to add a todo item.","follow_up":null,"confidence":0.9}',
-  'No-tool example: {"tool":"none","arguments":{},"reasoning":"User is making a statement, not requesting an action.","follow_up":null,"confidence":0.0}',
+  "Your entire response must be a single JSON object with exactly these keys: tool, arguments, reasoning, follow_up, confidence, reply, needs_reply_model.",
+  'Tool call example: {"tool":"todos.add","arguments":{"todo_items":["buy milk"]},"reasoning":"User wants to add a todo item.","follow_up":null,"confidence":0.9,"reply":null,"needs_reply_model":false}',
+  'No-tool greeting example: {"tool":"none","arguments":{},"reasoning":"User said hello.","follow_up":null,"confidence":0.0,"reply":"Hello! How can I help you today?","needs_reply_model":false}',
+  'No-tool complex example: {"tool":"none","arguments":{},"reasoning":"User wants a detailed plan.","follow_up":null,"confidence":0.0,"reply":null,"needs_reply_model":true}',
   "Use tool = none when the user is not clearly asking to use one of the available tools.",
   "Do not call a tool for ordinary statements or facts unless the user is clearly asking to save, update, send, create, delete, or run something.",
   "If the request is missing required details for a tool, still choose the tool if appropriate, fill in the information you do have, and return a follow_up question for the missing information.",
@@ -78,6 +82,8 @@ const TOOL_DECISION_PROMPT = [
   "Arguments must contain only the extracted values for the tool schema.",
   "If a schema field is an array, return an array that already matches the schema instead of one joined string.",
   "Do not include instruction words or filler in arguments.",
+  "When tool = none, provide a direct reply in the reply field for greetings, simple statements, and straightforward answers. Keep it brief and natural.",
+  "When tool = none but the user wants a detailed plan, in-depth analysis, or extended discussion, set needs_reply_model to true and leave reply null. A dedicated reply model will handle the response.",
   "Use tool = none for ordinary conversation, introductions, opinions, preferences, or future-thinking statements unless the user is clearly asking to save, remember, add, send, create, update, delete, or run something.",
   'Example: if the user says "add wash hair to note", the note argument should be "wash hair", not "add wash hair to note".',
   'Example: if the schema requires todo_items and the user says "call dad and buy milk", return {"todo_items":["call dad","buy milk"]}.',
@@ -480,18 +486,29 @@ export const createDecideConversationAction = (deps: { aiClient: AiClient }) => 
         } satisfies ConversationDecision;
       }
 
-      const reply = await buildDirectReply({
-        aiClient: deps.aiClient,
-        content,
-        messages,
-        memoryContext,
-        timeZone,
-        aiApiKey,
-      });
+      const directReply = normalizeNullableModelText(parsed.reply);
+      const needsReplyModel = parsed.needs_reply_model === true;
+
+      if (needsReplyModel || directReply === "") {
+        const reply = await buildDirectReply({
+          aiClient: deps.aiClient,
+          content,
+          messages,
+          memoryContext,
+          timeZone,
+          aiApiKey,
+        });
+
+        return {
+          action: "direct_reply",
+          reply,
+          reasoning: reasoning ?? undefined,
+        } satisfies ConversationDecision;
+      }
 
       return {
         action: "direct_reply",
-        reply,
+        reply: directReply,
         reasoning: reasoning ?? undefined,
       } satisfies ConversationDecision;
     }
