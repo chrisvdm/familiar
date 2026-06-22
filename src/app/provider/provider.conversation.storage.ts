@@ -36,7 +36,7 @@ export const saveConversationTurn = async ({
   currentContext: ProviderUserContext;
   model: string;
   channel: ProviderChannelInput;
-}) => {
+}): Promise<[ChatSessionState, ProviderUserContext]> => {
   const messages = [
     ...currentState.messages,
     createAssistantMessage(assistantContent),
@@ -77,8 +77,10 @@ export const saveConversationTurn = async ({
     }),
   };
 
-  return Promise.all([
+  const [withAssistant, finalContext] = await Promise.all([
     saveChatSession(threadId, nextThreadState),
     saveProviderUserContext(nextContext),
   ]);
+  Object.assign(currentContext, finalContext);
+  return [withAssistant, currentContext];
 };

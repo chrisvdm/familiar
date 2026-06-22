@@ -290,6 +290,43 @@ test("conversation endpoint replays idempotent responses", async () => {
   });
 });
 
+test("conversation endpoint stores idempotent replay without reloading context", async () => {
+  let loadCount = 0;
+  const context = createTestContext();
+  const endpoint = createHandleConversationInputEndpoint({
+    ...sharedEndpointDeps,
+    authenticateProviderRequest: () => ({
+      ...okAuth(),
+      providerConfig: {
+        token: "test-token",
+      },
+    }),
+    loadOrCreateProviderUserContext: async () => {
+      loadCount++;
+      return context;
+    },
+    saveProviderUserContext: async (value) => value,
+    buildIdempotencyKey,
+    hashIdempotencyRequest: async () => "hash_789",
+    readIdempotencyReplay: () => ({ kind: "miss" }),
+    storeIdempotencyReplay: ({ context }) => context,
+    handleProviderConversationInput: async () => ({
+      state: "completed",
+    }),
+    isProviderRateLimitError: isNeverRateLimitError,
+  });
+
+  const response = await endpoint({
+    request: createConversationRequest({
+      body: createInput(),
+      idempotencyKey: "idem_no_reload",
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(loadCount, 1);
+});
+
 test("conversation endpoint rejects idempotency conflicts", async () => {
   const endpoint = createHandleConversationInputEndpoint({
     ...sharedEndpointDeps,

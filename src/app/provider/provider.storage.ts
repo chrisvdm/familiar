@@ -181,14 +181,16 @@ export const recordPendingExecution = async ({
   executionId,
   threadId,
   toolName,
+  context: existingContext,
 }: {
   providerId: string;
   userId: string;
   executionId: string;
   threadId: string;
   toolName: string;
+  context?: ProviderUserContext;
 }) => {
-  const context = await loadOrCreateProviderUserContext({ providerId, userId });
+  const context = existingContext ?? await loadOrCreateProviderUserContext({ providerId, userId });
   const pendingExecutions = { ...context.pendingExecutions };
   pendingExecutions[executionId] = {
     executionId,
@@ -206,10 +208,13 @@ export const recordPendingExecution = async ({
       delete pendingExecutions[old.executionId];
     }
   }
-  await saveProviderUserContext({
-    ...context,
-    pendingExecutions,
-  });
+  const nextContext = { ...context, pendingExecutions };
+  if (existingContext) {
+    Object.assign(existingContext, nextContext);
+    return existingContext;
+  }
+  await saveProviderUserContext(nextContext);
+  return nextContext;
 };
 
 export const resolvePendingExecution = async ({

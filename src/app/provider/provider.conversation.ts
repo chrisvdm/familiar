@@ -287,6 +287,7 @@ const executeProviderTool = async ({
   shortcutMode,
   requestId,
   inputSchema,
+  context,
 }: {
   providerConfig: ProviderConfig;
   providerId: string;
@@ -300,6 +301,7 @@ const executeProviderTool = async ({
   shortcutMode?: boolean;
   requestId?: string;
   inputSchema?: Record<string, unknown>;
+  context?: ProviderUserContext;
 }) => {
   validateToolArguments(toolName, args, inputSchema);
 
@@ -344,6 +346,7 @@ const executeProviderTool = async ({
     executionId: result.executionId,
     threadId,
     toolName,
+    context,
   });
 
   return result;
@@ -362,16 +365,18 @@ export const handleProviderConversationInput = async ({
   providerConfig,
   requestId,
   aiClient = defaultAiClient,
+  context: initialContext,
 }: {
   input: NormalizedProviderConversationInput;
   providerConfig: ProviderConfig;
   requestId?: string;
   aiClient?: AiClient;
+  context?: ProviderUserContext;
 }) => {
   const decide = createDecideConversationAction({ aiClient });
   const model = input.model?.trim() || DEFAULT_MODEL;
   const timeZone = getRequestTimeZone(input.timezone);
-  let context = await loadOrCreateProviderUserContext({
+  let context = initialContext ?? await loadOrCreateProviderUserContext({
     providerId: input.integration_id,
     userId: input.user_id,
   });
@@ -523,6 +528,7 @@ export const handleProviderConversationInput = async ({
           shortcutMode: true,
           requestId,
           inputSchema: entry.tool.inputSchema,
+          context: currentContext,
         });
 
         toolMessages = buildToolMessages(
@@ -580,6 +586,7 @@ export const handleProviderConversationInput = async ({
           rawInputText: currentState.pendingToolConfirmation.rawInputText,
           requestId,
           inputSchema: pendingTool?.inputSchema,
+          context: currentContext,
         });
 
         toolMessages = buildToolMessages(
@@ -666,6 +673,7 @@ export const handleProviderConversationInput = async ({
           rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
           requestId,
           inputSchema: pendingTool?.inputSchema,
+          context: currentContext,
         });
 
         assistantContent = execution.message;
@@ -785,6 +793,7 @@ export const handleProviderConversationInput = async ({
           rawInputText: normalizedInput.rawInputText,
           requestId,
           inputSchema: tool?.inputSchema,
+          context: currentContext,
         });
 
         toolMessages = buildToolMessages(
@@ -891,16 +900,18 @@ export const handleStreamConversationInput = async ({
   providerConfig,
   requestId,
   aiClient = defaultAiClient,
+  context: initialContext,
 }: {
   input: NormalizedProviderConversationInput;
   providerConfig: ProviderConfig;
   requestId?: string;
   aiClient?: AiClient;
+  context?: ProviderUserContext;
 }) => {
   const decide = createDecideConversationAction({ aiClient });
   const model = input.model?.trim() || DEFAULT_MODEL;
   const timeZone = getRequestTimeZone(input.timezone);
-  let context = await loadOrCreateProviderUserContext({
+  let context = initialContext ?? await loadOrCreateProviderUserContext({
     providerId: input.integration_id,
     userId: input.user_id,
   });
@@ -1061,6 +1072,7 @@ export const handleStreamConversationInput = async ({
           shortcutMode: true,
           requestId,
           inputSchema: entry.tool.inputSchema,
+          context: currentContext,
         });
 
         executionMessages.push(execution.message);
@@ -1113,6 +1125,7 @@ export const handleStreamConversationInput = async ({
           rawInputText: currentState.pendingToolConfirmation.rawInputText,
           requestId,
           inputSchema: pendingTool?.inputSchema,
+          context: currentContext,
         });
 
         preComputedContent = execution.message;
@@ -1194,6 +1207,7 @@ export const handleStreamConversationInput = async ({
           rawInputText: updatedRawInputText ?? currentState.pendingToolConfirmation.rawInputText,
           requestId,
           inputSchema: pendingTool?.inputSchema,
+          context: currentContext,
         });
 
         preComputedContent = execution.message;
@@ -1339,6 +1353,7 @@ export const handleStreamConversationInput = async ({
               rawInputText: normalizedInput.rawInputText,
               requestId,
               inputSchema: tool?.inputSchema,
+              context: currentContext,
             });
 
             assistantContent = execution.message;

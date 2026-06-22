@@ -106,6 +106,7 @@ export type ConversationEndpointDeps = {
       aiApiKey?: string;
     };
     requestId?: string;
+    context?: ProviderUserContext;
   }) => Promise<Record<string, unknown>>;
   incrementAccountActionCount: (accountId: string) => Promise<{
     actionCount: number;
@@ -211,15 +212,13 @@ export const createHandleConversationInputEndpoint = (
           input: normalizedInput,
           providerConfig: auth.providerConfig,
           requestId,
+          context,
         });
         if (auth.accountId) {
           await deps.incrementAccountActionCount(auth.accountId);
         }
         const nextContext = deps.storeIdempotencyReplay({
-          context: await deps.loadOrCreateProviderUserContext({
-            providerId,
-            userId: normalizedInput.user_id,
-          }),
+          context,
           storageKey,
           requestHash,
           status: 200,
