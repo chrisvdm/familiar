@@ -218,7 +218,10 @@ export const createHandleConversationInputEndpoint = (
           await deps.incrementAccountActionCount(auth.accountId);
         }
         const nextContext = deps.storeIdempotencyReplay({
-          context,
+          context: await deps.loadOrCreateProviderUserContext({
+            providerId,
+            userId: normalizedInput.user_id,
+          }),
           storageKey,
           requestHash,
           status: 200,

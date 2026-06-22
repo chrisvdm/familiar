@@ -290,7 +290,7 @@ test("conversation endpoint replays idempotent responses", async () => {
   });
 });
 
-test("conversation endpoint stores idempotent replay without reloading context", async () => {
+test("conversation endpoint stores idempotent replay on the persisted context", async () => {
   let loadCount = 0;
   const context = createTestContext();
   const endpoint = createHandleConversationInputEndpoint({
@@ -319,12 +319,14 @@ test("conversation endpoint stores idempotent replay without reloading context",
   const response = await endpoint({
     request: createConversationRequest({
       body: createInput(),
-      idempotencyKey: "idem_no_reload",
+      idempotencyKey: "idem_persisted_context",
     }),
   });
 
   assert.equal(response.status, 200);
-  assert.equal(loadCount, 1);
+  // One load to read the replay, then one reload after the handler to ensure
+  // the idempotency replay is stored on the final persisted context.
+  assert.equal(loadCount, 2);
 });
 
 test("conversation endpoint rejects idempotency conflicts", async () => {
