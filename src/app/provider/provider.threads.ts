@@ -86,22 +86,22 @@ const scoreThreadFit = ({
 };
 
 
-const shouldReuseChannelThread = async ({
+const shouldReuseChannelThread = ({
   content,
   context,
   threadId,
+  session,
 }: {
   content: string;
   context: ProviderUserContext;
   threadId: string;
+  session: ChatSessionState;
 }) => {
   const thread = context.threads.find((entry) => entry.id === threadId);
 
   if (!thread) {
     return false;
   }
-
-  const session = await loadChatSession(threadId);
 
   if (session.messages.length === 0) {
     return true;
@@ -124,7 +124,7 @@ export const resolveThreadId = async ({
   providedThreadId?: string;
   channel: ProviderChannelInput;
   content: string;
-}) => {
+}): Promise<{ threadId: string | null; session?: ChatSessionState }> => {
   const normalizedThreadId = providedThreadId?.trim();
 
   if (normalizedThreadId) {
@@ -136,24 +136,26 @@ export const resolveThreadId = async ({
       throw new Error("Thread not found for this provider user.");
     }
 
-    return normalizedThreadId;
+    return { threadId: normalizedThreadId };
   }
 
   const channelState = context.channels[buildChannelKey(channel)];
 
   if (channelState?.lastActiveThreadId) {
-    const canReuse = await shouldReuseChannelThread({
+    const session = await loadChatSession(channelState.lastActiveThreadId);
+    const canReuse = shouldReuseChannelThread({
       content,
       context,
       threadId: channelState.lastActiveThreadId,
+      session,
     });
 
     if (canReuse) {
-      return channelState.lastActiveThreadId;
+      return { threadId: channelState.lastActiveThreadId, session };
     }
   }
 
-  return null;
+  return { threadId: null };
 };
 
 const autoArchiveOldestThreads = (

@@ -6,13 +6,18 @@ import {
   type AiEnv,
 } from "./ai-client.ts";
 import { buildDirectReply, buildDirectReplyStream } from "./provider.decision.ts";
+import { saveConversationTurn } from "./provider.conversation.storage.ts";
 import {
   buildPromptContext,
   createDateTimeSystemPrompt,
   DEFAULT_MODEL,
   resolveConversationTimeZone,
 } from "../chat/conversation.runtime.ts";
-import { loadChatSession, saveChatSession } from "../chat/chat.storage.ts";
+import {
+  loadChatSession,
+  saveChatSession,
+  saveThreadMessages,
+} from "../chat/chat.storage.ts";
 import {
   createAssistantMessage,
   createToolMessage,
@@ -111,25 +116,12 @@ export const appendMessagesToThread = async ({
   pendingToolConfirmation?: PendingToolConfirmation | null;
 }) => {
   const currentState = await loadChatSession(threadId);
-
-  if (currentState.messages.length + messages.length > MAX_MESSAGES_PER_THREAD) {
-    throw new Error(
-      `Message limit reached (${MAX_MESSAGES_PER_THREAD}) for this thread. Start a new thread to continue.`,
-    );
-  }
-
-  const nextState = {
-    ...currentState,
-    messages: [...currentState.messages, ...messages],
-    pendingToolConfirmation:
-      pendingToolConfirmation === undefined
-        ? currentState.pendingToolConfirmation
-        : pendingToolConfirmation,
-    activeToolShortcut: null,
-  };
-
-  await saveChatSession(threadId, nextState);
-  return nextState;
+  return saveThreadMessages({
+    threadId,
+    currentState,
+    messages,
+    pendingToolConfirmation,
+  });
 };
 
 const appendChunkToThreadMessage = async ({
@@ -163,8 +155,9 @@ const appendChunkToThreadMessage = async ({
     return { appended: true, totalBytes };
   }
 
-  const nextState = await appendMessagesToThread({
+  const nextState = await saveThreadMessages({
     threadId,
+    currentState,
     messages: [createUserMessage(text)],
   });
   return { appended: true, totalBytes: new TextEncoder().encode(text).length };
@@ -391,7 +384,6 @@ export const handleProviderConversationInput = async ({
       allowedTools: normalizeAllowedTools(input.tools),
     };
   }
-  context = await saveProviderUserContext(context);
 
   // --GROK--: Run personality/style synthesis before memory retrieval so the current
   // turn sees fresh results. Fires at most once per day (SYNTHESIS_INTERVAL_MS), or
@@ -414,12 +406,14 @@ export const handleProviderConversationInput = async ({
     status: "ok",
   });
 
-  let threadId = await resolveThreadId({
+  const resolved = await resolveThreadId({
     context,
     providedThreadId: input.thread_id,
     channel: input.channel,
     content,
   });
+  let threadId = resolved.threadId;
+  let currentState: ChatSessionState | undefined = resolved.session;
   let currentContext = context;
 
   if (!threadId) {
@@ -453,7 +447,13 @@ export const handleProviderConversationInput = async ({
     throw new Error("Thread not found.");
   }
 
-  const currentState = await loadChatSession(threadId);
+  if (!currentState) {
+    currentState = await loadChatSession(threadId);
+  }
+  const afterUserState: ChatSessionState = {
+    ...currentState,
+    messages: [...currentState.messages, createUserMessage(content)],
+  };
   const memoryScope = selectProviderGlobalMemory({
     memoryPolicy: currentContext.memoryPolicy,
     globalMemory: currentContext.globalMemory,
@@ -475,10 +475,6 @@ export const handleProviderConversationInput = async ({
           timeZone,
           aiApiKey: providerConfig.aiApiKey,
         });
-  const nextState = await appendMessagesToThread({
-    threadId,
-    messages: [createUserMessage(content)],
-  });
 
   let assistantContent = "";
   let action:
@@ -491,6 +487,7 @@ export const handleProviderConversationInput = async ({
   let pendingToolConfirmation: PendingToolConfirmation | null = null;
   let toolMessages: ChatMessage[] = [];
   let decisionReasoning: string | null = null;
+  let replySource: "routing_model" | "reply_model" | "tool" = "tool";
   const shortcutInvocation = parseToolShortcutInvocation({
     content,
     tools: currentContext.allowedTools,
@@ -704,6 +701,7 @@ export const handleProviderConversationInput = async ({
     decisionReasoning = decision.reasoning ?? null;
 
     if (decision.action === "direct_reply") {
+      replySource = decision.useReplyModel ? "reply_model" : "routing_model";
       if (decision.useReplyModel) {
         assistantContent = await buildDirectReply({
           aiClient,
@@ -816,29 +814,16 @@ export const handleProviderConversationInput = async ({
     }
   }
 
-  const withAssistant = await appendMessagesToThread({
+  const [withAssistant, finalContext] = await saveConversationTurn({
     threadId,
-    messages: [createAssistantMessage(assistantContent), ...toolMessages],
+    currentState: afterUserState,
+    assistantContent,
+    toolMessages,
     pendingToolConfirmation,
-  });
-
-  const finalContext = await saveProviderUserContext({
-    ...currentContext,
-    selectedModel: model,
-    threads: updateThreadSummaries(
-      currentContext.threads,
-      buildThreadSummary(thread, withAssistant.messages),
-    ),
-    channels: updateChannelState({
-      context: currentContext,
-      channel: input.channel,
-      threadId,
-    }),
-    threadChannels: updateThreadChannelState({
-      context: currentContext,
-      channel: input.channel,
-      threadId,
-    }),
+    thread,
+    currentContext,
+    model,
+    channel: input.channel,
   });
 
   scheduleBackgroundTask(
@@ -866,11 +851,13 @@ export const handleProviderConversationInput = async ({
     metadata: {
       action,
       executionState: executionState ?? null,
+      replySource,
     },
   });
 
   return {
-
+    status: "done",
+    reasoning: decisionReasoning,
     integration_id: input.integration_id,
     user_id: input.user_id,
     thread_id: threadId,
@@ -893,6 +880,9 @@ export const handleProviderConversationInput = async ({
           }
         : null,
     model: model || finalContext.selectedModel,
+    metadata: {
+      reply_source: replySource,
+    },
   };
 };
 
@@ -923,7 +913,6 @@ export const handleStreamConversationInput = async ({
       allowedTools: normalizeAllowedTools(input.tools),
     };
   }
-  context = await saveProviderUserContext(context);
 
   if (
     context.threads.length > 0 &&
@@ -943,12 +932,14 @@ export const handleStreamConversationInput = async ({
     status: "ok",
   });
 
-  let threadId = await resolveThreadId({
+  const resolved = await resolveThreadId({
     context,
     providedThreadId: input.thread_id,
     channel: input.channel,
     content,
   });
+  let threadId = resolved.threadId;
+  let currentState: ChatSessionState | undefined = resolved.session;
   let currentContext = context;
 
   if (!threadId) {
@@ -988,7 +979,13 @@ export const handleStreamConversationInput = async ({
     throw new Error("Thread not found.");
   }
 
-  const currentState = await loadChatSession(threadId);
+  if (!currentState) {
+    currentState = await loadChatSession(threadId);
+  }
+  const afterUserState: ChatSessionState = {
+    ...currentState,
+    messages: [...currentState.messages, createUserMessage(content)],
+  };
   const memoryScope = selectProviderGlobalMemory({
     memoryPolicy: currentContext.memoryPolicy,
     globalMemory: currentContext.globalMemory,
@@ -1011,11 +1008,6 @@ export const handleStreamConversationInput = async ({
           aiApiKey: providerConfig.aiApiKey,
         });
 
-  await appendMessagesToThread({
-    threadId,
-    messages: [createUserMessage(content)],
-  });
-
   let action:
     | "direct_reply"
     | "clarification"
@@ -1026,6 +1018,7 @@ export const handleStreamConversationInput = async ({
   let pendingToolConfirmation: PendingToolConfirmation | null = null;
   let decisionReasoning: string | null = null;
   let streamDecision: ConversationDecision | null = null;
+  let finalReplySource: "routing_model" | "reply_model" | "tool" = "tool";
 
   const shortcutInvocation = parseToolShortcutInvocation({
     content,
@@ -1238,15 +1231,15 @@ export const handleStreamConversationInput = async ({
     streamDecision = decision;
   }
 
-  const isPrecomputed = !streamDecision;
-
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
-      const send = (event: string, data: Record<string, unknown>) => {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ event, ...data })}\n\n`),
-        );
+      const emit = (payload: {
+        status: "busy" | "done" | "error" | "pending";
+        reasoning?: string | null;
+        [key: string]: unknown;
+      }) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
 
       try {
@@ -1256,20 +1249,11 @@ export const handleStreamConversationInput = async ({
         let finalExecutionId: string | undefined = preComputedExecutionId;
         let finalPendingToolConfirmation: PendingToolConfirmation | null = preComputedPendingToolConfirmation;
 
-        if (isPrecomputed) {
-          send("decision", {
-            action: finalAction,
-            reasoning: decisionReasoning,
-          });
-        } else if (streamDecision?.action === "direct_reply") {
-          send("decision", {
-            action: "direct_reply",
-            reasoning: decisionReasoning,
-          });
-
-          let streamedContent = "";
-
+        if (streamDecision?.action === "direct_reply") {
+          finalReplySource = streamDecision.useReplyModel ? "reply_model" : "routing_model";
           if (streamDecision.useReplyModel) {
+            emit({ status: "busy", reasoning: decisionReasoning });
+            let streamedContent = "";
             for await (const chunk of buildDirectReplyStream({
               aiClient,
               content,
@@ -1279,23 +1263,17 @@ export const handleStreamConversationInput = async ({
               aiApiKey: providerConfig.aiApiKey,
             })) {
               streamedContent += chunk;
-              send("delta", { content: chunk });
+              emit({ status: "busy", reasoning: decisionReasoning, delta: chunk });
             }
+            assistantContent = streamedContent;
           } else {
-            streamedContent = streamDecision.reply;
-            send("delta", { content: streamedContent });
+            assistantContent = streamDecision.reply;
           }
-
-          assistantContent = streamedContent;
           finalAction = "direct_reply";
         } else if (streamDecision?.action === "clarification") {
           assistantContent = streamDecision.question;
           finalAction = "clarification";
           finalExecutionState = "needs_clarification";
-          send("decision", {
-            action: "clarification",
-            reasoning: decisionReasoning,
-          });
         } else if (streamDecision?.action === "tool_follow_up") {
           const confidence = clampDecisionConfidence(streamDecision.confidence);
           const tool = currentContext.allowedTools.find(
@@ -1319,10 +1297,6 @@ export const handleStreamConversationInput = async ({
             createdAt: new Date().toISOString(),
             question: streamDecision.question,
           };
-          send("decision", {
-            action: "clarification",
-            reasoning: decisionReasoning,
-          });
         } else if (streamDecision?.action === "tool_call") {
           const confidence = clampDecisionConfidence(streamDecision.confidence);
           const tool = currentContext.allowedTools.find(
@@ -1339,10 +1313,6 @@ export const handleStreamConversationInput = async ({
             assistantContent = buildLowConfidenceToolQuestion();
             finalAction = "clarification";
             finalExecutionState = "needs_clarification";
-            send("decision", {
-              action: "clarification",
-              reasoning: decisionReasoning,
-            });
           } else if (confidenceAction === "confirm") {
             assistantContent = buildToolConfirmationQuestion({ tool });
             finalAction = "clarification";
@@ -1355,11 +1325,8 @@ export const handleStreamConversationInput = async ({
               confidence,
               createdAt: new Date().toISOString(),
             };
-            send("decision", {
-              action: "clarification",
-              reasoning: decisionReasoning,
-            });
           } else {
+            emit({ status: "busy", reasoning: decisionReasoning });
             const execution = await executeProviderTool({
               providerConfig,
               providerId: input.integration_id,
@@ -1392,37 +1359,50 @@ export const handleStreamConversationInput = async ({
                 confidence,
               },
             });
-
-            send("decision", {
-              action: "tool_call",
-              reasoning: decisionReasoning,
-            });
           }
         }
 
-        const withAssistant = await appendMessagesToThread({
-          threadId,
-          messages: [createAssistantMessage(assistantContent)],
-          pendingToolConfirmation: finalPendingToolConfirmation,
-        });
+        const isStreamingReply =
+          streamDecision?.action === "direct_reply" && streamDecision.useReplyModel === true;
+        if (!isStreamingReply) {
+          emit({
+            status: "busy",
+            reasoning: decisionReasoning,
+            response: {
+              type: getConversationResponseKind({
+                action: finalAction,
+                executionState: finalExecutionState,
+                pendingToolConfirmation: finalPendingToolConfirmation,
+              }),
+              content: assistantContent,
+              reasoning: decisionReasoning,
+              task_status:
+                finalExecutionState ?? (finalAction === "tool_call" ? "completed" : null),
+            },
+            action: finalAction,
+            execution:
+              finalExecutionState || finalExecutionId
+                ? {
+                    state: finalExecutionState ?? null,
+                    execution_id: finalExecutionId ?? null,
+                  }
+                : null,
+            model,
+            metadata: {
+              reply_source: finalReplySource,
+            },
+          });
+        }
 
-        const finalContext = await saveProviderUserContext({
-          ...currentContext,
-          selectedModel: model,
-          threads: updateThreadSummaries(
-            currentContext.threads,
-            buildThreadSummary(thread, withAssistant.messages),
-          ),
-          channels: updateChannelState({
-            context: currentContext,
-            channel: input.channel,
-            threadId,
-          }),
-          threadChannels: updateThreadChannelState({
-            context: currentContext,
-            channel: input.channel,
-            threadId,
-          }),
+        const [withAssistant, finalContext] = await saveConversationTurn({
+          threadId,
+          currentState: afterUserState,
+          assistantContent,
+          pendingToolConfirmation: finalPendingToolConfirmation,
+          thread,
+          currentContext,
+          model,
+          channel: input.channel,
         });
 
         scheduleBackgroundTask(
@@ -1450,18 +1430,27 @@ export const handleStreamConversationInput = async ({
           metadata: {
             action: finalAction,
             executionState: finalExecutionState ?? null,
+            replySource: finalReplySource,
           },
         });
 
-        send("done", {
+        const isPending =
+          finalExecutionState === "accepted" || finalExecutionState === "in_progress";
+        emit({
+          status: isPending ? "pending" : "done",
+          reasoning: decisionReasoning,
           thread_id: threadId,
-          messages: withAssistant.messages.map((m) => ({
-            message_id: m.id,
-            role: m.role,
-            content: m.content,
-
-            created_at: m.createdAt,
-          })),
+          response: {
+            type: getConversationResponseKind({
+              action: finalAction,
+              executionState: finalExecutionState,
+              pendingToolConfirmation: finalPendingToolConfirmation,
+            }),
+            content: assistantContent,
+            reasoning: decisionReasoning,
+            task_status:
+              finalExecutionState ?? (finalAction === "tool_call" ? "completed" : null),
+          },
           action: finalAction,
           execution:
             finalExecutionState || finalExecutionId
@@ -1471,12 +1460,21 @@ export const handleStreamConversationInput = async ({
                 }
               : null,
           model,
+          metadata: {
+            reply_source: finalReplySource,
+          },
+          messages: withAssistant.messages.map((m) => ({
+            message_id: m.id,
+            role: m.role,
+            content: m.content,
+            created_at: m.createdAt,
+          })),
         });
 
         controller.close();
       } catch (error) {
         const message = error instanceof Error ? error.message : "Stream error.";
-        send("error", { code: "internal_error", message });
+        emit({ status: "error", reasoning: message, error: { code: "internal_error", message } });
         controller.close();
       }
     },
@@ -1505,12 +1503,13 @@ export const simulateConversationInput = async ({
   });
   const content = validateInputText(input.input.text);
 
-  let threadId = await resolveThreadId({
+  const resolved = await resolveThreadId({
     context,
     providedThreadId: input.thread_id,
     channel: input.channel,
     content,
   });
+  const threadId = resolved.threadId;
 
   if (!threadId) {
     throw new Error("No thread found or created for simulation.");

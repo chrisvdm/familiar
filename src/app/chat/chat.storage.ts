@@ -1,6 +1,12 @@
 import { env } from "cloudflare:workers";
 
-import { normalizeChatSessionState, type ChatSessionState } from "./shared";
+import {
+  normalizeChatSessionState,
+  type ChatMessage,
+  type ChatSessionState,
+  type PendingToolConfirmation,
+} from "./shared.ts";
+import { MAX_MESSAGES_PER_THREAD } from "../provider/provider.logic.ts";
 
 const getChatStub = (sessionId: string) => {
   const id = env.CHAT_SESSIONS.idFromName(sessionId);
@@ -27,4 +33,35 @@ export const saveChatSession = async (
 
 export const deleteChatSession = async (sessionId: string) => {
   await getChatStub(sessionId).revokeSession();
+};
+
+export const saveThreadMessages = async ({
+  threadId,
+  currentState,
+  messages,
+  pendingToolConfirmation,
+}: {
+  threadId: string;
+  currentState: ChatSessionState;
+  messages: ChatMessage[];
+  pendingToolConfirmation?: PendingToolConfirmation | null;
+}) => {
+  if (currentState.messages.length + messages.length > MAX_MESSAGES_PER_THREAD) {
+    throw new Error(
+      `Message limit reached (${MAX_MESSAGES_PER_THREAD}) for this thread. Start a new thread to continue.`,
+    );
+  }
+
+  const nextState: ChatSessionState = {
+    ...currentState,
+    messages: [...currentState.messages, ...messages],
+    pendingToolConfirmation:
+      pendingToolConfirmation === undefined
+        ? currentState.pendingToolConfirmation
+        : pendingToolConfirmation,
+    activeToolShortcut: null,
+  };
+
+  await saveChatSession(threadId, nextState);
+  return nextState;
 };

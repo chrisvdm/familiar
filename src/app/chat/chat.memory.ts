@@ -1295,31 +1295,41 @@ export const buildMemoryContext = async ({
   const isTargetedPersonalQuery =
     isPersonalMemoryQuery(userMessage) && !isBroadSelfQuery;
 
-  const selectorResult = await selectMemoryContextWithAi({
-    userMessage,
-    threadFacts: dedupeFactList([
-      ...heuristicRelevantThreadFacts,
-      ...getTopSelectorFacts(threadMemory.facts),
-    ]),
-    globalFacts: dedupeFactList([
-      ...heuristicRelevantGlobalFacts,
-      ...getTopSelectorFacts(globalFacts),
-    ]),
-    derivedFacts: dedupeDerivedFactList([
-      ...heuristicRelevantDerivedFacts,
-      ...derivedFacts.slice(0, MEMORY_SELECTOR_FACT_LIMIT),
-    ]),
-    threadSummaries: dedupeThreadSummaryList([
-      ...heuristicSelectedThreadSummaries,
-      ...getTopSelectorThreadSummaries(globalMemory.threadSummaries),
-    ]),
-    snippets: dedupeMessageList([
-      ...heuristicRelevantSnippets,
-      ...getTopRecentSnippets(messages),
-    ]),
-    timeZone,
-    aiApiKey,
-  });
+  const hasStoredMemory =
+    threadMemory.facts.length > 0 ||
+    threadMemory.summary.trim().length > 0 ||
+    threadMemory.keywords.length > 0 ||
+    globalFacts.length > 0 ||
+    globalMemory.threadSummaries.length > 0 ||
+    globalMemory.markdown.trim().length > 0;
+
+  const selectorResult = hasStoredMemory
+    ? await selectMemoryContextWithAi({
+        userMessage,
+        threadFacts: dedupeFactList([
+          ...heuristicRelevantThreadFacts,
+          ...getTopSelectorFacts(threadMemory.facts),
+        ]),
+        globalFacts: dedupeFactList([
+          ...heuristicRelevantGlobalFacts,
+          ...getTopSelectorFacts(globalFacts),
+        ]),
+        derivedFacts: dedupeDerivedFactList([
+          ...heuristicRelevantDerivedFacts,
+          ...derivedFacts.slice(0, MEMORY_SELECTOR_FACT_LIMIT),
+        ]),
+        threadSummaries: dedupeThreadSummaryList([
+          ...heuristicSelectedThreadSummaries,
+          ...getTopSelectorThreadSummaries(globalMemory.threadSummaries),
+        ]),
+        snippets: dedupeMessageList([
+          ...heuristicRelevantSnippets,
+          ...getTopRecentSnippets(messages),
+        ]),
+        timeZone,
+        aiApiKey,
+      })
+    : null;
 
   const relevantThreadFacts =
     selectorResult && selectorResult.relevantThreadFacts.length > 0
